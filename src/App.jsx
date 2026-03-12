@@ -1479,7 +1479,7 @@ function App() {
     }
 
     const lines = []
-    lines.push('Recipe Collector Shopping List')
+    lines.push('Dish Depot Shopping List')
     lines.push(`Generated: ${new Date().toLocaleString()}`)
     lines.push('')
     lines.push('Selected Recipes:')
@@ -1745,7 +1745,7 @@ function App() {
           <div className="header-content">
             <h1 className="logo">
               <i className="fas fa-utensils" />
-              Recipe Collector
+              Dish Depot
             </h1>
             <p className="tagline">Your personal collection of favorite recipes</p>
           </div>
@@ -2791,7 +2791,7 @@ function App() {
       <footer className="footer">
         <div className="container">
           <p>
-            &copy; 2026 Recipe Collector. Made with <i className="fas fa-heart" /> for Quinci.
+            &copy; 2026 Dish Depot. Made with <i className="fas fa-heart" /> for Quinci.
           </p>
         </div>
       </footer>

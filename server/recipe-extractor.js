@@ -5,7 +5,7 @@ const MAX_HTML_BYTES = 1_500_000
 const MAX_FETCH_ATTEMPTS = 3
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504])
 const APP_USER_AGENT =
-  'RecipeCollector/1.0 (+https://localhost; recipe metadata extraction for personal cookbook app)'
+  'DishDepot/1.0 (+https://localhost; recipe metadata extraction for personal cookbook app)'
 const BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 

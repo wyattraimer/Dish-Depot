@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: recipe-collector
+    name: dish-depot
     env: node
     plan: free
     buildCommand: npm install --include=dev && npm run build
@@ -12,4 +12,4 @@ services:
       - key: VITE_API_BASE
         value: /api
       - key: CORS_ALLOWED_ORIGINS
-        value: https://recipes-zmky.onrender.com,https://org.coloradomesa.edu
+        value: https://www.dishdepot.app,https://recipes-zmky.onrender.com,https://org.coloradomesa.edu

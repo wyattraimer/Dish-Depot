@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'v8'
-const CACHE_NAME = `recipe-collector-${CACHE_VERSION}`
+const CACHE_VERSION = 'v1'
+const CACHE_NAME = `dish-depot-${CACHE_VERSION}`
 const withScope = (path = '') => new URL(path, self.registration.scope).toString()
 const OFFLINE_URL = withScope('offline.html')
 const APP_URL = withScope('')

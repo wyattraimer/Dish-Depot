@@ -10,6 +10,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const DIST_PATH = path.resolve(__dirname, '..', 'dist')
 const DEFAULT_ALLOWED_ORIGINS = [
+  'https://www.dishdepot.app',
   'https://recipes-zmky.onrender.com',
   'https://org.coloradomesa.edu',
   'http://localhost:5173',
@@ -113,5 +114,5 @@ app.get('/{*splat}', (req, res) => {
 })
 
 app.listen(PORT, () => {
-  console.log(`Recipe Collector server listening on http://0.0.0.0:${PORT}`)
+  console.log(`Dish Depot server listening on http://0.0.0.0:${PORT}`)
 })
