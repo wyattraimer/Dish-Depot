@@ -55,28 +55,35 @@ const DEFAULT_RECIPES = [
   },
   {
     id: 1002,
-    name: 'Sheet Pan Chicken Fajita Bowls',
-    url: 'https://www.budgetbytes.com/sheet-pan-chicken-fajitas/',
+    name: 'Chicken Fajita Bowl',
+    url: 'https://eatwithclarity.com/chicken-fajita-bowls/',
     image:
-      'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?auto=format&fit=crop&w=1200&q=80',
+      'https://eatwithclarity.com/wp-content/uploads/2023/03/chicken-fajita-bowls.jpg',
     ingredients: [
-      '1 1/2 lb boneless skinless chicken thighs, sliced',
-      '2 bell peppers, sliced',
-      '1 red onion, sliced',
-      '2 tbsp olive oil',
-      '1 1/2 tsp chili powder',
-      '1 tsp cumin',
-      '1 tsp smoked paprika',
-      '1/2 tsp garlic powder',
-      '1/2 tsp salt',
-      '2 cups cooked rice for serving',
+      '1 1/2 pounds chicken breast',
+      '2 tablespoons olive oil',
+      '1 teaspoon salt',
+      '1 1/4 teaspoon garlic powder',
+      '1 1/4 teaspoon cumin',
+      '1 teaspoon brown sugar',
+      '1 teaspoon oregano',
+      '1 1/2 teaspoons chili powder',
+      '3 teaspoons paprika',
+      '1 tablespoon tapioca starch',
+      '3 bell peppers any color',
+      '1/2 large red onion',
     ],
     directions: [
-      'Preheat oven to 425 F and line a sheet pan with parchment paper.',
-      'Toss chicken, peppers, and onion with olive oil and all seasonings until evenly coated.',
-      'Spread mixture on the sheet pan in an even layer.',
-      'Roast 18-22 minutes until chicken is cooked through and vegetables are tender.',
-      'Serve over warm rice and finish with lime juice or your favorite toppings.',
+      'Pound the chicken to about 1/4-1/2 inch thick. I used two large breasts and cut them in half lengthwise and cooked just like that (and cut after cooking), but you can also cut into strips before seasoning.',
+      'Combine all seasonings and tapioca in a bowl.',
+      'Coat the chicken in the seasonings.',
+      'Add the olive oil to a skillet. Once hot, add the chicken and cook on each side for about 4-5 minutes or until cooked through.',
+      'Set aside on a plate and cut into strips if you haven’t already.',
+      'Add the sliced red onion and peppers to the same skillet and saute until golden brown, about 7-8 minutes. Add more oil if you notice anything sticking.',
+      'Add the chicken back in and saute for 1-2 minutes to let the flavors blend.',
+      'Assemble your bowls with a base of rice/lettuce, then add in the chicken/pepper mix, black beans, pico de gallo and chipotle aioli.',
+      'If you aren’t a chipotle fan, you can use my cashew queso and cilantro lime crema instead.',
+      'Also delicious with fresh guacamole and cilantro on top! Enjoy!',
     ],
     categories: ['dinner', 'lunch'],
     notes: 'Great for meal prep. Add black beans and corn to stretch servings.',
@@ -799,6 +806,28 @@ function App() {
 
     localStorage.setItem(THEME_KEY, theme)
   }, [theme])
+
+  useEffect(() => {
+    if (!focusedRecipe) {
+      return undefined
+    }
+
+    const { overflow, position, top, width } = document.body.style
+    const scrollY = window.scrollY
+
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+
+    return () => {
+      document.body.style.overflow = overflow
+      document.body.style.position = position
+      document.body.style.top = top
+      document.body.style.width = width
+      window.scrollTo(0, scrollY)
+    }
+  }, [focusedRecipe])
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event) => {
