@@ -474,6 +474,16 @@ body::before {
   box-shadow: 0 12px 22px rgba(200, 157, 58, 0.3);
 }
 
+.btn-print {
+  color: #fff;
+  background: linear-gradient(140deg, #2f5f87, #3f79a8);
+  box-shadow: 0 8px 16px rgba(47, 95, 135, 0.28);
+}
+
+.btn-print:hover {
+  box-shadow: 0 12px 22px rgba(47, 95, 135, 0.34);
+}
+
 .btn-pin {
   color: var(--ink-900);
   background: linear-gradient(140deg, #dfe5ee, #ccd7e5);

@@ -492,6 +492,150 @@ function buildShoppingAggregation(candidates, preferredSystem) {
   return { totals, unresolved }
 }
 
+function escapePrintHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function buildPrintableRecipesDocument(recipes) {
+  const generatedAt = new Date().toLocaleString()
+
+  const recipeSections = recipes
+    .map((recipe) => {
+      const categories = recipe.categories || (recipe.category ? [recipe.category] : [])
+      const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
+      const directions = Array.isArray(recipe.directions) ? recipe.directions : []
+      const notes = recipe.notes ? `<p class="notes"><strong>Notes:</strong> ${escapePrintHtml(recipe.notes)}</p>` : ''
+      const url = recipe.url
+        ? `<p class="source"><strong>Source:</strong> <a href="${escapePrintHtml(recipe.url)}">${escapePrintHtml(recipe.url)}</a></p>`
+        : ''
+
+      const ingredientsList =
+        ingredients.length > 0
+          ? `<ul>${ingredients.map((item) => `<li>${escapePrintHtml(item)}</li>`).join('')}</ul>`
+          : '<p class="muted">No ingredients provided.</p>'
+
+      const directionsList =
+        directions.length > 0
+          ? `<ol>${directions.map((step) => `<li>${escapePrintHtml(step)}</li>`).join('')}</ol>`
+          : '<p class="muted">No directions provided.</p>'
+
+      return `
+        <article class="recipe-card">
+          <header>
+            <h2>${escapePrintHtml(recipe.name || 'Untitled Recipe')}</h2>
+            ${categories.length > 0 ? `<p class="categories">${categories.map((category) => escapePrintHtml(formatCategory(category))).join(' • ')}</p>` : ''}
+          </header>
+          ${url}
+          ${notes}
+          <section>
+            <h3>Ingredients</h3>
+            ${ingredientsList}
+          </section>
+          <section>
+            <h3>Directions</h3>
+            ${directionsList}
+          </section>
+        </article>
+      `
+    })
+    .join('')
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dish Depot Recipes</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 22px;
+        color: #1f2933;
+        font-family: "Georgia", "Times New Roman", serif;
+        line-height: 1.55;
+        background: #fff;
+      }
+      .print-header {
+        margin-bottom: 20px;
+        border-bottom: 2px solid #d1d5db;
+        padding-bottom: 12px;
+      }
+      .print-header h1 {
+        margin: 0;
+        font-size: 1.7rem;
+      }
+      .print-header p {
+        margin: 5px 0 0;
+        color: #4b5563;
+      }
+      .recipe-card {
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 14px;
+        page-break-inside: avoid;
+      }
+      h2 {
+        margin: 0;
+        font-size: 1.3rem;
+      }
+      h3 {
+        margin: 0 0 7px;
+        font-size: 1rem;
+      }
+      .categories,
+      .source,
+      .notes,
+      .muted {
+        margin: 8px 0;
+      }
+      .categories,
+      .muted {
+        color: #4b5563;
+      }
+      .source a {
+        color: #1f4e79;
+        word-break: break-all;
+      }
+      ul,
+      ol {
+        margin: 0;
+        padding-left: 1.2rem;
+      }
+      li + li {
+        margin-top: 4px;
+      }
+      @media print {
+        body {
+          padding: 0;
+        }
+        .recipe-card {
+          margin-bottom: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="print-header">
+      <h1>Dish Depot Recipe Export</h1>
+      <p>Generated ${escapePrintHtml(generatedAt)} • ${recipes.length} recipe${recipes.length === 1 ? '' : 's'}</p>
+    </header>
+    ${recipeSections}
+  </body>
+</html>`
+}
+
 function App() {
   const [recipes, setRecipes] = useState(() => {
     try {
@@ -1313,6 +1457,52 @@ function App() {
     )
   }
 
+  function printRecipesAsPdf(recipesToPrint) {
+    if (!Array.isArray(recipesToPrint) || recipesToPrint.length === 0) {
+      showMessage('Select at least one recipe to print.', 'error')
+      return false
+    }
+
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      showMessage('Popup blocked. Please allow popups to print and save as PDF.', 'error')
+      return false
+    }
+
+    const printableDocument = buildPrintableRecipesDocument(recipesToPrint)
+    printWindow.document.open()
+    printWindow.document.write(printableDocument)
+    printWindow.document.close()
+
+    const triggerPrint = () => {
+      printWindow.focus()
+      printWindow.print()
+    }
+
+    window.setTimeout(triggerPrint, 220)
+    return true
+  }
+
+  function confirmPrintSelection() {
+    const selectedRecipes = exportCandidates
+      .filter((candidate) => candidate.selected)
+      .map((candidate) => candidate.recipe)
+
+    if (selectedRecipes.length === 0) {
+      showMessage('Select at least one recipe to print.', 'error')
+      return
+    }
+
+    const didOpen = printRecipesAsPdf(selectedRecipes)
+    if (didOpen) {
+      closeExportPreview()
+      showMessage(
+        `Opened print view for ${selectedRecipes.length} recipe${selectedRecipes.length !== 1 ? 's' : ''}. Choose "Save as PDF" in the print dialog.`,
+        'success',
+      )
+    }
+  }
+
   function openShoppingListBuilder() {
     const candidates = recipes
       .filter((recipe) => Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0)
@@ -1998,6 +2188,17 @@ function App() {
                             </>
                           ) : null}
                           <button
+                            className="btn btn-small btn-print"
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              printRecipesAsPdf([recipe])
+                            }}
+                          >
+                            <i className="fas fa-print" />
+                            Print
+                          </button>
+                          <button
                             className={`btn btn-small ${recipe.pinned ? 'btn-pin-active' : 'btn-pin'}`}
                             type="button"
                             onClick={(event) => {
@@ -2172,6 +2373,10 @@ function App() {
                   </button>
                 </>
               ) : null}
+              <button className="btn btn-print" type="button" onClick={() => printRecipesAsPdf([focusedRecipe])}>
+                <i className="fas fa-print" />
+                Print / Save PDF
+              </button>
               <button
                 className="btn btn-primary"
                 type="button"
@@ -2569,6 +2774,9 @@ function App() {
             <div className="import-preview-footer">
               <button className="btn btn-secondary" type="button" onClick={closeExportPreview}>
                 Cancel
+              </button>
+              <button className="btn btn-print" type="button" onClick={confirmPrintSelection}>
+                Print / Save PDF ({selectedExportCount})
               </button>
               <button className="btn btn-primary" type="button" onClick={confirmExportSelection}>
                 Export Selected ({selectedExportCount})
