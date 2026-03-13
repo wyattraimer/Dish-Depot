@@ -1535,6 +1535,10 @@ body::before {
   box-shadow: 0 12px 24px rgba(209, 72, 62, 0.34);
 }
 
+.back-to-top-btn.back-to-top-btn-has-install {
+  bottom: 136px;
+}
+
 .back-to-top-btn i {
   font-size: 0.9rem;
 }
@@ -1809,11 +1813,11 @@ body::before {
   .back-to-top-btn {
     left: 50%;
     right: auto;
-    bottom: 74px;
+    bottom: 82px;
     transform: translateX(-50%);
-    width: 52px;
-    height: 52px;
-    min-width: 52px;
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
     padding: 0;
     border-radius: 999px;
   }
@@ -1823,7 +1827,7 @@ body::before {
   }
 
   .back-to-top-btn i {
-    font-size: 0.88rem;
+    font-size: 1rem;
   }
 }
 
@@ -1999,16 +2003,16 @@ body::before {
   .back-to-top-btn {
     left: 50%;
     right: auto;
-    bottom: 70px;
+    bottom: 78px;
     transform: translateX(-50%);
-    width: 48px;
-    height: 48px;
-    min-width: 48px;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
     padding: 0;
   }
 
   .back-to-top-btn i {
-    font-size: 0.84rem;
+    font-size: 0.96rem;
   }
 }
 

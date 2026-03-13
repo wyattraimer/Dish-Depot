@@ -3052,8 +3052,13 @@ function App() {
         </div>
       ) : null}
 
-      {showBackToTop && !showInstallBtn && !showSwUpdateBanner && !isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe ? (
-        <button className="btn btn-primary back-to-top-btn" type="button" onClick={scrollToTop} aria-label="Back to top">
+      {showBackToTop && !showSwUpdateBanner && !isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe ? (
+        <button
+          className={`btn btn-primary back-to-top-btn ${showInstallBtn ? 'back-to-top-btn-has-install' : ''}`}
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Back to top"
+        >
           <i className="fas fa-arrow-up" />
           <span>Top</span>
         </button>
