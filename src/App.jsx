@@ -1745,7 +1745,7 @@ function App() {
           <div className="header-content">
             <h1 className="logo">
               <i className="fas fa-utensils" />
-              Dish Depot
+              Dish Depot - Test
             </h1>
             <p className="tagline">Your personal collection of favorite recipes</p>
           </div>
