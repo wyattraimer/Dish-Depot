@@ -580,6 +580,31 @@ function buildPrintableRecipesDocument(recipes) {
         border-bottom: 2px solid #d1d5db;
         padding-bottom: 12px;
       }
+      .preview-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .preview-actions button {
+        border: 1px solid #bcc6d2;
+        background: #f8fafc;
+        color: #1f2933;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font: 600 0.9rem/1.2 "Segoe UI", "Arial", sans-serif;
+        cursor: pointer;
+      }
+      .preview-actions button.primary {
+        border-color: #d1483e;
+        background: #d1483e;
+        color: #fff;
+      }
+      .preview-note {
+        margin: 0 0 12px;
+        color: #4b5563;
+        font: 500 0.88rem/1.35 "Segoe UI", "Arial", sans-serif;
+      }
       .print-header h1 {
         margin: 0;
         font-size: 1.7rem;
@@ -626,6 +651,10 @@ function buildPrintableRecipesDocument(recipes) {
         margin-top: 4px;
       }
       @media print {
+        .preview-actions,
+        .preview-note {
+          display: none;
+        }
         body {
           padding: 0;
         }
@@ -636,11 +665,43 @@ function buildPrintableRecipesDocument(recipes) {
     </style>
   </head>
   <body>
+    <div class="preview-actions" role="group" aria-label="Preview actions">
+      <button type="button" data-action="back">Back to Dish Depot</button>
+      <button type="button" data-action="print" class="primary">Print / Save PDF</button>
+    </div>
+    <p class="preview-note">Use "Back to Dish Depot" to return without printing.</p>
     <header class="print-header">
       <h1>Dish Depot Recipe Export</h1>
       <p>Generated ${escapePrintHtml(generatedAt)} • ${recipes.length} recipe${recipes.length === 1 ? '' : 's'}</p>
     </header>
     ${recipeSections}
+    <script>
+      (() => {
+        const printButton = document.querySelector('[data-action="print"]')
+        const backButton = document.querySelector('[data-action="back"]')
+
+        if (printButton) {
+          printButton.addEventListener('click', () => {
+            window.focus()
+            window.print()
+          })
+        }
+
+        if (backButton) {
+          backButton.addEventListener('click', () => {
+            if (window.opener && !window.opener.closed) {
+              window.close()
+              return
+            }
+            if (window.history.length > 1) {
+              window.history.back()
+              return
+            }
+            window.location.replace('/')
+          })
+        }
+      })()
+    </script>
   </body>
 </html>`
 }

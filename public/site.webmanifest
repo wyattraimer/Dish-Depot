@@ -1,6 +1,6 @@
 {
-	"name": "Dish Depot",
-	"short_name": "DD",
+	"name": "Dish Depot – Recipe Manager",
+	"short_name": "Dish Depot",
 	"description": "Collect and manage your favorite recipes",
 	"start_url": "./",
 	"scope": "./",
