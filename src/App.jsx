@@ -2705,7 +2705,7 @@ function App() {
                     </button>
                     <p className="extract-notice">
                       {isOnline
-                        ? 'First extract can take up to about 50 seconds while the free-tier API wakes up. After that, extracts are usually much faster.'
+                        ? 'First extract can take 30 - 50 seconds while the API wakes up. After that, extracts are usually much faster.'
                         : 'You are offline. URL extraction needs internet, but your saved recipes, planner, and cached pages still work.'}
                     </p>
                   </div>
@@ -3245,7 +3245,7 @@ function App() {
         <div className="container">
           <p>
             <img className="footer-logo" src={dishDepotLogoBadge} alt="Dish Depot logo mark" />
-            &copy; 2026 Dish Depot. Made with <i className="fas fa-heart" /> for Quinci.
+            &copy; 2026 Dish Depot.<i className="fas fa-cross" />Made with <i className="fas fa-heart" /> for Quinci.
           </p>
         </div>
       </footer>
