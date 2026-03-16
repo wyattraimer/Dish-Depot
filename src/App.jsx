@@ -1974,38 +1974,51 @@ function App() {
       <main className="main">
         <div className="container">
           <section className="controls">
-            <div className="controls-label">Browse</div>
-            <div className="controls-context">
-              <div className="controls-context-left">
-                <div className="view-toggle-group" role="tablist" aria-label="App view">
-                  <button
-                    className={`btn btn-small ${activeView === 'recipes' ? 'btn-primary' : 'btn-secondary'}`}
-                    type="button"
-                    onClick={() => setActiveView('recipes')}
-                  >
-                    <i className="fas fa-th-large" />
-                    Recipes
-                  </button>
-                  <button
-                    className={`btn btn-small ${activeView === 'planner' ? 'btn-primary' : 'btn-secondary'}`}
-                    type="button"
-                    onClick={() => setActiveView('planner')}
-                  >
-                    <i className="fas fa-calendar-alt" />
-                    Meal Planner
-                  </button>
-                </div>
+            <div className="controls-nav-row">
+              <div className="view-toggle-group" role="tablist" aria-label="App view">
+                <button
+                  className={`btn btn-small ${activeView === 'recipes' ? 'btn-primary' : 'btn-secondary'}`}
+                  type="button"
+                  onClick={() => setActiveView('recipes')}
+                >
+                  <i className="fas fa-th-large" />
+                  Recipes
+                </button>
+                <button
+                  className={`btn btn-small ${activeView === 'planner' ? 'btn-primary' : 'btn-secondary'}`}
+                  type="button"
+                  onClick={() => setActiveView('planner')}
+                >
+                  <i className="fas fa-calendar-alt" />
+                  Meal Planner
+                </button>
+              </div>
 
-                <div className="search-box">
-                  <input
-                    type="text"
-                    placeholder="Search recipes..."
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                  />
-                  <i className="fas fa-search" />
-                </div>
+              <label className="theme-switch" aria-label="Toggle dark mode">
+                <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
+                <span className="theme-switch-track">
+                  <span className="theme-switch-knob">
+                    <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
+                  </span>
+                </span>
+                <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+              </label>
+            </div>
 
+            <div className="controls-search-row">
+              <div className="search-box search-box-prominent">
+                <input
+                  type="text"
+                  placeholder="Search recipes, ingredients, or notes..."
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                />
+                <i className="fas fa-search" />
+              </div>
+            </div>
+
+            <div className="controls-filter-row">
+              <div className="controls-filter-group">
                 <div className="category-filter">
                   <select
                     className="category-select"
@@ -2021,77 +2034,66 @@ function App() {
                   </select>
                   <i className="fas fa-filter" />
                 </div>
-              </div>
-
-              <div className="controls-context-right">
                 <div className="results-count" aria-live="polite">
-                  Showing {filteredRecipes.length} of {recipes.length}
+                  {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
                 </div>
-
-                <label className="theme-switch" aria-label="Toggle dark mode">
-                  <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
-                  <span className="theme-switch-track">
-                    <span className="theme-switch-knob">
-                      <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
-                    </span>
-                  </span>
-                  <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-                </label>
               </div>
-            </div>
 
-            <div className="controls-label">Actions</div>
-            <div className="controls-primary-actions">
-              <button className="btn btn-primary" type="button" onClick={() => openModal()}>
-                <i className="fas fa-plus" />
-                Add Recipe
-              </button>
-              <button className="btn btn-secondary" type="button" onClick={randomizeRecipe}>
-                <i className="fas fa-dice" />
-                Random Recipe
-              </button>
-              <button
-                className={`btn ${showPinnedOnly ? 'btn-primary' : 'btn-secondary'}`}
-                type="button"
-                onClick={() => setShowPinnedOnly((prev) => !prev)}
-              >
-                <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
-                {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
-              </button>
-            </div>
-
-            <div className="controls-label">Data & Tools</div>
-            <div className="controls-utility-actions">
-              <button className="btn btn-secondary" type="button" onClick={openShoppingListBuilder}>
-                <i className="fas fa-cart-shopping" />
-                Shopping List
-              </button>
-              <button className="btn btn-secondary" type="button" onClick={exportRecipes}>
-                <i className="fas fa-download" />
-                Export
-              </button>
-              <button
-                className="btn btn-secondary"
-                type="button"
-                onClick={() => importInputRef.current?.click()}
-              >
-                <i className="fas fa-upload" />
-                Import
-              </button>
-              <input
-                ref={importInputRef}
-                type="file"
-                accept=".json"
-                style={{ display: 'none' }}
-                onChange={handleImportFile}
-              />
-
-              <div className="controls-danger-zone">
-                <button className="btn btn-danger" type="button" onClick={deleteAllRecipes}>
-                  <i className="fas fa-trash-alt" />
-                  Delete All
+              <div className="controls-main-actions">
+                <button className="btn btn-primary btn-add-inline" type="button" onClick={() => openModal()}>
+                  <i className="fas fa-plus" />
+                  Add Recipe
+                </button>
+                <button className="btn btn-secondary" type="button" onClick={randomizeRecipe}>
+                  <i className="fas fa-dice" />
+                  Random Recipe
+                </button>
+                <button
+                  className={`btn ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
+                  type="button"
+                  onClick={() => setShowPinnedOnly((prev) => !prev)}
+                >
+                  <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
+                  {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
                 </button>
               </div>
+            </div>
+
+            <div className="controls-tools-row">
+              <details className="tools-menu">
+                <summary className="btn btn-secondary btn-tools" aria-label="Open tools menu">
+                  <i className="fas fa-screwdriver-wrench" />
+                  Tools
+                </summary>
+                <div className="tools-menu-panel" role="group" aria-label="Recipe tools">
+                  <button className="btn btn-secondary" type="button" onClick={openShoppingListBuilder}>
+                    <i className="fas fa-cart-shopping" />
+                    Shopping List
+                  </button>
+                  <button className="btn btn-secondary" type="button" onClick={exportRecipes}>
+                    <i className="fas fa-download" />
+                    Export
+                  </button>
+                  <button className="btn btn-secondary" type="button" onClick={() => importInputRef.current?.click()}>
+                    <i className="fas fa-upload" />
+                    Import
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".json"
+                    style={{ display: 'none' }}
+                    onChange={handleImportFile}
+                  />
+                </div>
+              </details>
+            </div>
+
+            <div className="controls-danger-zone">
+              <button className="btn btn-danger btn-small" type="button" onClick={deleteAllRecipes}>
+                <i className="fas fa-trash-alt" />
+                Delete All Recipes
+              </button>
             </div>
 
             <details className="ios-install-help">
@@ -3061,6 +3063,18 @@ function App() {
         >
           <i className="fas fa-arrow-up" />
           <span>Top</span>
+        </button>
+      ) : null}
+
+      {!isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe ? (
+        <button
+          className={`btn btn-primary mobile-add-fab ${showInstallBtn ? 'mobile-add-fab-has-install' : ''}`}
+          type="button"
+          onClick={() => openModal()}
+          aria-label="Add recipe"
+        >
+          <i className="fas fa-plus" />
+          <span>Add Recipe</span>
         </button>
       ) : null}
 
