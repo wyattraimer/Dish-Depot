@@ -96,13 +96,13 @@ body::before {
   gap: 0.8rem;
 }
 
-.logo i {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
+.logo-mark {
+  width: clamp(34px, 4vw, 44px);
+  height: clamp(34px, 4vw, 44px);
+  object-fit: contain;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.2);
+  padding: 5px;
 }
 
 .tagline {
@@ -1604,6 +1604,20 @@ body::before {
   box-shadow: var(--shadow-soft);
 }
 
+.footer p {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.footer-logo {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
 .footer i {
   color: var(--tomato-600);
 }
@@ -2073,9 +2087,14 @@ body::before {
     font-size: 1.65rem;
   }
 
-  .logo i {
+  .logo-mark {
     width: 36px;
     height: 36px;
+  }
+
+  .footer-logo {
+    width: 22px;
+    height: 22px;
   }
 
   .controls-nav-row,

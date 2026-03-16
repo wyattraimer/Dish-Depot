@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import dishDepotLogo from './assets/dishdepot-no-background-674x674.png'
+import dishDepotLogoBadge from './assets/dishdepot-674x674.png'
 
 const CATEGORIES = {
   breakfast: { icon: 'fa-coffee', color: '#ffc107' },
@@ -2048,7 +2050,7 @@ function App() {
         <div className="container">
           <div className="header-content">
             <h1 className="logo">
-              <i className="fas fa-utensils" />
+              <img className="logo-mark" src={dishDepotLogo} alt="Dish Depot logo" />
               Dish Depot - Test
             </h1>
             <p className="tagline">Your personal collection of favorite recipes</p>
@@ -3131,6 +3133,7 @@ function App() {
       <footer className="footer">
         <div className="container">
           <p>
+            <img className="footer-logo" src={dishDepotLogoBadge} alt="Dish Depot logo mark" />
             &copy; 2026 Dish Depot. Made with <i className="fas fa-heart" /> for Quinci.
           </p>
         </div>
