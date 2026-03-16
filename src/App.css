@@ -1,5 +1,7 @@
 #root {
   min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
 html,
@@ -61,6 +63,7 @@ body::before {
   background-size: 28px 28px;
   mask-image: radial-gradient(circle at center, black 50%, transparent 100%);
   opacity: 0.35;
+  z-index: 0;
 }
 
 .container {
