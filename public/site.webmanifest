@@ -1,7 +1,7 @@
 {
-	"name": "Dish Depot – Recipe Manager",
+	"name": "Dish Depot – Save. Organize. Cook.",
 	"short_name": "Dish Depot",
-	"description": "Collect and manage your favorite recipes",
+	"description": "Save and organize your favorite recipes",
 	"start_url": "./",
 	"scope": "./",
 	"icons": [
