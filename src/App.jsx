@@ -2051,9 +2051,9 @@ function App() {
           <div className="header-content">
             <h1 className="logo">
               <img className="logo-mark" src={dishDepotLogo} alt="Dish Depot logo" />
-              Dish Depot - Test
+              Dish Depot
             </h1>
-            <p className="tagline">Your personal collection of favorite recipes</p>
+            <p className="tagline">Save. Organize. Cook.</p>
           </div>
         </div>
       </header>
