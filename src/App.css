@@ -350,6 +350,9 @@ body::before {
   position: relative;
   max-width: 520px;
   width: 100%;
+  padding: 1px;
+  border-radius: 999px;
+  background: linear-gradient(110deg, var(--tomato-500), var(--gold-400), var(--sage-500));
 }
 
 .search-box-prominent {
@@ -359,7 +362,7 @@ body::before {
 .search-box input {
   width: 100%;
   padding: 0.84rem 0.98rem 0.84rem 2.72rem;
-  border: 1px solid var(--border-soft);
+  border: 0;
   border-radius: 999px;
   font-size: 0.97rem;
   color: var(--ink-900);
