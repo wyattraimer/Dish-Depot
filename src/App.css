@@ -165,13 +165,13 @@ body::before {
 
 .controls {
   display: grid;
-  gap: 1.15rem;
-  margin-bottom: 2rem;
-  padding: 1.05rem;
+  gap: 0.82rem;
+  margin-bottom: 1.55rem;
+  padding: 0.86rem;
   border-radius: var(--radius-lg);
-  background: var(--surface-strong);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-soft);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(252, 247, 241, 0.9));
+  border: 1px solid rgba(90, 105, 122, 0.18);
+  box-shadow: 0 12px 24px rgba(70, 84, 101, 0.12);
   backdrop-filter: blur(10px);
 }
 
@@ -210,9 +210,21 @@ body::before {
   align-items: flex-end;
 }
 
+.controls-utility-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding-top: 0.45rem;
+  margin-top: 0.1rem;
+  border-top: 1px solid rgba(90, 105, 122, 0.22);
+}
+
 .controls-tools-row {
-  padding-top: 0.1rem;
-  border-top: 1px solid rgba(90, 105, 122, 0.18);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .view-toggle-group {
@@ -225,11 +237,9 @@ body::before {
 }
 
 .controls-danger-zone {
-  margin-left: auto;
-  padding-top: 0.4rem;
-  border-top: 1px dashed rgba(188, 48, 67, 0.25);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .btn-add-inline {
@@ -255,11 +265,13 @@ body::before {
 .btn-tools {
   color: var(--ink-700);
   font-weight: 600;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(90, 105, 122, 0.22);
 }
 
 .tools-menu-panel {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   right: 0;
   z-index: 24;
   min-width: 220px;
@@ -345,7 +357,7 @@ body::before {
 
 .search-box-prominent input {
   min-height: 54px;
-  padding: 0.92rem 1rem 0.92rem 2.95rem;
+  padding: 0.86rem 1rem 0.86rem 2.95rem;
   font-size: 1.04rem;
 }
 
@@ -594,8 +606,8 @@ body::before {
   overflow: hidden;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-soft);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.82));
-  box-shadow: var(--shadow-soft);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9));
+  box-shadow: 0 10px 18px rgba(70, 84, 101, 0.1);
   display: flex;
   flex-direction: column;
   align-self: start;
@@ -634,7 +646,7 @@ body::before {
 
 .recipe-header {
   padding: 0.95rem 1rem 0.82rem;
-  background: linear-gradient(160deg, rgba(243, 236, 226, 0.7), rgba(255, 255, 255, 0.25));
+  background: linear-gradient(160deg, rgba(245, 238, 228, 0.78), rgba(255, 255, 255, 0.42));
   border-bottom: 1px solid rgba(90, 105, 122, 0.16);
 }
 
@@ -1604,6 +1616,30 @@ body::before {
   bottom: 136px;
 }
 
+.mobile-add-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 84px;
+  z-index: 10003;
+  display: none;
+  min-width: 0;
+  border-radius: 999px;
+  padding-inline: 0.95rem;
+  box-shadow: 0 14px 24px rgba(209, 72, 62, 0.34);
+}
+
+.mobile-add-fab.mobile-add-fab-has-install {
+  bottom: 140px;
+}
+
+.mobile-add-fab.mobile-add-fab-has-top {
+  bottom: 146px;
+}
+
+.mobile-add-fab.mobile-add-fab-has-install.mobile-add-fab-has-top {
+  bottom: 200px;
+}
+
 .back-to-top-btn i {
   font-size: 0.9rem;
 }
@@ -1694,6 +1730,10 @@ body::before {
     margin-left: 0;
     justify-content: flex-start;
   }
+
+  .controls-utility-row {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 1023px) and (orientation: landscape) {
@@ -1723,8 +1763,8 @@ body::before {
 
   .controls {
     margin-bottom: 1.35rem;
-    gap: 0.95rem;
-    padding: 0.9rem;
+    gap: 0.78rem;
+    padding: 0.78rem;
   }
 
   .view-toggle-group {
@@ -1761,6 +1801,11 @@ body::before {
   .controls-danger-zone {
     margin-left: 0;
     justify-content: flex-start;
+  }
+
+  .controls-utility-row {
+    gap: 0.48rem;
+    padding-top: 0.4rem;
   }
 
   .tools-menu {
@@ -2018,7 +2063,7 @@ body::before {
   }
 
   .btn-add-inline {
-    grid-column: 1 / -1;
+    display: none;
   }
 
   .theme-switch {
@@ -2090,29 +2135,56 @@ body::before {
     right: 12px;
     left: 12px;
     width: auto;
+    bottom: 10px;
+    min-height: 48px;
   }
 
   .main {
-    padding-bottom: 6.2rem;
-  }
-
-  .back-to-top-btn.back-to-top-btn-has-install {
-    display: none;
+    padding-bottom: 9rem;
   }
 
   .back-to-top-btn {
-    left: 50%;
-    right: auto;
-    bottom: 78px;
-    transform: translateX(-50%);
-    width: 56px;
-    height: 56px;
-    min-width: 56px;
+    left: auto;
+    right: 12px;
+    bottom: 74px;
+    transform: none;
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
     padding: 0;
+    border-radius: 999px;
+  }
+
+  .back-to-top-btn.back-to-top-btn-has-install {
+    bottom: 132px;
   }
 
   .back-to-top-btn i {
-    font-size: 0.96rem;
+    font-size: 0.95rem;
+  }
+
+  .mobile-add-fab {
+    display: inline-flex;
+    right: 12px;
+    bottom: 74px;
+    width: auto;
+    padding-inline: 0.95rem;
+  }
+
+  .mobile-add-fab.mobile-add-fab-has-install {
+    bottom: 132px;
+  }
+
+  .mobile-add-fab.mobile-add-fab-has-top {
+    bottom: 138px;
+  }
+
+  .mobile-add-fab.mobile-add-fab-has-install.mobile-add-fab-has-top {
+    bottom: 194px;
+  }
+
+  .mobile-add-fab span {
+    display: inline;
   }
 }
 

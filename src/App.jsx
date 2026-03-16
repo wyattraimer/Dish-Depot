@@ -2059,46 +2059,53 @@ function App() {
               </div>
             </div>
 
-            <div className="controls-tools-row">
-              <details className="tools-menu">
-                <summary
-                  className="btn btn-secondary btn-tools"
-                  aria-label="Open tools menu"
-                  aria-haspopup="menu"
-                  aria-controls="tools-menu-panel"
-                >
-                  <i className="fas fa-screwdriver-wrench" />
-                  Tools
-                </summary>
-                <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
-                  <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
-                    <i className="fas fa-cart-shopping" />
-                    Shopping List
-                  </button>
-                  <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
-                    <i className="fas fa-download" />
-                    Export
-                  </button>
-                  <button className="btn btn-secondary" type="button" role="menuitem" onClick={() => importInputRef.current?.click()}>
-                    <i className="fas fa-upload" />
-                    Import
-                  </button>
-                  <input
-                    ref={importInputRef}
-                    type="file"
-                    accept=".json"
-                    style={{ display: 'none' }}
-                    onChange={handleImportFile}
-                  />
-                </div>
-              </details>
-            </div>
+            <div className="controls-utility-row">
+              <div className="controls-tools-row">
+                <details className="tools-menu">
+                  <summary
+                    className="btn btn-secondary btn-tools"
+                    aria-label="Open tools menu"
+                    aria-haspopup="menu"
+                    aria-controls="tools-menu-panel"
+                  >
+                    <i className="fas fa-screwdriver-wrench" />
+                    Tools
+                  </summary>
+                  <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
+                    <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
+                      <i className="fas fa-cart-shopping" />
+                      Shopping List
+                    </button>
+                    <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
+                      <i className="fas fa-download" />
+                      Export
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => importInputRef.current?.click()}
+                    >
+                      <i className="fas fa-upload" />
+                      Import
+                    </button>
+                    <input
+                      ref={importInputRef}
+                      type="file"
+                      accept=".json"
+                      style={{ display: 'none' }}
+                      onChange={handleImportFile}
+                    />
+                  </div>
+                </details>
+              </div>
 
-            <div className="controls-danger-zone">
-              <button className="btn btn-danger btn-small" type="button" onClick={deleteAllRecipes}>
-                <i className="fas fa-trash-alt" />
-                Delete All Recipes
-              </button>
+              <div className="controls-danger-zone">
+                <button className="btn btn-danger btn-small" type="button" onClick={deleteAllRecipes}>
+                  <i className="fas fa-trash-alt" />
+                  Delete All Recipes
+                </button>
+              </div>
             </div>
 
             <details className="ios-install-help">
@@ -3072,6 +3079,18 @@ function App() {
         >
           <i className="fas fa-arrow-up" />
           <span>Top</span>
+        </button>
+      ) : null}
+
+      {!showSwUpdateBanner && !isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe ? (
+        <button
+          className={`btn btn-primary mobile-add-fab ${showInstallBtn ? 'mobile-add-fab-has-install' : ''} ${showBackToTop ? 'mobile-add-fab-has-top' : ''}`}
+          type="button"
+          onClick={() => openModal()}
+          aria-label="Add recipe"
+        >
+          <i className="fas fa-plus" />
+          <span>Add Recipe</span>
         </button>
       ) : null}
 
