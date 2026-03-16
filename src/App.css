@@ -1849,11 +1849,12 @@ body::before {
   }
 
   .controls-danger-zone {
-    margin-left: 0;
-    justify-content: flex-start;
+    margin-left: auto;
+    justify-content: flex-end;
   }
 
   .controls-utility-row {
+    justify-content: space-between;
     gap: 0.48rem;
     padding: 0.46rem 0.5rem;
   }
@@ -2130,6 +2131,11 @@ body::before {
 
   .controls-main-actions .btn {
     width: 100%;
+  }
+
+  .controls-danger-zone {
+    margin-left: auto;
+    justify-content: flex-end;
   }
 
   .btn-add-inline {
