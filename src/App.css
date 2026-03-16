@@ -2379,6 +2379,8 @@ body[data-theme='dark'] .btn.btn-pin {
 
 body[data-theme='dark'] .controls-utility-row {
   background-color: #15212f;
+  border: 1px solid rgba(164, 180, 200, 0.38);
+  border-top-color: rgba(164, 180, 200, 0.46);
 }
 
 body[data-theme='dark'] .theme-switch-track {
