@@ -540,6 +540,26 @@ body::before {
   box-shadow: 0 12px 22px rgba(188, 48, 67, 0.34);
 }
 
+.btn.btn-primary.btn-add-inline,
+.btn.btn-small.btn-primary,
+.btn.btn-pin,
+.btn.btn-danger.btn-small {
+  background-image: none;
+}
+
+.btn.btn-primary.btn-add-inline,
+.btn.btn-small.btn-primary {
+  background-color: #d24f44;
+}
+
+.btn.btn-pin {
+  background-color: #d4deea;
+}
+
+.btn.btn-danger.btn-small {
+  background-color: #c63c4e;
+}
+
 .btn-visit {
   color: #fff;
   background: linear-gradient(140deg, #4c7d66, #62957c);
@@ -2303,7 +2323,7 @@ body[data-theme='dark'] .btn-secondary,
 body[data-theme='dark'] .meal-slot-select,
 body[data-theme='dark'] .btn-pin,
 body[data-theme='dark'] .tools-menu-panel {
-  background: rgba(18, 26, 36, 0.94);
+  background: #1a2736;
   color: var(--ink-900);
   border-color: rgba(164, 180, 200, 0.28);
 }
@@ -2321,6 +2341,50 @@ body[data-theme='dark'] .controls .theme-switch-track {
 
 body[data-theme='dark'] .controls .theme-switch-track {
   background: var(--control-surface-dark-muted);
+}
+
+body[data-theme='dark'] .controls {
+  background: #182432;
+}
+
+body[data-theme='dark'] .btn.btn-small.btn-secondary,
+body[data-theme='dark'] .btn.btn-secondary,
+body[data-theme='dark'] .tools-menu summary.btn.btn-secondary.btn-tools,
+body[data-theme='dark'] .tools-menu-panel,
+body[data-theme='dark'] .ios-install-help,
+body[data-theme='dark'] .controls-utility-row,
+body[data-theme='dark'] .theme-switch-track {
+  background-image: none;
+}
+
+body[data-theme='dark'] .btn.btn-small.btn-secondary,
+body[data-theme='dark'] .btn.btn-secondary,
+body[data-theme='dark'] .tools-menu summary.btn.btn-secondary.btn-tools,
+body[data-theme='dark'] .tools-menu-panel {
+  background-color: #1a2736;
+}
+
+body[data-theme='dark'] .btn.btn-primary.btn-add-inline {
+  background-color: #ca4a40;
+  background-image: none;
+}
+
+body[data-theme='dark'] .btn.btn-pin {
+  background-color: #2b3a4c;
+  background-image: none;
+}
+
+body[data-theme='dark'] .controls-utility-row {
+  background-color: #15212f;
+}
+
+body[data-theme='dark'] .theme-switch-track {
+  background-color: #273646;
+  border-color: rgba(164, 180, 200, 0.35);
+}
+
+body[data-theme='dark'] .ios-install-help {
+  background-color: #202d3d;
 }
 
 body[data-theme='dark'] .controls .results-count {
@@ -2386,7 +2450,7 @@ body[data-theme='dark'] .extract-warning-box {
 }
 
 body[data-theme='dark'] .ios-install-help {
-  background: linear-gradient(180deg, rgba(28, 40, 56, 0.94), rgba(20, 30, 44, 0.95));
+  background: #202d3d;
   border-color: rgba(164, 180, 200, 0.34);
 }
 
@@ -2422,10 +2486,10 @@ body[data-theme='dark'] .message-info {
 }
 
 body[data-theme='dark'] .theme-switch-track {
-  background: linear-gradient(140deg, rgba(52, 67, 85, 0.8), rgba(39, 52, 68, 0.72));
+  background: #273646;
   border-color: rgba(164, 180, 200, 0.35);
 }
 
 body[data-theme='dark'] .theme-switch input:checked + .theme-switch-track {
-  background: linear-gradient(140deg, rgba(74, 105, 137, 0.9), rgba(63, 92, 123, 0.86));
+  background: #3b5873;
 }
