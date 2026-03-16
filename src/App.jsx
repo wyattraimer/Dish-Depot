@@ -643,6 +643,128 @@ function buildPrintableRecipesDocument(recipes) {
 </html>`
 }
 
+function FloatingControls({
+  canShowFloating,
+  showInstallBtn,
+  showSwUpdateBanner,
+  onInstallClick,
+  onTriggerSwUpdate,
+  onDismissSwUpdate,
+  onAddRecipe,
+}) {
+  const [showBackToTop, setShowBackToTop] = useState(false)
+  const showBackToTopRef = useRef(false)
+  const scrollRafRef = useRef(0)
+
+  useEffect(() => {
+    if (!canShowFloating) {
+      showBackToTopRef.current = false
+      return undefined
+    }
+
+    const updateBackToTopVisibility = () => {
+      scrollRafRef.current = 0
+      const shouldShow = window.scrollY > 320
+      if (showBackToTopRef.current !== shouldShow) {
+        showBackToTopRef.current = shouldShow
+        setShowBackToTop(shouldShow)
+      }
+    }
+
+    const onScroll = () => {
+      if (scrollRafRef.current !== 0) {
+        return
+      }
+      scrollRafRef.current = window.requestAnimationFrame(updateBackToTopVisibility)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    updateBackToTopVisibility()
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (scrollRafRef.current !== 0) {
+        window.cancelAnimationFrame(scrollRafRef.current)
+      }
+    }
+  }, [canShowFloating])
+
+  const scrollToTop = () => {
+    const startY = window.scrollY
+    if (startY <= 0) {
+      return
+    }
+
+    const duration = 260
+    const startTime = performance.now()
+
+    const step = (now) => {
+      const elapsed = now - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+
+      window.scrollTo(0, Math.round(startY * (1 - eased)))
+
+      if (progress < 1) {
+        window.requestAnimationFrame(step)
+      }
+    }
+
+    window.requestAnimationFrame(step)
+  }
+
+  if (!canShowFloating) {
+    return null
+  }
+
+  return (
+    <>
+      {showInstallBtn ? (
+        <button id="pwaInstallBtn" className="btn btn-secondary pwa-install-btn" type="button" onClick={onInstallClick}>
+          <i className="fas fa-download" />
+          Install App
+        </button>
+      ) : null}
+
+      {showSwUpdateBanner ? (
+        <div id="swUpdateBanner" className="sw-update-banner">
+          <div className="sw-update-message">New version available</div>
+          <button className="btn btn-primary" type="button" onClick={onTriggerSwUpdate}>
+            Update now
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={onDismissSwUpdate}>
+            Later
+          </button>
+        </div>
+      ) : null}
+
+      {showBackToTop && !showSwUpdateBanner ? (
+        <button
+          className={`btn btn-primary back-to-top-btn ${showInstallBtn ? 'back-to-top-btn-has-install' : ''}`}
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Back to top"
+        >
+          <i className="fas fa-arrow-up" />
+          <span>Top</span>
+        </button>
+      ) : null}
+
+      {!showSwUpdateBanner ? (
+        <button
+          className={`btn btn-primary mobile-add-fab ${showInstallBtn ? 'mobile-add-fab-has-install' : ''} ${showBackToTop ? 'mobile-add-fab-has-top' : ''}`}
+          type="button"
+          onClick={onAddRecipe}
+          aria-label="Add recipe"
+        >
+          <i className="fas fa-plus" />
+          <span>Add Recipe</span>
+        </button>
+      ) : null}
+    </>
+  )
+}
+
 function App() {
   const [recipes, setRecipes] = useState(() => {
     try {
@@ -667,7 +789,6 @@ function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [showSwUpdateBanner, setShowSwUpdateBanner] = useState(false)
-  const [showBackToTop, setShowBackToTop] = useState(false)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_KEY)
@@ -995,18 +1116,6 @@ function App() {
 
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [])
-
-  useEffect(() => {
-    const onScroll = () => {
-      const shouldShow = window.scrollY > 320
-      setShowBackToTop((prev) => (prev === shouldShow ? prev : shouldShow))
-    }
-
-    window.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
-
-    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   useEffect(() => {
@@ -1921,30 +2030,6 @@ function App() {
       reg.waiting.postMessage({ type: 'SKIP_WAITING' })
     }
     setShowSwUpdateBanner(false)
-  }
-
-  function scrollToTop() {
-    const startY = window.scrollY
-    if (startY <= 0) {
-      return
-    }
-
-    const duration = 260
-    const startTime = performance.now()
-
-    const step = (now) => {
-      const elapsed = now - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-
-      window.scrollTo(0, Math.round(startY * (1 - eased)))
-
-      if (progress < 1) {
-        window.requestAnimationFrame(step)
-      }
-    }
-
-    window.requestAnimationFrame(step)
   }
 
   return (
@@ -3051,48 +3136,15 @@ function App() {
         </div>
       </footer>
 
-      {showInstallBtn && !isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe ? (
-        <button id="pwaInstallBtn" className="btn btn-secondary pwa-install-btn" type="button" onClick={handleInstallClick}>
-          <i className="fas fa-download" />
-          Install App
-        </button>
-      ) : null}
-
-      {showSwUpdateBanner ? (
-        <div id="swUpdateBanner" className="sw-update-banner">
-          <div className="sw-update-message">New version available</div>
-          <button className="btn btn-primary" type="button" onClick={triggerSwUpdate}>
-            Update now
-          </button>
-          <button className="btn btn-secondary" type="button" onClick={() => setShowSwUpdateBanner(false)}>
-            Later
-          </button>
-        </div>
-      ) : null}
-
-      {showBackToTop && !showSwUpdateBanner && !isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe ? (
-        <button
-          className={`btn btn-primary back-to-top-btn ${showInstallBtn ? 'back-to-top-btn-has-install' : ''}`}
-          type="button"
-          onClick={scrollToTop}
-          aria-label="Back to top"
-        >
-          <i className="fas fa-arrow-up" />
-          <span>Top</span>
-        </button>
-      ) : null}
-
-      {!showSwUpdateBanner && !isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe ? (
-        <button
-          className={`btn btn-primary mobile-add-fab ${showInstallBtn ? 'mobile-add-fab-has-install' : ''} ${showBackToTop ? 'mobile-add-fab-has-top' : ''}`}
-          type="button"
-          onClick={() => openModal()}
-          aria-label="Add recipe"
-        >
-          <i className="fas fa-plus" />
-          <span>Add Recipe</span>
-        </button>
-      ) : null}
+      <FloatingControls
+        canShowFloating={!isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe}
+        showInstallBtn={showInstallBtn}
+        showSwUpdateBanner={showSwUpdateBanner}
+        onInstallClick={handleInstallClick}
+        onTriggerSwUpdate={triggerSwUpdate}
+        onDismissSwUpdate={() => setShowSwUpdateBanner(false)}
+        onAddRecipe={() => openModal()}
+      />
 
       <div className="messages-wrap">
         {messages.map((message) => (
