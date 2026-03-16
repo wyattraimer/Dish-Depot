@@ -2095,6 +2095,20 @@ body::before {
   .footer-logo {
     width: 22px;
     height: 22px;
+    margin-right: 0.25rem;
+    vertical-align: text-bottom;
+  }
+
+  .footer p {
+    display: block;
+    font-size: 0.84rem;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  .footer i {
+    margin-left: 0.2rem;
+    vertical-align: text-bottom;
   }
 
   .controls-nav-row,
