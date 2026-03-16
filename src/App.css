@@ -19,6 +19,10 @@ body,
   --bg-paper: #fffdf8;
   --surface: rgba(255, 255, 255, 0.8);
   --surface-strong: rgba(255, 255, 255, 0.92);
+  --control-surface-light: #ffffff;
+  --control-surface-light-muted: #f7fafc;
+  --control-surface-dark: #1a2736;
+  --control-surface-dark-muted: #223244;
   --ink-900: #1f2933;
   --ink-700: #3f4f5f;
   --ink-500: #6b7280;
@@ -229,7 +233,7 @@ body::before {
   padding: 0.2rem;
   border-radius: 999px;
   border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.64);
+  background: var(--control-surface-light-muted);
 }
 
 .controls-danger-zone {
@@ -261,7 +265,7 @@ body::before {
 .btn-tools {
   color: var(--ink-700);
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--control-surface-light);
   border-color: rgba(90, 105, 122, 0.22);
 }
 
@@ -273,7 +277,7 @@ body::before {
   min-width: 220px;
   border-radius: 12px;
   border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--control-surface-light);
   box-shadow: 0 10px 18px rgba(31, 41, 51, 0.12);
   padding: 0.55rem;
   display: grid;
@@ -294,7 +298,7 @@ body::before {
   margin-top: 0.35rem;
   border: 1px solid var(--border-soft);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--control-surface-light);
   padding: 0.7rem 0.8rem;
 }
 
@@ -347,7 +351,7 @@ body::before {
   border-radius: 999px;
   font-size: 0.97rem;
   color: var(--ink-900);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--control-surface-light);
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 
@@ -383,7 +387,7 @@ body::before {
   border-radius: 999px;
   font-size: 0.95rem;
   color: var(--ink-900);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--control-surface-light);
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 
@@ -428,7 +432,7 @@ body::before {
   height: 30px;
   border-radius: 999px;
   padding: 3px;
-  background: linear-gradient(140deg, rgba(90, 105, 122, 0.35), rgba(90, 105, 122, 0.2));
+  background: var(--control-surface-light-muted);
   border: 1px solid rgba(90, 105, 122, 0.25);
   display: inline-flex;
   align-items: center;
@@ -2234,6 +2238,10 @@ body[data-theme='dark'] .view-toggle-group {
   background: linear-gradient(180deg, rgba(21, 31, 44, 0.88), rgba(17, 25, 36, 0.9));
 }
 
+body[data-theme='dark'] .controls {
+  background: #182432;
+}
+
 body[data-theme='dark'] .controls,
 body[data-theme='dark'] .recipe-card,
 body[data-theme='dark'] .footer,
@@ -2279,6 +2287,21 @@ body[data-theme='dark'] .tools-menu-panel {
   background: rgba(18, 26, 36, 0.94);
   color: var(--ink-900);
   border-color: rgba(164, 180, 200, 0.28);
+}
+
+body[data-theme='dark'] .controls .search-box input,
+body[data-theme='dark'] .controls .category-select,
+body[data-theme='dark'] .controls .btn-tools,
+body[data-theme='dark'] .controls .tools-menu-panel,
+body[data-theme='dark'] .controls .view-toggle-group,
+body[data-theme='dark'] .controls .ios-install-help,
+body[data-theme='dark'] .controls .theme-switch-track {
+  background: var(--control-surface-dark);
+  border-color: rgba(164, 180, 200, 0.3);
+}
+
+body[data-theme='dark'] .controls .theme-switch-track {
+  background: var(--control-surface-dark-muted);
 }
 
 body[data-theme='dark'] .btn-pin-active {
