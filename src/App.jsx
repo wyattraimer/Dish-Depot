@@ -706,6 +706,19 @@ function buildPrintableRecipesDocument(recipes) {
 </html>`
 }
 
+function isRunningStandalonePwa() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const displayModeStandalone = window.matchMedia('(display-mode: standalone)').matches
+  const displayModeFullscreen = window.matchMedia('(display-mode: fullscreen)').matches
+  const displayModeMinimalUi = window.matchMedia('(display-mode: minimal-ui)').matches
+  const iosStandalone = typeof navigator !== 'undefined' && 'standalone' in navigator && Boolean(navigator.standalone)
+
+  return displayModeStandalone || displayModeFullscreen || displayModeMinimalUi || iosStandalone
+}
+
 function FloatingControls({
   canShowFloating,
   showInstallBtn,
@@ -853,6 +866,7 @@ function App() {
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [showSwUpdateBanner, setShowSwUpdateBanner] = useState(false)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
+  const [isInstalledPwa, setIsInstalledPwa] = useState(() => isRunningStandalonePwa())
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_KEY)
     return savedTheme === 'dark' ? 'dark' : 'light'
@@ -1022,6 +1036,40 @@ function App() {
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+  }, [])
+
+  useEffect(() => {
+    const refreshStandaloneState = () => {
+      setIsInstalledPwa(isRunningStandalonePwa())
+    }
+
+    const mediaQueries = [
+      window.matchMedia('(display-mode: standalone)'),
+      window.matchMedia('(display-mode: fullscreen)'),
+      window.matchMedia('(display-mode: minimal-ui)'),
+    ]
+
+    const detach = mediaQueries.map((mediaQuery) => {
+      const onChange = () => refreshStandaloneState()
+
+      if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', onChange)
+        return () => mediaQuery.removeEventListener('change', onChange)
+      }
+
+      mediaQuery.addListener(onChange)
+      return () => mediaQuery.removeListener(onChange)
+    })
+
+    window.addEventListener('focus', refreshStandaloneState)
+    window.addEventListener('pageshow', refreshStandaloneState)
+    refreshStandaloneState()
+
+    return () => {
+      detach.forEach((removeListener) => removeListener())
+      window.removeEventListener('focus', refreshStandaloneState)
+      window.removeEventListener('pageshow', refreshStandaloneState)
+    }
   }, [])
 
   useEffect(() => {
@@ -2256,23 +2304,25 @@ function App() {
               </div>
             </div>
 
-            <details className="ios-install-help">
-              <summary>
-                <i className="fas fa-mobile-screen-button" />
-                iPhone App Install Tips
-              </summary>
-              <p>
-                Recommended: Use Brave as your default browser to help block ads and popups.
-              </p>
-              <ol>
-                <li>When you want to install this app, open this website in Safari on your iPhone.</li>
-                <li>Tap the button with three dots on the bottom right.</li>
-                <li>Tap 'Share' (square with the up arrow).</li>
-                <li>Tap 'More'.</li>
-                <li>Select Add to Home Screen.</li>
-                <li>Tap Add to finish.</li>
-              </ol>
-            </details>
+            {!isInstalledPwa ? (
+              <details className="ios-install-help">
+                <summary>
+                  <i className="fas fa-mobile-screen-button" />
+                  iPhone App Install Tips
+                </summary>
+                <p>
+                  Recommended: Use Brave as your default browser to help block ads and popups.
+                </p>
+                <ol>
+                  <li>When you want to install this app, open this website in Safari on your iPhone.</li>
+                  <li>Tap the button with three dots on the bottom right.</li>
+                  <li>Tap 'Share' (square with the up arrow).</li>
+                  <li>Tap 'More'.</li>
+                  <li>Select Add to Home Screen.</li>
+                  <li>Tap Add to finish.</li>
+                </ol>
+              </details>
+            ) : null}
           </section>
 
           {activeView === 'recipes' ? (
