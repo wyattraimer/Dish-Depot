@@ -76,6 +76,14 @@
         backdrop-filter: blur(6px);
       }
 
+      .app-splash-logo {
+        width: clamp(82px, 20vw, 112px);
+        height: auto;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto 0.45rem;
+      }
+
       .app-splash-title {
         margin: 0;
         font: 700 clamp(1.4rem, 4.5vw, 1.7rem) 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
@@ -92,7 +100,7 @@
       .app-splash-loader {
         width: 46px;
         height: 46px;
-        margin: 0 auto 0.9rem;
+        margin: 0 auto 0.65rem;
         border-radius: 50%;
         border: 3px solid rgba(209, 72, 62, 0.2);
         border-top-color: #d1483e;
@@ -140,6 +148,11 @@
     </div>
     <div id="app-splash" role="status" aria-live="polite" aria-label="Loading Dish Depot">
       <div class="app-splash-card">
+        <img
+          class="app-splash-logo"
+          src="/src/assets/dishdepot-no-background-674x674.png"
+          alt="Dish Depot logo"
+        />
         <div class="app-splash-loader" aria-hidden="true"></div>
         <p class="app-splash-title">Dish Depot</p>
         <p class="app-splash-subtitle">Getting your recipes ready...</p>
