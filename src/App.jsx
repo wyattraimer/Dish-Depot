@@ -2061,20 +2061,25 @@ function App() {
 
             <div className="controls-tools-row">
               <details className="tools-menu">
-                <summary className="btn btn-secondary btn-tools" aria-label="Open tools menu">
+                <summary
+                  className="btn btn-secondary btn-tools"
+                  aria-label="Open tools menu"
+                  aria-haspopup="menu"
+                  aria-controls="tools-menu-panel"
+                >
                   <i className="fas fa-screwdriver-wrench" />
                   Tools
                 </summary>
-                <div className="tools-menu-panel" role="group" aria-label="Recipe tools">
-                  <button className="btn btn-secondary" type="button" onClick={openShoppingListBuilder}>
+                <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
+                  <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
                     <i className="fas fa-cart-shopping" />
                     Shopping List
                   </button>
-                  <button className="btn btn-secondary" type="button" onClick={exportRecipes}>
+                  <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
                     <i className="fas fa-download" />
                     Export
                   </button>
-                  <button className="btn btn-secondary" type="button" onClick={() => importInputRef.current?.click()}>
+                  <button className="btn btn-secondary" type="button" role="menuitem" onClick={() => importInputRef.current?.click()}>
                     <i className="fas fa-upload" />
                     Import
                   </button>
@@ -2142,10 +2147,10 @@ function App() {
                       <div className="recipe-header">
                         <h3 className="recipe-title">{recipe.name}</h3>
                         <div className="recipe-categories">
-                          {categories.map((cat) => {
+                          {categories.map((cat, categoryIndex) => {
                             const info = CATEGORIES[cat] || CATEGORIES.other
                             return (
-                              <span key={cat} className="recipe-category" style={{ backgroundColor: info.color }}>
+                              <span key={`${recipe.id}-cat-${cat}-${categoryIndex}`} className="recipe-category" style={{ backgroundColor: info.color }}>
                                 <i className={`fas ${info.icon}`} />
                                 {cat}
                               </span>
@@ -2168,8 +2173,8 @@ function App() {
                                   Ingredients
                                 </h4>
                                 <ul className="recipe-list">
-                                  {(recipe.ingredients || []).map((item) => (
-                                    <li key={item}>{item}</li>
+                                  {(recipe.ingredients || []).map((item, ingredientIndex) => (
+                                    <li key={`${recipe.id}-ingredient-${ingredientIndex}`}>{item}</li>
                                   ))}
                                 </ul>
                               </div>
@@ -2182,8 +2187,8 @@ function App() {
                                   Directions
                                 </h4>
                                 <ol className="recipe-list">
-                                  {(recipe.directions || []).map((step) => (
-                                    <li key={step}>{step}</li>
+                                  {(recipe.directions || []).map((step, directionIndex) => (
+                                    <li key={`${recipe.id}-direction-${directionIndex}`}>{step}</li>
                                   ))}
                                 </ol>
                               </div>
@@ -2343,10 +2348,14 @@ function App() {
             <header className="focused-recipe-header">
               <h2>{focusedRecipe.name}</h2>
               <div className="recipe-categories">
-                {(focusedRecipe.categories || (focusedRecipe.category ? [focusedRecipe.category] : [])).map((cat) => {
+                {(focusedRecipe.categories || (focusedRecipe.category ? [focusedRecipe.category] : [])).map((cat, categoryIndex) => {
                   const info = CATEGORIES[cat] || CATEGORIES.other
                   return (
-                    <span key={`focused-${focusedRecipe.id}-${cat}`} className="recipe-category" style={{ backgroundColor: info.color }}>
+                    <span
+                      key={`focused-${focusedRecipe.id}-${cat}-${categoryIndex}`}
+                      className="recipe-category"
+                      style={{ backgroundColor: info.color }}
+                    >
                       <i className={`fas ${info.icon}`} />
                       {cat}
                     </span>
@@ -2370,8 +2379,8 @@ function App() {
                   Ingredients
                 </h3>
                 <ul className="recipe-list">
-                  {focusedRecipe.ingredients.map((item) => (
-                    <li key={`focused-ing-${item}`}>{item}</li>
+                  {focusedRecipe.ingredients.map((item, ingredientIndex) => (
+                    <li key={`focused-ing-${focusedRecipe.id}-${ingredientIndex}`}>{item}</li>
                   ))}
                 </ul>
               </section>
@@ -2384,8 +2393,8 @@ function App() {
                   Directions
                 </h3>
                 <ol className="recipe-list">
-                  {focusedRecipe.directions.map((step) => (
-                    <li key={`focused-step-${step}`}>{step}</li>
+                  {focusedRecipe.directions.map((step, directionIndex) => (
+                    <li key={`focused-step-${focusedRecipe.id}-${directionIndex}`}>{step}</li>
                   ))}
                 </ol>
               </section>
@@ -2514,8 +2523,8 @@ function App() {
 
                       {extractWarnings.length > 0 ? (
                         <div className="extract-warning-box">
-                          {extractWarnings.map((warning) => (
-                            <p key={warning}>{warning}</p>
+                          {extractWarnings.map((warning, warningIndex) => (
+                            <p key={`extract-warning-${warningIndex}`}>{warning}</p>
                           ))}
                         </div>
                       ) : null}
@@ -2718,8 +2727,8 @@ function App() {
                       {recipe.url ? <a href={recipe.url}>{recipe.url}</a> : null}
                       {categories.length > 0 ? (
                         <div className="import-preview-categories">
-                          {categories.map((cat) => (
-                            <span key={`${previewId}-${cat}`}>{formatCategory(cat)}</span>
+                          {categories.map((cat, categoryIndex) => (
+                            <span key={`${previewId}-${cat}-${categoryIndex}`}>{formatCategory(cat)}</span>
                           ))}
                         </div>
                       ) : null}
@@ -2791,8 +2800,8 @@ function App() {
                       {recipe.url ? <a href={recipe.url}>{recipe.url}</a> : <p>Custom recipe</p>}
                       {categories.length > 0 ? (
                         <div className="import-preview-categories">
-                          {categories.map((cat) => (
-                            <span key={`${previewId}-${cat}`}>{formatCategory(cat)}</span>
+                          {categories.map((cat, categoryIndex) => (
+                            <span key={`${previewId}-${cat}-${categoryIndex}`}>{formatCategory(cat)}</span>
                           ))}
                         </div>
                       ) : null}
@@ -3063,18 +3072,6 @@ function App() {
         >
           <i className="fas fa-arrow-up" />
           <span>Top</span>
-        </button>
-      ) : null}
-
-      {!isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe ? (
-        <button
-          className={`btn btn-primary mobile-add-fab ${showInstallBtn ? 'mobile-add-fab-has-install' : ''}`}
-          type="button"
-          onClick={() => openModal()}
-          aria-label="Add recipe"
-        >
-          <i className="fas fa-plus" />
-          <span>Add Recipe</span>
         </button>
       ) : null}
 
