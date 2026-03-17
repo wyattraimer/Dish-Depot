@@ -136,6 +136,26 @@ const EXTRACT_ENDPOINT = `${API_BASE}/recipes/extract`
 
 const MEAL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner']
+const CLOUD_MEAL_PLAN_WEEK = '2000-01-03'
+
+const DAY_TO_KEY = {
+  Monday: 'monday',
+  Tuesday: 'tuesday',
+  Wednesday: 'wednesday',
+  Thursday: 'thursday',
+  Friday: 'friday',
+  Saturday: 'saturday',
+  Sunday: 'sunday',
+}
+
+const SLOT_TO_KEY = {
+  Breakfast: 'breakfast',
+  Lunch: 'lunch',
+  Dinner: 'dinner',
+}
+
+const KEY_TO_DAY = Object.fromEntries(Object.entries(DAY_TO_KEY).map(([day, key]) => [key, day]))
+const KEY_TO_SLOT = Object.fromEntries(Object.entries(SLOT_TO_KEY).map(([slot, key]) => [key, slot]))
 
 const emptyForm = {
   name: '',
@@ -210,6 +230,26 @@ function createEmptyMealPlan() {
     plan[day] = { Breakfast: '', Lunch: '', Dinner: '' }
     return plan
   }, {})
+}
+
+function mapCloudMealPlanRowsToLocal(rows) {
+  const base = createEmptyMealPlan()
+
+  if (!Array.isArray(rows)) {
+    return base
+  }
+
+  rows.forEach((row) => {
+    const day = KEY_TO_DAY[row.day]
+    const slot = KEY_TO_SLOT[row.slot]
+    if (!day || !slot) {
+      return
+    }
+
+    base[day][slot] = row.recipe_id ? String(row.recipe_id) : ''
+  })
+
+  return base
 }
 
 function normalizeIngredientKey(value) {
@@ -961,6 +1001,7 @@ function App() {
   const importInputRef = useRef(null)
   const networkStatusRef = useRef(navigator.onLine)
   const cloudSyncUserRef = useRef('')
+  const cloudMealPlanUserRef = useRef('')
 
   const scopedRecipes = useMemo(() => (recipeScope === 'shared' ? sharedRecipes : recipes), [recipeScope, sharedRecipes, recipes])
 
@@ -1124,6 +1165,7 @@ function App() {
 
     if (!authUser?.id) {
       cloudSyncUserRef.current = ''
+      cloudMealPlanUserRef.current = ''
       return
     }
 
@@ -1249,6 +1291,50 @@ function App() {
       cancelled = true
     }
   }, [authUser?.id, isOnline, recipeScope])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
+      return
+    }
+
+    if (cloudMealPlanUserRef.current === authUser.id) {
+      return
+    }
+
+    let cancelled = false
+
+    const fetchCloudMealPlan = async () => {
+      const { data, error } = await supabase
+        .from('meal_plans')
+        .select('day,slot,recipe_id,updated_at')
+        .eq('owner_id', authUser.id)
+        .eq('week_start', CLOUD_MEAL_PLAN_WEEK)
+
+      if (cancelled) {
+        return
+      }
+
+      if (error) {
+        showMessage(`Could not load cloud meal plan: ${error.message}`, 'info')
+        return
+      }
+
+      cloudMealPlanUserRef.current = authUser.id
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return
+      }
+
+      setMealPlan(mapCloudMealPlanRowsToLocal(data))
+      showMessage('Loaded meal planner from cloud.', 'success')
+    }
+
+    void fetchCloudMealPlan()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, isOnline])
 
   useEffect(() => {
     const refreshStandaloneState = () => {
@@ -1491,6 +1577,63 @@ function App() {
 
   function canSyncToCloud() {
     return Boolean(hasSupabaseConfig && supabase && authUser?.id && isOnline)
+  }
+
+  async function syncMealPlanSlotToCloud(day, slot, recipeId) {
+    if (!canSyncToCloud()) {
+      return
+    }
+
+    const dayKey = DAY_TO_KEY[day]
+    const slotKey = SLOT_TO_KEY[slot]
+    if (!dayKey || !slotKey) {
+      return
+    }
+
+    if (!recipeId) {
+      const { error } = await supabase
+        .from('meal_plans')
+        .delete()
+        .eq('owner_id', authUser.id)
+        .eq('week_start', CLOUD_MEAL_PLAN_WEEK)
+        .eq('day', dayKey)
+        .eq('slot', slotKey)
+
+      if (error) {
+        showMessage(`Cloud sync failed: ${error.message}`, 'info')
+      }
+      return
+    }
+
+    const payload = {
+      owner_id: authUser.id,
+      week_start: CLOUD_MEAL_PLAN_WEEK,
+      day: dayKey,
+      slot: slotKey,
+      recipe_id: recipeId,
+    }
+
+    const { error } = await supabase.from('meal_plans').upsert(payload)
+
+    if (error) {
+      showMessage(`Cloud sync failed: ${error.message}`, 'info')
+    }
+  }
+
+  async function clearMealPlanInCloud() {
+    if (!canSyncToCloud()) {
+      return
+    }
+
+    const { error } = await supabase
+      .from('meal_plans')
+      .delete()
+      .eq('owner_id', authUser.id)
+      .eq('week_start', CLOUD_MEAL_PLAN_WEEK)
+
+    if (error) {
+      showMessage(`Cloud sync failed: ${error.message}`, 'info')
+    }
   }
 
   function replaceRecipeIdEverywhere(oldId, newId) {
@@ -1912,7 +2055,7 @@ function App() {
     }
   }
 
-  function updateMealPlan(day, slot, recipeId) {
+  async function updateMealPlan(day, slot, recipeId) {
     setMealPlan((prev) => ({
       ...prev,
       [day]: {
@@ -1920,14 +2063,17 @@ function App() {
         [slot]: recipeId,
       },
     }))
+
+    await syncMealPlanSlotToCloud(day, slot, recipeId)
   }
 
-  function clearMealPlan() {
+  async function clearMealPlan() {
     const shouldClear = window.confirm('Clear all planned meals for the week?')
     if (!shouldClear) {
       return
     }
     setMealPlan(createEmptyMealPlan())
+    await clearMealPlanInCloud()
     showMessage('Meal planner cleared.', 'info')
   }
 
@@ -3049,7 +3195,7 @@ function App() {
             <section className="meal-planner">
               <div className="meal-planner-header">
                 <h2>Weekly Meal Planner</h2>
-                <button className="btn btn-small btn-secondary" type="button" onClick={clearMealPlan}>
+              <button className="btn btn-small btn-secondary" type="button" onClick={() => void clearMealPlan()}>
                   <i className="fas fa-eraser" />
                   Clear Week
                 </button>
@@ -3067,7 +3213,7 @@ function App() {
                         <select
                           className="meal-slot-select"
                           value={mealPlan[day]?.[slot] || ''}
-                          onChange={(event) => updateMealPlan(day, slot, event.target.value)}
+                          onChange={(event) => void updateMealPlan(day, slot, event.target.value)}
                         >
                           <option value="">No recipe selected</option>
                           {plannerRecipes.map((recipe) => (
