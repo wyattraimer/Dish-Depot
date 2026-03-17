@@ -957,13 +957,16 @@ function App() {
   const [authMode, setAuthMode] = useState('signin')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
+  const [authDisplayName, setAuthDisplayName] = useState('')
+  const [authUsername, setAuthUsername] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
   const [authUser, setAuthUser] = useState(null)
   const [recipeScope, setRecipeScope] = useState('mine')
   const [sharedRecipes, setSharedRecipes] = useState([])
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareTargetRecipe, setShareTargetRecipe] = useState(null)
-  const [shareRecipientEmail, setShareRecipientEmail] = useState('')
+  const [shareLookupText, setShareLookupText] = useState('')
+  const [shareResults, setShareResults] = useState([])
   const [shareCanEdit, setShareCanEdit] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
@@ -1724,7 +1727,8 @@ function App() {
 
   function openShareModal(recipe) {
     setShareTargetRecipe(recipe)
-    setShareRecipientEmail('')
+    setShareLookupText('')
+    setShareResults([])
     setShareCanEdit(false)
     setIsShareModalOpen(true)
   }
@@ -1732,12 +1736,13 @@ function App() {
   function closeShareModal() {
     setIsShareModalOpen(false)
     setShareTargetRecipe(null)
-    setShareRecipientEmail('')
+    setShareLookupText('')
+    setShareResults([])
     setShareCanEdit(false)
     setShareBusy(false)
   }
 
-  async function shareRecipeWithUserEmail(event) {
+  async function searchShareCandidates(event) {
     event.preventDefault()
 
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
@@ -1750,22 +1755,23 @@ function App() {
       return
     }
 
-    const recipientEmail = shareRecipientEmail.trim().toLowerCase()
-    if (!recipientEmail) {
-      showMessage('Enter a recipient email address.', 'error')
+    const query = shareLookupText.trim().toLowerCase()
+    if (!query) {
+      showMessage('Enter a username to search.', 'error')
       return
     }
 
     setShareBusy(true)
 
     try {
-      const { data: recipientId, error: lookupError } = await supabase.rpc('find_user_id_by_email', {
-        target_email: recipientEmail,
+      const { data, error: lookupError } = await supabase.rpc('search_profiles_for_sharing', {
+        query_text: query,
+        limit_count: 8,
       })
 
       if (lookupError) {
-        if (lookupError.message.toLowerCase().includes('find_user_id_by_email')) {
-          showMessage('Sharing lookup is not configured yet. Add the find_user_id_by_email RPC in Supabase.', 'info')
+        if (lookupError.message.toLowerCase().includes('search_profiles_for_sharing')) {
+          showMessage('Username search is not configured yet. Add the search_profiles_for_sharing RPC in Supabase.', 'info')
           return
         }
 
@@ -1773,14 +1779,48 @@ function App() {
         return
       }
 
-      if (!recipientId || !isUuidLike(recipientId)) {
-        showMessage('No account found for that email.', 'info')
-        return
-      }
+      const normalized = Array.isArray(data)
+        ? data
+            .filter((row) => isUuidLike(row?.id))
+            .map((row) => ({
+              id: row.id,
+              username: (row.username || '').trim(),
+              displayName: (row.display_name || '').trim(),
+            }))
+        : []
 
+      setShareResults(normalized)
+
+      if (normalized.length === 0) {
+        showMessage('No users found with that username.', 'info')
+      }
+    } finally {
+      setShareBusy(false)
+    }
+  }
+
+  async function shareRecipeWithUser(recipient) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      showMessage('Sign in to share recipes.', 'info')
+      return
+    }
+
+    if (!isUuidLike(shareTargetRecipe?.id)) {
+      showMessage('Save this recipe to cloud first, then share it.', 'info')
+      return
+    }
+
+    if (!recipient?.id || !isUuidLike(recipient.id)) {
+      showMessage('Select a valid recipient account.', 'error')
+      return
+    }
+
+    setShareBusy(true)
+
+    try {
       const { error } = await supabase.from('recipe_shares').upsert({
         recipe_id: shareTargetRecipe.id,
-        shared_with_user_id: recipientId,
+        shared_with_user_id: recipient.id,
         can_edit: shareCanEdit,
       })
 
@@ -1789,7 +1829,8 @@ function App() {
         return
       }
 
-      showMessage('Recipe shared successfully.', 'success')
+      const targetLabel = recipient.username ? `@${recipient.username}` : recipient.displayName || 'recipient'
+      showMessage(`Recipe shared with ${targetLabel}.`, 'success')
       closeShareModal()
     } finally {
       setShareBusy(false)
@@ -1834,15 +1875,27 @@ function App() {
       return
     }
 
+    const normalizedUsername = authUsername.trim().toLowerCase()
+    const normalizedDisplayName = authDisplayName.trim()
+
     setAuthBusy(true)
 
     try {
       if (authMode === 'signup') {
+        if (!normalizedUsername) {
+          showMessage('Please choose a username.', 'error')
+          return
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password: authPassword,
           options: {
             emailRedirectTo: window.location.origin,
+            data: {
+              name: normalizedDisplayName,
+              username: normalizedUsername,
+            },
           },
         })
 
@@ -2896,6 +2949,27 @@ function App() {
                       </div>
 
                       <div className="auth-input-row">
+                        {authMode === 'signup' ? (
+                          <>
+                            <input
+                              type="text"
+                              value={authDisplayName}
+                              onChange={(event) => setAuthDisplayName(event.target.value)}
+                              placeholder="Display name (optional)"
+                              autoComplete="name"
+                            />
+                            <input
+                              type="text"
+                              value={authUsername}
+                              onChange={(event) => setAuthUsername(event.target.value.toLowerCase())}
+                              placeholder="Username"
+                              autoComplete="username"
+                              minLength={3}
+                              required
+                            />
+                          </>
+                        ) : null}
+
                         <input
                           type="email"
                           value={authEmail}
@@ -3665,21 +3739,27 @@ function App() {
             </span>
             <h2>Share Recipe</h2>
             <p className="share-modal-subtitle">
-              Share <strong>{shareTargetRecipe.name}</strong> with another Dish Depot account.
+              Share <strong>{shareTargetRecipe.name}</strong> with another Dish Depot user.
             </p>
-            <p className="share-helper-note">Recipient must already have a Dish Depot account.</p>
+            <p className="share-helper-note">Search by username. Recipient must already have an account.</p>
 
-            <form className="share-form" onSubmit={shareRecipeWithUserEmail}>
+            <form className="share-form" onSubmit={searchShareCandidates}>
               <div className="form-group">
-                <label htmlFor="shareRecipientEmail">Recipient Email</label>
-                <input
-                  id="shareRecipientEmail"
-                  type="email"
-                  required
-                  value={shareRecipientEmail}
-                  onChange={(event) => setShareRecipientEmail(event.target.value)}
-                  placeholder="chef@example.com"
-                />
+                <label htmlFor="shareRecipientLookup">Recipient Username</label>
+                <div className="share-lookup-row">
+                  <input
+                    id="shareRecipientLookup"
+                    type="text"
+                    required
+                    value={shareLookupText}
+                    onChange={(event) => setShareLookupText(event.target.value.toLowerCase())}
+                    placeholder="chefmaria"
+                    autoComplete="off"
+                  />
+                  <button className="btn btn-secondary" type="submit" disabled={shareBusy}>
+                    {shareBusy ? 'Searching...' : 'Find User'}
+                  </button>
+                </div>
               </div>
 
               <label className="share-edit-toggle">
@@ -3691,12 +3771,25 @@ function App() {
                 Allow recipient to edit this recipe
               </label>
 
+              {shareResults.length > 0 ? (
+                <div className="share-results" aria-label="Share search results">
+                  {shareResults.map((result) => (
+                    <div key={result.id} className="share-result-item">
+                      <div>
+                        <strong>@{result.username || 'user'}</strong>
+                        <small>{result.displayName || 'Dish Depot user'}</small>
+                      </div>
+                      <button className="btn btn-primary btn-small" type="button" onClick={() => shareRecipeWithUser(result)}>
+                        Share
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               <div className="share-form-actions">
                 <button className="btn btn-secondary" type="button" onClick={closeShareModal}>
-                  Cancel
-                </button>
-                <button className="btn btn-primary" type="submit" disabled={shareBusy}>
-                  {shareBusy ? 'Sharing...' : 'Share Recipe'}
+                  Close
                 </button>
               </div>
             </form>
