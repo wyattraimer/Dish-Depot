@@ -2862,6 +2862,10 @@ function App() {
                 {hasSupabaseConfig ? (
                   authUser ? (
                     <div className="auth-signed-in" aria-label="Account">
+                      <span className="auth-sync-pill">
+                        <i className="fas fa-cloud" />
+                        Sync On
+                      </span>
                       <span className="auth-user-email" title={authUser.email || ''}>
                         {authUser.email || 'Signed in'}
                       </span>
@@ -2872,6 +2876,8 @@ function App() {
                     </div>
                   ) : (
                     <form className="auth-form" onSubmit={handleAuthSubmit}>
+                      <p className="auth-form-caption">Sign in to sync recipes and share with others.</p>
+
                       <div className="auth-mode-toggle" role="group" aria-label="Authentication mode">
                         <button
                           className={`btn btn-small ${authMode === 'signin' ? 'btn-primary' : 'btn-secondary'}`}
@@ -2889,26 +2895,28 @@ function App() {
                         </button>
                       </div>
 
-                      <input
-                        type="email"
-                        value={authEmail}
-                        onChange={(event) => setAuthEmail(event.target.value)}
-                        placeholder="Email"
-                        autoComplete="email"
-                        required
-                      />
-                      <input
-                        type="password"
-                        value={authPassword}
-                        onChange={(event) => setAuthPassword(event.target.value)}
-                        placeholder="Password"
-                        autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
-                        minLength={6}
-                        required
-                      />
-                      <button className="btn btn-primary btn-small" type="submit" disabled={authBusy}>
-                        {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Continue'}
-                      </button>
+                      <div className="auth-input-row">
+                        <input
+                          type="email"
+                          value={authEmail}
+                          onChange={(event) => setAuthEmail(event.target.value)}
+                          placeholder="Email"
+                          autoComplete="email"
+                          required
+                        />
+                        <input
+                          type="password"
+                          value={authPassword}
+                          onChange={(event) => setAuthPassword(event.target.value)}
+                          placeholder="Password"
+                          autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                          minLength={6}
+                          required
+                        />
+                        <button className="btn btn-primary btn-small" type="submit" disabled={authBusy}>
+                          {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
+                        </button>
+                      </div>
                     </form>
                   )
                 ) : (
@@ -3659,6 +3667,7 @@ function App() {
             <p className="share-modal-subtitle">
               Share <strong>{shareTargetRecipe.name}</strong> with another Dish Depot account.
             </p>
+            <p className="share-helper-note">Recipient must already have a Dish Depot account.</p>
 
             <form className="share-form" onSubmit={shareRecipeWithUserEmail}>
               <div className="form-group">
