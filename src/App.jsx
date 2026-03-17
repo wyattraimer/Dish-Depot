@@ -159,6 +159,21 @@ function migrateRecipes(recipes) {
   })
 }
 
+function mapSupabaseRecipeToApp(recipe) {
+  return {
+    id: recipe.id,
+    name: recipe.name || '',
+    url: recipe.url || '',
+    image: recipe.image || '',
+    notes: recipe.notes || '',
+    ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+    directions: Array.isArray(recipe.directions) ? recipe.directions : [],
+    categories: Array.isArray(recipe.categories) ? recipe.categories : [],
+    pinned: Boolean(recipe.pinned),
+    type: recipe.type || (recipe.url ? 'url' : 'custom'),
+  }
+}
+
 function formatCategory(category) {
   return category.charAt(0).toUpperCase() + category.slice(1)
 }
@@ -916,6 +931,7 @@ function App() {
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
   const networkStatusRef = useRef(navigator.onLine)
+  const cloudSyncUserRef = useRef('')
 
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase().trim()
@@ -1069,6 +1085,69 @@ function App() {
       subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase) {
+      return
+    }
+
+    if (!authUser?.id) {
+      cloudSyncUserRef.current = ''
+      return
+    }
+
+    if (!isOnline) {
+      return
+    }
+
+    if (cloudSyncUserRef.current === authUser.id) {
+      return
+    }
+
+    let cancelled = false
+
+    const pushCloudMessage = (text, type) => {
+      const id = Date.now() + Math.random()
+      setMessages((prev) => [...prev, { id, text, type }])
+      window.setTimeout(() => {
+        setMessages((prev) => prev.filter((message) => message.id !== id))
+      }, 3000)
+    }
+
+    const fetchCloudRecipes = async () => {
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('id,name,url,image,notes,ingredients,directions,categories,pinned,type,updated_at,deleted_at')
+        .eq('owner_id', authUser.id)
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+
+      if (cancelled) {
+        return
+      }
+
+      if (error) {
+        pushCloudMessage(`Cloud sync unavailable: ${error.message}`, 'info')
+        return
+      }
+
+      cloudSyncUserRef.current = authUser.id
+
+      if (!Array.isArray(data) || data.length === 0) {
+        pushCloudMessage('No cloud recipes found yet. Using your local recipes.', 'info')
+        return
+      }
+
+      setRecipes(migrateRecipes(data.map(mapSupabaseRecipeToApp)))
+      pushCloudMessage(`Loaded ${data.length} cloud recipe${data.length === 1 ? '' : 's'}.`, 'success')
+    }
+
+    void fetchCloudRecipes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, isOnline])
 
   useEffect(() => {
     const refreshStandaloneState = () => {
