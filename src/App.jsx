@@ -984,6 +984,8 @@ function App() {
   const [shareResults, setShareResults] = useState([])
   const [shareCanEdit, setShareCanEdit] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
+  const [shareRecipients, setShareRecipients] = useState([])
+  const [shareRecipientsLoading, setShareRecipientsLoading] = useState(false)
   const [isBulkUploading, setIsBulkUploading] = useState(false)
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
   const [importCandidates, setImportCandidates] = useState([])
@@ -1695,7 +1697,13 @@ function App() {
     }
 
     if (data?.id) {
-      setRecipes((prev) => prev.map((recipe) => (String(recipe.id) === String(localIdToReplace) ? { ...recipe, id: data.id } : recipe)))
+      setRecipes((prev) =>
+        prev.map((recipe) =>
+          String(recipe.id) === String(localIdToReplace)
+            ? { ...recipe, id: data.id, ownerId: authUser.id, sharedReadOnly: false }
+            : recipe,
+        ),
+      )
       replaceRecipeIdEverywhere(localIdToReplace, data.id)
       return { ok: true, id: data.id }
     }
@@ -1810,12 +1818,84 @@ function App() {
     return !recipe.sharedReadOnly
   }
 
+  function canShareRecipe(recipe) {
+    return Boolean(authUser?.id && recipe?.ownerId && recipe.ownerId === authUser.id)
+  }
+
+  async function loadShareRecipients(recipeId) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(recipeId)) {
+      setShareRecipients([])
+      return
+    }
+
+    setShareRecipientsLoading(true)
+
+    try {
+      const { data: shareRows, error } = await supabase
+        .from('recipe_shares')
+        .select('shared_with_user_id,can_edit')
+        .eq('recipe_id', recipeId)
+
+      if (error) {
+        showMessage(`Could not load recipe shares: ${error.message}`, 'info')
+        setShareRecipients([])
+        return
+      }
+
+      const rows = Array.isArray(shareRows) ? shareRows : []
+      const ids = [...new Set(rows.map((row) => row.shared_with_user_id).filter((id) => isUuidLike(id)))]
+
+      let profileMap = new Map()
+      if (ids.length > 0) {
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id,username,display_name')
+          .in('id', ids)
+
+        if (!profileError && Array.isArray(profiles)) {
+          profileMap = new Map(
+            profiles.map((profile) => [
+              profile.id,
+              {
+                username: profile.username || '',
+                displayName: profile.display_name || '',
+              },
+            ]),
+          )
+        }
+      }
+
+      const normalized = rows
+        .map((row) => {
+          const profile = profileMap.get(row.shared_with_user_id)
+          return {
+            userId: row.shared_with_user_id,
+            canEdit: Boolean(row.can_edit),
+            username: profile?.username || '',
+            displayName: profile?.displayName || '',
+          }
+        })
+        .sort((a, b) => {
+          const left = (a.username || a.displayName || a.userId).toLowerCase()
+          const right = (b.username || b.displayName || b.userId).toLowerCase()
+          return left.localeCompare(right)
+        })
+
+      setShareRecipients(normalized)
+    } finally {
+      setShareRecipientsLoading(false)
+    }
+  }
+
   function openShareModal(recipe) {
     setShareTargetRecipe(recipe)
     setShareLookupText('')
     setShareResults([])
     setShareCanEdit(false)
+    setShareRecipients([])
     setIsShareModalOpen(true)
+
+    void loadShareRecipients(recipe.id)
   }
 
   function closeShareModal() {
@@ -1824,6 +1904,7 @@ function App() {
     setShareLookupText('')
     setShareResults([])
     setShareCanEdit(false)
+    setShareRecipients([])
     setShareBusy(false)
   }
 
@@ -1916,7 +1997,68 @@ function App() {
 
       const targetLabel = recipient.username ? `@${recipient.username}` : recipient.displayName || 'recipient'
       showMessage(`Recipe shared with ${targetLabel}.`, 'success')
-      closeShareModal()
+      setShareLookupText('')
+      setShareResults([])
+      await loadShareRecipients(shareTargetRecipe.id)
+    } finally {
+      setShareBusy(false)
+    }
+  }
+
+  async function updateSharePermission(recipient, canEdit) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !shareTargetRecipe?.id) {
+      return
+    }
+
+    setShareBusy(true)
+
+    try {
+      const { error } = await supabase
+        .from('recipe_shares')
+        .update({ can_edit: canEdit })
+        .eq('recipe_id', shareTargetRecipe.id)
+        .eq('shared_with_user_id', recipient.userId)
+
+      if (error) {
+        showMessage(`Could not update permissions: ${error.message}`, 'error')
+        return
+      }
+
+      setShareRecipients((prev) =>
+        prev.map((item) => (item.userId === recipient.userId ? { ...item, canEdit } : item)),
+      )
+      showMessage('Share permissions updated.', 'success')
+    } finally {
+      setShareBusy(false)
+    }
+  }
+
+  async function revokeShare(recipient) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !shareTargetRecipe?.id) {
+      return
+    }
+
+    const confirmRemoval = window.confirm('Remove this user from recipe sharing?')
+    if (!confirmRemoval) {
+      return
+    }
+
+    setShareBusy(true)
+
+    try {
+      const { error } = await supabase
+        .from('recipe_shares')
+        .delete()
+        .eq('recipe_id', shareTargetRecipe.id)
+        .eq('shared_with_user_id', recipient.userId)
+
+      if (error) {
+        showMessage(`Could not revoke share: ${error.message}`, 'error')
+        return
+      }
+
+      setShareRecipients((prev) => prev.filter((item) => item.userId !== recipient.userId))
+      showMessage('Share removed.', 'info')
     } finally {
       setShareBusy(false)
     }
@@ -3528,7 +3670,7 @@ function App() {
             ) : null}
 
             <div className="focused-recipe-actions">
-              {canManageRecipe(focusedRecipe) && hasSupabaseConfig && authUser ? (
+              {canShareRecipe(focusedRecipe) && hasSupabaseConfig && authUser ? (
                 <button className="btn btn-secondary" type="button" onClick={() => openShareModal(focusedRecipe)}>
                   <i className="fas fa-share-nodes" />
                   Share
@@ -3874,13 +4016,60 @@ function App() {
                         <strong>@{result.username || 'user'}</strong>
                         <small>{result.displayName || 'Dish Depot user'}</small>
                       </div>
-                      <button className="btn btn-primary btn-small" type="button" onClick={() => shareRecipeWithUser(result)}>
+                      <button
+                        className="btn btn-primary btn-small"
+                        type="button"
+                        onClick={() => void shareRecipeWithUser(result)}
+                        disabled={shareBusy}
+                      >
                         Share
                       </button>
                     </div>
                   ))}
                 </div>
               ) : null}
+
+              <section className="share-existing" aria-label="Current shares">
+                <h3>Currently Shared With</h3>
+
+                {shareRecipientsLoading ? <p className="share-empty">Loading shares...</p> : null}
+
+                {!shareRecipientsLoading && shareRecipients.length === 0 ? (
+                  <p className="share-empty">No recipients yet.</p>
+                ) : null}
+
+                {!shareRecipientsLoading && shareRecipients.length > 0 ? (
+                  <div className="share-existing-list">
+                    {shareRecipients.map((recipient) => (
+                      <div key={recipient.userId} className="share-existing-item">
+                        <div>
+                          <strong>{recipient.username ? `@${recipient.username}` : 'Shared user'}</strong>
+                          <small>{recipient.displayName || recipient.userId}</small>
+                        </div>
+
+                        <div className="share-existing-actions">
+                          <button
+                            className="btn btn-secondary btn-small"
+                            type="button"
+                            onClick={() => void updateSharePermission(recipient, !recipient.canEdit)}
+                            disabled={shareBusy}
+                          >
+                            {recipient.canEdit ? 'Set View Only' : 'Allow Edit'}
+                          </button>
+                          <button
+                            className="btn btn-danger btn-small"
+                            type="button"
+                            onClick={() => void revokeShare(recipient)}
+                            disabled={shareBusy}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
 
               <div className="share-form-actions">
                 <button className="btn btn-secondary" type="button" onClick={closeShareModal}>

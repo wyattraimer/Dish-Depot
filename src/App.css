@@ -1465,6 +1465,57 @@ body::before {
   color: var(--ink-500);
 }
 
+.share-existing {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.share-existing h3 {
+  margin: 0.2rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-900);
+}
+
+.share-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-500);
+}
+
+.share-existing-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.share-existing-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  border: 1px solid rgba(90, 105, 122, 0.2);
+  border-radius: 10px;
+  background: var(--control-surface-light-muted);
+  padding: 0.45rem 0.55rem;
+}
+
+.share-existing-item strong {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--ink-900);
+}
+
+.share-existing-item small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-500);
+}
+
+.share-existing-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .shopping-list-recipe-item,
 .shopping-list-ingredient-item {
   display: flex;
@@ -2399,6 +2450,17 @@ body::before {
     flex-direction: column;
   }
 
+  .share-existing-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .share-existing-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .auth-mode-toggle .btn,
   .auth-form .btn,
   .auth-signed-in .btn {
@@ -2657,6 +2719,11 @@ body[data-theme='dark'] .auth-sync-pill {
 body[data-theme='dark'] .share-result-item {
   border-color: rgba(164, 180, 200, 0.28);
   background: #1a2736;
+}
+
+body[data-theme='dark'] .share-existing-item {
+  border-color: rgba(164, 180, 200, 0.28);
+  background: #15212f;
 }
 
 body[data-theme='dark'] .share-result-item strong {
