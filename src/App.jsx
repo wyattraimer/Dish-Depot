@@ -976,6 +976,12 @@ function App() {
   const [authUsername, setAuthUsername] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
   const [authUser, setAuthUser] = useState(null)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [profileDisplayName, setProfileDisplayName] = useState('')
+  const [profileUsername, setProfileUsername] = useState('')
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('')
+  const [profileBusy, setProfileBusy] = useState(false)
+  const [profileUploading, setProfileUploading] = useState(false)
   const [recipeScope, setRecipeScope] = useState('mine')
   const [sharedRecipes, setSharedRecipes] = useState([])
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
@@ -1183,6 +1189,44 @@ function App() {
       subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      setProfileDisplayName('')
+      setProfileUsername('')
+      setProfileAvatarUrl('')
+      return
+    }
+
+    let cancelled = false
+
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name,username,avatar_url')
+        .eq('id', authUser.id)
+        .maybeSingle()
+
+      if (cancelled) {
+        return
+      }
+
+      if (error) {
+        showMessage(`Could not load profile: ${error.message}`, 'info')
+        return
+      }
+
+      setProfileDisplayName(data?.display_name || '')
+      setProfileUsername(data?.username || '')
+      setProfileAvatarUrl(data?.avatar_url || '')
+    }
+
+    void loadProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -2167,6 +2211,100 @@ function App() {
     }
 
     showMessage('Signed out.', 'info')
+    setIsProfileModalOpen(false)
+  }
+
+  function openProfileModal() {
+    if (!authUser) {
+      return
+    }
+
+    setIsProfileModalOpen(true)
+  }
+
+  function closeProfileModal() {
+    setIsProfileModalOpen(false)
+    setProfileBusy(false)
+    setProfileUploading(false)
+  }
+
+  async function handleProfileSave(event) {
+    event.preventDefault()
+
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      showMessage('Sign in to update your profile.', 'info')
+      return
+    }
+
+    const username = profileUsername.trim().toLowerCase()
+    if (!username) {
+      showMessage('Please enter a username.', 'error')
+      return
+    }
+
+    setProfileBusy(true)
+
+    try {
+      const { error } = await supabase.from('profiles').upsert({
+        id: authUser.id,
+        display_name: profileDisplayName.trim() || null,
+        username,
+        avatar_url: profileAvatarUrl.trim() || null,
+      })
+
+      if (error) {
+        showMessage(`Could not update profile: ${error.message}`, 'error')
+        return
+      }
+
+      showMessage('Profile updated.', 'success')
+    } finally {
+      setProfileBusy(false)
+    }
+  }
+
+  async function handleAvatarUpload(event) {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      showMessage('Sign in to upload a profile picture.', 'info')
+      event.target.value = ''
+      return
+    }
+
+    setProfileUploading(true)
+
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'png'
+      const safeExt = extension.replace(/[^a-z0-9]/g, '') || 'png'
+      const path = `${authUser.id}/avatar.${safeExt}`
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+
+      if (uploadError) {
+        if (uploadError.message.toLowerCase().includes('bucket')) {
+          showMessage('Avatar uploads need a Supabase Storage bucket named "avatars".', 'info')
+        } else {
+          showMessage(`Could not upload image: ${uploadError.message}`, 'error')
+        }
+        return
+      }
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      if (!data?.publicUrl) {
+        showMessage('Upload succeeded but could not get image URL.', 'info')
+        return
+      }
+
+      setProfileAvatarUrl(data.publicUrl)
+      showMessage('Profile picture uploaded. Save profile to apply.', 'success')
+    } finally {
+      setProfileUploading(false)
+      event.target.value = ''
+    }
   }
 
   function openModal(recipe = null) {
@@ -3146,9 +3284,14 @@ function App() {
                         <i className="fas fa-cloud" />
                         Sync On
                       </span>
-                      <span className="auth-user-email" title={authUser.email || ''}>
+                      <button
+                        className="auth-user-email auth-user-link"
+                        type="button"
+                        title="Open profile"
+                        onClick={openProfileModal}
+                      >
                         {authUser.email || 'Signed in'}
-                      </span>
+                      </button>
                       <button className="btn btn-secondary btn-small" type="button" onClick={handleSignOut}>
                         <i className="fas fa-right-from-bracket" />
                         Sign Out
@@ -3963,6 +4106,74 @@ function App() {
               <button className="btn btn-primary" type="submit">
                 {currentEditingId ? 'Update Recipe' : 'Add Recipe'}
               </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isProfileModalOpen ? (
+        <div className="modal show profile-modal-overlay" role="dialog" aria-modal="true" onClick={closeProfileModal}>
+          <div className="modal-content profile-modal" onClick={(event) => event.stopPropagation()}>
+            <span className="close" onClick={closeProfileModal}>
+              &times;
+            </span>
+            <h2>Profile</h2>
+            <p className="profile-modal-subtitle">Update how other Dish Depot users find and recognize you.</p>
+
+            <form className="profile-form" onSubmit={handleProfileSave}>
+              <div className="profile-avatar-row">
+                <img
+                  className="profile-avatar-preview"
+                  src={profileAvatarUrl || dishDepotLogo}
+                  alt="Profile avatar preview"
+                />
+                <div className="profile-avatar-actions">
+                  <label htmlFor="profileAvatarUpload">Profile Picture</label>
+                  <input
+                    id="profileAvatarUpload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    disabled={profileUploading}
+                  />
+                  <small>{profileUploading ? 'Uploading image...' : 'Upload JPG/PNG/WEBP from this device.'}</small>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="profileDisplayName">Display Name</label>
+                <input
+                  id="profileDisplayName"
+                  type="text"
+                  value={profileDisplayName}
+                  onChange={(event) => setProfileDisplayName(event.target.value)}
+                  placeholder="How your name appears"
+                  autoComplete="name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="profileUsername">Username</label>
+                <input
+                  id="profileUsername"
+                  type="text"
+                  required
+                  minLength={3}
+                  value={profileUsername}
+                  onChange={(event) => setProfileUsername(event.target.value.toLowerCase())}
+                  placeholder="username"
+                  autoComplete="username"
+                />
+              </div>
+
+              <div className="profile-form-actions">
+                <button className="btn btn-secondary" type="button" onClick={closeProfileModal}>
+                  Close
+                </button>
+                <button className="btn btn-primary" type="submit" disabled={profileBusy || profileUploading}>
+                  {profileBusy ? 'Saving...' : 'Save Profile'}
+                </button>
+              </div>
             </form>
           </div>
         </div>

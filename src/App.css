@@ -306,6 +306,21 @@ body::before {
   background: var(--control-surface-light-muted);
 }
 
+.auth-user-link {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.auth-user-link:hover {
+  border-color: rgba(114, 165, 138, 0.5);
+}
+
+.auth-user-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(114, 165, 138, 0.16);
+}
+
 .auth-config-note {
   font-size: 0.77rem;
   color: var(--ink-500);
@@ -1398,6 +1413,69 @@ body::before {
   z-index: 1301;
 }
 
+.profile-modal-overlay {
+  z-index: 1302;
+}
+
+.profile-modal {
+  max-width: 560px;
+}
+
+.profile-modal-subtitle {
+  margin: 0.45rem 0 0.8rem;
+  color: var(--ink-700);
+}
+
+.profile-form {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.profile-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+  border: 1px solid rgba(90, 105, 122, 0.2);
+  border-radius: 12px;
+  background: var(--control-surface-light-muted);
+  padding: 0.55rem;
+}
+
+.profile-avatar-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid rgba(90, 105, 122, 0.3);
+  object-fit: cover;
+  background: #fff;
+}
+
+.profile-avatar-actions {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.profile-avatar-actions label {
+  font-size: 0.85rem;
+  color: var(--ink-900);
+  font-weight: 700;
+}
+
+.profile-avatar-actions input {
+  font-size: 0.8rem;
+}
+
+.profile-avatar-actions small {
+  font-size: 0.74rem;
+  color: var(--ink-500);
+}
+
+.profile-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 .share-modal-subtitle {
   margin: 0.4rem 0 0.9rem;
   color: var(--ink-700);
@@ -2450,6 +2528,22 @@ body::before {
     flex-direction: column;
   }
 
+  .profile-avatar-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-avatar-preview {
+    width: 58px;
+    height: 58px;
+  }
+
+  .profile-form-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .share-existing-item {
     flex-direction: column;
     align-items: flex-start;
@@ -2714,6 +2808,16 @@ body[data-theme='dark'] .auth-sync-pill {
   color: #cfe9dc;
   border-color: rgba(134, 186, 160, 0.34);
   background: #1d3a33;
+}
+
+body[data-theme='dark'] .profile-avatar-row {
+  border-color: rgba(164, 180, 200, 0.28);
+  background: #15212f;
+}
+
+body[data-theme='dark'] .profile-avatar-preview {
+  background: #1a2736;
+  border-color: rgba(164, 180, 200, 0.35);
 }
 
 body[data-theme='dark'] .share-result-item {
