@@ -145,6 +145,7 @@ const emptyForm = {
   directions: '',
   notes: '',
   categories: [],
+  visibility: 'private',
 }
 
 function migrateRecipes(recipes) {
@@ -171,6 +172,10 @@ function mapSupabaseRecipeToApp(recipe) {
     categories: Array.isArray(recipe.categories) ? recipe.categories : [],
     pinned: Boolean(recipe.pinned),
     type: recipe.type || (recipe.url ? 'url' : 'custom'),
+    visibility: recipe.visibility || 'private',
+    shareSlug: recipe.share_slug || '',
+    ownerId: recipe.owner_id || null,
+    sharedReadOnly: false,
   }
 }
 
@@ -190,6 +195,8 @@ function toCloudRecipePayload(recipe, ownerId) {
     categories: Array.isArray(recipe.categories) ? recipe.categories : [],
     pinned: Boolean(recipe.pinned),
     type: recipe.type || (recipe.url ? 'url' : 'custom'),
+    visibility: recipe.visibility || 'private',
+    share_slug: recipe.shareSlug || null,
     deleted_at: null,
   }
 }
@@ -912,6 +919,8 @@ function App() {
   const [authPassword, setAuthPassword] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
   const [authUser, setAuthUser] = useState(null)
+  const [recipeScope, setRecipeScope] = useState('mine')
+  const [sharedRecipes, setSharedRecipes] = useState([])
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
   const [importCandidates, setImportCandidates] = useState([])
   const [importSummary, setImportSummary] = useState(null)
@@ -953,9 +962,11 @@ function App() {
   const networkStatusRef = useRef(navigator.onLine)
   const cloudSyncUserRef = useRef('')
 
+  const scopedRecipes = useMemo(() => (recipeScope === 'shared' ? sharedRecipes : recipes), [recipeScope, sharedRecipes, recipes])
+
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase().trim()
-    return recipes
+    return scopedRecipes
       .filter((recipe) => {
         const matchesSearch =
           !normalizedSearch ||
@@ -968,7 +979,7 @@ function App() {
         return matchesSearch && matchesCategory && matchesPinned
       })
       .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
-  }, [recipes, searchTerm, categoryFilter, showPinnedOnly])
+  }, [scopedRecipes, searchTerm, categoryFilter, showPinnedOnly])
 
   const plannerRecipes = useMemo(
     () => [...recipes].sort((a, b) => a.name.localeCompare(b.name)),
@@ -1137,7 +1148,7 @@ function App() {
     const fetchCloudRecipes = async () => {
       const { data, error } = await supabase
         .from('recipes')
-        .select('id,name,url,image,notes,ingredients,directions,categories,pinned,type,updated_at,deleted_at')
+        .select('id,owner_id,name,url,image,notes,ingredients,directions,categories,pinned,type,visibility,share_slug,updated_at,deleted_at')
         .eq('owner_id', authUser.id)
         .is('deleted_at', null)
         .order('updated_at', { ascending: false })
@@ -1158,7 +1169,7 @@ function App() {
         return
       }
 
-      setRecipes(migrateRecipes(data.map(mapSupabaseRecipeToApp)))
+      setRecipes(migrateRecipes(data.map((item) => ({ ...mapSupabaseRecipeToApp(item), sharedReadOnly: false }))))
       pushCloudMessage(`Loaded ${data.length} cloud recipe${data.length === 1 ? '' : 's'}.`, 'success')
     }
 
@@ -1168,6 +1179,76 @@ function App() {
       cancelled = true
     }
   }, [authUser?.id, isOnline])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
+      setSharedRecipes([])
+      if (recipeScope === 'shared') {
+        setRecipeScope('mine')
+      }
+      return
+    }
+
+    let cancelled = false
+
+    const fetchSharedRecipes = async () => {
+      const { data: shareRows, error: sharesError } = await supabase
+        .from('recipe_shares')
+        .select('recipe_id,can_edit')
+        .eq('shared_with_user_id', authUser.id)
+
+      if (cancelled) {
+        return
+      }
+
+      if (sharesError) {
+        showMessage(`Could not load shared recipes: ${sharesError.message}`, 'info')
+        return
+      }
+
+      if (!Array.isArray(shareRows) || shareRows.length === 0) {
+        setSharedRecipes([])
+        if (recipeScope === 'shared') {
+          setRecipeScope('mine')
+        }
+        return
+      }
+
+      const recipeIds = shareRows.map((row) => row.recipe_id)
+      const editMap = new Map(shareRows.map((row) => [row.recipe_id, Boolean(row.can_edit)]))
+
+      const { data: sharedRows, error: sharedError } = await supabase
+        .from('recipes')
+        .select('id,owner_id,name,url,image,notes,ingredients,directions,categories,pinned,type,visibility,share_slug,updated_at,deleted_at')
+        .in('id', recipeIds)
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+
+      if (cancelled) {
+        return
+      }
+
+      if (sharedError) {
+        showMessage(`Could not load shared recipes: ${sharedError.message}`, 'info')
+        return
+      }
+
+      const mapped = migrateRecipes(
+        (sharedRows || []).map((row) => ({
+          ...mapSupabaseRecipeToApp(row),
+          sharedReadOnly: !editMap.get(row.id),
+        })),
+      )
+
+      setSharedRecipes(mapped)
+    }
+
+    void fetchSharedRecipes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, isOnline, recipeScope])
 
   useEffect(() => {
     const refreshStandaloneState = () => {
@@ -1477,6 +1558,52 @@ function App() {
     }
   }
 
+  function canManageRecipe(recipe) {
+    if (!recipe) {
+      return false
+    }
+
+    if (!recipe.ownerId) {
+      return true
+    }
+
+    if (authUser?.id && recipe.ownerId === authUser.id) {
+      return true
+    }
+
+    return !recipe.sharedReadOnly
+  }
+
+  async function shareRecipeWithUser(recipe) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      showMessage('Sign in to share recipes.', 'info')
+      return
+    }
+
+    if (!isUuidLike(recipe?.id)) {
+      showMessage('Save this recipe to cloud first, then share it.', 'info')
+      return
+    }
+
+    const recipientId = window.prompt('Enter recipient user UUID to share this recipe:')?.trim()
+    if (!recipientId) {
+      return
+    }
+
+    const { error } = await supabase.from('recipe_shares').upsert({
+      recipe_id: recipe.id,
+      shared_with_user_id: recipientId,
+      can_edit: false,
+    })
+
+    if (error) {
+      showMessage(`Could not share recipe: ${error.message}`, 'error')
+      return
+    }
+
+    showMessage('Recipe shared successfully.', 'success')
+  }
+
   function requireOnline(featureLabel, detail = 'requires an internet connection.') {
     if (networkStatusRef.current) {
       return true
@@ -1593,6 +1720,7 @@ function App() {
       directions: Array.isArray(recipe.directions) ? recipe.directions.join('\n') : '',
       notes: recipe.notes || '',
       categories: recipe.categories || (recipe.category ? [recipe.category] : []),
+      visibility: recipe.visibility || 'private',
     })
     setIsModalOpen(true)
   }
@@ -1669,6 +1797,7 @@ function App() {
         categories: form.categories,
         notes: form.notes.trim(),
         type: 'url',
+        visibility: form.visibility || 'private',
       }
     } else {
       const ingredients = form.ingredients
@@ -1698,6 +1827,7 @@ function App() {
         categories: form.categories,
         notes: form.notes.trim(),
         type: 'custom',
+        visibility: form.visibility || 'private',
       }
     }
 
@@ -2624,6 +2754,25 @@ function App() {
                 <div className="results-count" aria-live="polite">
                   {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
                 </div>
+
+                {hasSupabaseConfig && authUser ? (
+                  <div className="recipe-scope-toggle" role="group" aria-label="Recipe scope">
+                    <button
+                      className={`btn btn-small ${recipeScope === 'mine' ? 'btn-primary' : 'btn-secondary'}`}
+                      type="button"
+                      onClick={() => setRecipeScope('mine')}
+                    >
+                      My Recipes
+                    </button>
+                    <button
+                      className={`btn btn-small ${recipeScope === 'shared' ? 'btn-primary' : 'btn-secondary'}`}
+                      type="button"
+                      onClick={() => setRecipeScope('shared')}
+                    >
+                      Shared With Me
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               <div className="controls-main-actions">
@@ -2724,6 +2873,7 @@ function App() {
                   const hasIngredients = Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0
                   const hasDirections = Array.isArray(recipe.directions) && recipe.directions.length > 0
                   const hasDetailedRecipe = hasIngredients || hasDirections
+                  const canManage = canManageRecipe(recipe)
 
                   return (
                     <article
@@ -2830,39 +2980,48 @@ function App() {
                             <i className="fas fa-print" />
                             Print
                           </button>
-                          <button
-                            className={`btn btn-small ${recipe.pinned ? 'btn-pin-active' : 'btn-pin'}`}
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              togglePinnedRecipe(recipe.id)
-                            }}
-                          >
-                            <i className={`fas ${recipe.pinned ? 'fa-star' : 'fa-star-half-alt'}`} />
-                            {recipe.pinned ? 'Pinned' : 'Pin'}
-                          </button>
-                          <button
-                            className="btn btn-small btn-primary"
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openModal(recipe)
-                            }}
-                          >
-                            <i className="fas fa-edit" />
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-small btn-danger"
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleDeleteRecipe(recipe.id)
-                            }}
-                          >
-                            <i className="fas fa-trash" />
-                            Delete
-                          </button>
+                          {canManage ? (
+                            <>
+                              <button
+                                className={`btn btn-small ${recipe.pinned ? 'btn-pin-active' : 'btn-pin'}`}
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void togglePinnedRecipe(recipe.id)
+                                }}
+                              >
+                                <i className={`fas ${recipe.pinned ? 'fa-star' : 'fa-star-half-alt'}`} />
+                                {recipe.pinned ? 'Pinned' : 'Pin'}
+                              </button>
+                              <button
+                                className="btn btn-small btn-primary"
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  openModal(recipe)
+                                }}
+                              >
+                                <i className="fas fa-edit" />
+                                Edit
+                              </button>
+                              <button
+                                className="btn btn-small btn-danger"
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void handleDeleteRecipe(recipe.id)
+                                }}
+                              >
+                                <i className="fas fa-trash" />
+                                Delete
+                              </button>
+                            </>
+                          ) : (
+                            <span className="shared-readonly-pill">
+                              <i className="fas fa-user-group" />
+                              Shared recipe
+                            </span>
+                          )}
                         </div>
                       </div>
                     </article>
@@ -2997,6 +3156,12 @@ function App() {
             ) : null}
 
             <div className="focused-recipe-actions">
+              {canManageRecipe(focusedRecipe) && hasSupabaseConfig && authUser ? (
+                <button className="btn btn-secondary" type="button" onClick={() => shareRecipeWithUser(focusedRecipe)}>
+                  <i className="fas fa-share-nodes" />
+                  Share
+                </button>
+              ) : null}
               {focusedRecipe.url ? (
                 <>
                   <button className="btn btn-visit" type="button" onClick={() => visitRecipe(focusedRecipe.url)}>
@@ -3013,17 +3178,19 @@ function App() {
                 <i className="fas fa-print" />
                 Print / Save PDF
               </button>
-              <button
-                className="btn btn-primary"
-                type="button"
-                onClick={() => {
-                  openModal(focusedRecipe)
-                  closeFocusedRecipe()
-                }}
-              >
-                <i className="fas fa-edit" />
-                Edit Recipe
-              </button>
+              {canManageRecipe(focusedRecipe) ? (
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={() => {
+                    openModal(focusedRecipe)
+                    closeFocusedRecipe()
+                  }}
+                >
+                  <i className="fas fa-edit" />
+                  Edit Recipe
+                </button>
+              ) : null}
             </div>
           </article>
         </div>
@@ -3263,6 +3430,21 @@ function App() {
                   onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
                 />
               </div>
+
+              {hasSupabaseConfig ? (
+                <div className="form-group">
+                  <label htmlFor="recipeVisibility">Visibility</label>
+                  <select
+                    id="recipeVisibility"
+                    value={form.visibility || 'private'}
+                    onChange={(event) => setForm((prev) => ({ ...prev, visibility: event.target.value }))}
+                  >
+                    <option value="private">Private</option>
+                    <option value="shared">Shared</option>
+                    <option value="public">Public</option>
+                  </select>
+                </div>
+              ) : null}
 
               <button className="btn btn-primary" type="submit">
                 {currentEditingId ? 'Update Recipe' : 'Add Recipe'}

@@ -210,6 +210,11 @@ body::before {
   justify-content: flex-end;
 }
 
+.recipe-scope-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
 .controls-filter-row {
   align-items: flex-end;
   padding-top: 0.08rem;
@@ -275,6 +280,18 @@ body::before {
   padding: 0.24rem 0.52rem;
   border-radius: 999px;
   border: 1px dashed rgba(90, 105, 122, 0.32);
+}
+
+.shared-readonly-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.35rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--ink-700);
+  border: 1px solid rgba(90, 105, 122, 0.26);
+  background: var(--control-surface-light-muted);
 }
 
 .controls-utility-row {
@@ -1930,6 +1947,12 @@ body::before {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .recipe-scope-toggle {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .ios-install-help {
     margin-top: 0.45rem;
     padding: 0.65rem 0.68rem;
@@ -2498,6 +2521,12 @@ body[data-theme='dark'] .controls .theme-switch-track {
 body[data-theme='dark'] .auth-user-email,
 body[data-theme='dark'] .auth-config-note {
   color: var(--ink-700);
+}
+
+body[data-theme='dark'] .shared-readonly-pill {
+  color: var(--ink-700);
+  border-color: rgba(164, 180, 200, 0.34);
+  background: #1a2736;
 }
 
 body[data-theme='dark'] .auth-config-note {
