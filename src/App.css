@@ -1358,6 +1358,34 @@ body::before {
   color: var(--ink-700);
 }
 
+.share-modal {
+  max-width: 520px;
+}
+
+.share-modal-subtitle {
+  margin: 0.4rem 0 0.9rem;
+  color: var(--ink-700);
+}
+
+.share-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.share-edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--ink-700);
+}
+
+.share-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
 .shopping-list-recipe-item,
 .shopping-list-ingredient-item {
   display: flex;

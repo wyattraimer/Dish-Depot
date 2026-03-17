@@ -961,6 +961,11 @@ function App() {
   const [authUser, setAuthUser] = useState(null)
   const [recipeScope, setRecipeScope] = useState('mine')
   const [sharedRecipes, setSharedRecipes] = useState([])
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [shareTargetRecipe, setShareTargetRecipe] = useState(null)
+  const [shareRecipientEmail, setShareRecipientEmail] = useState('')
+  const [shareCanEdit, setShareCanEdit] = useState(false)
+  const [shareBusy, setShareBusy] = useState(false)
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
   const [importCandidates, setImportCandidates] = useState([])
   const [importSummary, setImportSummary] = useState(null)
@@ -1717,34 +1722,78 @@ function App() {
     return !recipe.sharedReadOnly
   }
 
-  async function shareRecipeWithUser(recipe) {
+  function openShareModal(recipe) {
+    setShareTargetRecipe(recipe)
+    setShareRecipientEmail('')
+    setShareCanEdit(false)
+    setIsShareModalOpen(true)
+  }
+
+  function closeShareModal() {
+    setIsShareModalOpen(false)
+    setShareTargetRecipe(null)
+    setShareRecipientEmail('')
+    setShareCanEdit(false)
+    setShareBusy(false)
+  }
+
+  async function shareRecipeWithUserEmail(event) {
+    event.preventDefault()
+
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
       showMessage('Sign in to share recipes.', 'info')
       return
     }
 
-    if (!isUuidLike(recipe?.id)) {
+    if (!isUuidLike(shareTargetRecipe?.id)) {
       showMessage('Save this recipe to cloud first, then share it.', 'info')
       return
     }
 
-    const recipientId = window.prompt('Enter recipient user UUID to share this recipe:')?.trim()
-    if (!recipientId) {
+    const recipientEmail = shareRecipientEmail.trim().toLowerCase()
+    if (!recipientEmail) {
+      showMessage('Enter a recipient email address.', 'error')
       return
     }
 
-    const { error } = await supabase.from('recipe_shares').upsert({
-      recipe_id: recipe.id,
-      shared_with_user_id: recipientId,
-      can_edit: false,
-    })
+    setShareBusy(true)
 
-    if (error) {
-      showMessage(`Could not share recipe: ${error.message}`, 'error')
-      return
+    try {
+      const { data: recipientId, error: lookupError } = await supabase.rpc('find_user_id_by_email', {
+        target_email: recipientEmail,
+      })
+
+      if (lookupError) {
+        if (lookupError.message.toLowerCase().includes('find_user_id_by_email')) {
+          showMessage('Sharing lookup is not configured yet. Add the find_user_id_by_email RPC in Supabase.', 'info')
+          return
+        }
+
+        showMessage(`Could not look up recipient: ${lookupError.message}`, 'error')
+        return
+      }
+
+      if (!recipientId || !isUuidLike(recipientId)) {
+        showMessage('No account found for that email.', 'info')
+        return
+      }
+
+      const { error } = await supabase.from('recipe_shares').upsert({
+        recipe_id: shareTargetRecipe.id,
+        shared_with_user_id: recipientId,
+        can_edit: shareCanEdit,
+      })
+
+      if (error) {
+        showMessage(`Could not share recipe: ${error.message}`, 'error')
+        return
+      }
+
+      showMessage('Recipe shared successfully.', 'success')
+      closeShareModal()
+    } finally {
+      setShareBusy(false)
     }
-
-    showMessage('Recipe shared successfully.', 'success')
   }
 
   function requireOnline(featureLabel, detail = 'requires an internet connection.') {
@@ -3303,7 +3352,7 @@ function App() {
 
             <div className="focused-recipe-actions">
               {canManageRecipe(focusedRecipe) && hasSupabaseConfig && authUser ? (
-                <button className="btn btn-secondary" type="button" onClick={() => shareRecipeWithUser(focusedRecipe)}>
+                <button className="btn btn-secondary" type="button" onClick={() => openShareModal(focusedRecipe)}>
                   <i className="fas fa-share-nodes" />
                   Share
                 </button>
@@ -3595,6 +3644,52 @@ function App() {
               <button className="btn btn-primary" type="submit">
                 {currentEditingId ? 'Update Recipe' : 'Add Recipe'}
               </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isShareModalOpen && shareTargetRecipe ? (
+        <div className="modal show" role="dialog" aria-modal="true" onClick={closeShareModal}>
+          <div className="modal-content share-modal" onClick={(event) => event.stopPropagation()}>
+            <span className="close" onClick={closeShareModal}>
+              &times;
+            </span>
+            <h2>Share Recipe</h2>
+            <p className="share-modal-subtitle">
+              Share <strong>{shareTargetRecipe.name}</strong> with another Dish Depot account.
+            </p>
+
+            <form className="share-form" onSubmit={shareRecipeWithUserEmail}>
+              <div className="form-group">
+                <label htmlFor="shareRecipientEmail">Recipient Email</label>
+                <input
+                  id="shareRecipientEmail"
+                  type="email"
+                  required
+                  value={shareRecipientEmail}
+                  onChange={(event) => setShareRecipientEmail(event.target.value)}
+                  placeholder="chef@example.com"
+                />
+              </div>
+
+              <label className="share-edit-toggle">
+                <input
+                  type="checkbox"
+                  checked={shareCanEdit}
+                  onChange={(event) => setShareCanEdit(event.target.checked)}
+                />
+                Allow recipient to edit this recipe
+              </label>
+
+              <div className="share-form-actions">
+                <button className="btn btn-secondary" type="button" onClick={closeShareModal}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" type="submit" disabled={shareBusy}>
+                  {shareBusy ? 'Sharing...' : 'Share Recipe'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
