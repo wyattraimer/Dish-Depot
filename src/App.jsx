@@ -174,6 +174,26 @@ function mapSupabaseRecipeToApp(recipe) {
   }
 }
 
+function isUuidLike(value) {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+function toCloudRecipePayload(recipe, ownerId) {
+  return {
+    owner_id: ownerId,
+    name: recipe.name || '',
+    url: recipe.url || null,
+    image: recipe.image || null,
+    notes: recipe.notes || null,
+    ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+    directions: Array.isArray(recipe.directions) ? recipe.directions : [],
+    categories: Array.isArray(recipe.categories) ? recipe.categories : [],
+    pinned: Boolean(recipe.pinned),
+    type: recipe.type || (recipe.url ? 'url' : 'custom'),
+    deleted_at: null,
+  }
+}
+
 function formatCategory(category) {
   return category.charAt(0).toUpperCase() + category.slice(1)
 }
@@ -1388,6 +1408,75 @@ function App() {
     }, 3000)
   }
 
+  function canSyncToCloud() {
+    return Boolean(hasSupabaseConfig && supabase && authUser?.id && isOnline)
+  }
+
+  function replaceRecipeIdEverywhere(oldId, newId) {
+    if (String(oldId) === String(newId)) {
+      return
+    }
+
+    setMealPlan((prev) => {
+      const next = createEmptyMealPlan()
+      MEAL_DAYS.forEach((day) => {
+        MEAL_SLOTS.forEach((slot) => {
+          const value = prev[day]?.[slot] || ''
+          next[day][slot] = String(value) === String(oldId) ? String(newId) : value
+        })
+      })
+      return next
+    })
+  }
+
+  async function insertRecipeToCloud(localRecipe, localIdToReplace) {
+    if (!canSyncToCloud()) {
+      return
+    }
+
+    const payload = toCloudRecipePayload(localRecipe, authUser.id)
+    const { data, error } = await supabase.from('recipes').insert(payload).select('id').single()
+
+    if (error) {
+      showMessage(`Cloud sync failed: ${error.message}`, 'info')
+      return
+    }
+
+    if (data?.id) {
+      setRecipes((prev) => prev.map((recipe) => (String(recipe.id) === String(localIdToReplace) ? { ...recipe, id: data.id } : recipe)))
+      replaceRecipeIdEverywhere(localIdToReplace, data.id)
+    }
+  }
+
+  async function updateRecipeInCloud(id, recipeData) {
+    if (!canSyncToCloud() || !isUuidLike(id)) {
+      return
+    }
+
+    const payload = toCloudRecipePayload(recipeData, authUser.id)
+    const { error } = await supabase.from('recipes').update(payload).eq('id', id).eq('owner_id', authUser.id)
+
+    if (error) {
+      showMessage(`Cloud sync failed: ${error.message}`, 'info')
+    }
+  }
+
+  async function softDeleteRecipeInCloud(id) {
+    if (!canSyncToCloud() || !isUuidLike(id)) {
+      return
+    }
+
+    const { error } = await supabase
+      .from('recipes')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', authUser.id)
+
+    if (error) {
+      showMessage(`Cloud sync failed: ${error.message}`, 'info')
+    }
+  }
+
   function requireOnline(featureLabel, detail = 'requires an internet connection.') {
     if (networkStatusRef.current) {
       return true
@@ -1542,7 +1631,7 @@ function App() {
     return id
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
     if (!form.name.trim()) {
@@ -1613,6 +1702,7 @@ function App() {
     }
 
     if (currentEditingId) {
+      const updatedRecipe = { ...recipeData, pinned: Boolean(recipes.find((recipe) => recipe.id === currentEditingId)?.pinned), id: currentEditingId }
       setRecipes((prev) =>
         prev.map((recipe) =>
           recipe.id === currentEditingId
@@ -1620,17 +1710,33 @@ function App() {
             : recipe,
         ),
       )
+
+      if (canSyncToCloud()) {
+        if (isUuidLike(currentEditingId)) {
+          await updateRecipeInCloud(currentEditingId, updatedRecipe)
+        } else {
+          await insertRecipeToCloud(updatedRecipe, currentEditingId)
+        }
+      }
+
       showMessage('Recipe updated successfully!', 'success')
     } else {
       const existingIds = new Set(recipes.map((recipe) => recipe.id))
-      setRecipes((prev) => [{ ...recipeData, pinned: false, id: makeRecipeId(existingIds) }, ...prev])
+      const localId = makeRecipeId(existingIds)
+      const newRecipe = { ...recipeData, pinned: false, id: localId }
+      setRecipes((prev) => [newRecipe, ...prev])
+
+      if (canSyncToCloud()) {
+        await insertRecipeToCloud(newRecipe, localId)
+      }
+
       showMessage('Recipe added successfully!', 'success')
     }
 
     closeModal()
   }
 
-  function handleDeleteRecipe(id) {
+  async function handleDeleteRecipe(id) {
     const shouldDelete = window.confirm('Are you sure you want to delete this recipe?')
     if (!shouldDelete) {
       return
@@ -1647,12 +1753,33 @@ function App() {
       })
       return next
     })
+
+    await softDeleteRecipeInCloud(id)
   }
 
-  function togglePinnedRecipe(id) {
+  async function togglePinnedRecipe(id) {
+    let pinnedRecipe = null
+
     setRecipes((prev) =>
-      prev.map((recipe) => (recipe.id === id ? { ...recipe, pinned: !recipe.pinned } : recipe)),
+      prev.map((recipe) => {
+        if (recipe.id !== id) {
+          return recipe
+        }
+
+        pinnedRecipe = { ...recipe, pinned: !recipe.pinned }
+        return pinnedRecipe
+      }),
     )
+
+    if (!pinnedRecipe || !canSyncToCloud()) {
+      return
+    }
+
+    if (isUuidLike(pinnedRecipe.id)) {
+      await updateRecipeInCloud(pinnedRecipe.id, pinnedRecipe)
+    } else {
+      await insertRecipeToCloud(pinnedRecipe, pinnedRecipe.id)
+    }
   }
 
   function updateMealPlan(day, slot, recipeId) {
@@ -2178,7 +2305,7 @@ function App() {
     setImportCandidates((prev) => prev.map((candidate) => ({ ...candidate, selected })))
   }
 
-  function confirmImportSelection() {
+  async function confirmImportSelection() {
     const selectedRecipes = importCandidates
       .filter((candidate) => candidate.selected)
       .map((candidate) => candidate.recipe)
@@ -2189,6 +2316,17 @@ function App() {
     }
 
     setRecipes((prev) => [...selectedRecipes, ...prev])
+
+    if (canSyncToCloud()) {
+      for (const recipe of selectedRecipes) {
+        if (isUuidLike(recipe.id)) {
+          await updateRecipeInCloud(recipe.id, recipe)
+        } else {
+          await insertRecipeToCloud(recipe, recipe.id)
+        }
+      }
+    }
+
     closeImportPreview()
     showMessage(
       `Successfully imported ${selectedRecipes.length} recipe${selectedRecipes.length !== 1 ? 's' : ''}!`,
@@ -2278,7 +2416,7 @@ function App() {
     }
   }
 
-  function deleteAllRecipes() {
+  async function deleteAllRecipes() {
     if (recipes.length === 0) {
       showMessage('You have no recipes to delete.', 'info')
       return
@@ -2299,8 +2437,23 @@ function App() {
       return
     }
 
+    const cloudIds = recipes.filter((recipe) => isUuidLike(recipe.id)).map((recipe) => recipe.id)
+
     setRecipes([])
     localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
+
+    if (canSyncToCloud() && cloudIds.length > 0) {
+      const { error } = await supabase
+        .from('recipes')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('owner_id', authUser.id)
+        .in('id', cloudIds)
+
+      if (error) {
+        showMessage(`Cloud sync failed: ${error.message}`, 'info')
+      }
+    }
+
     showMessage('All recipes have been deleted.', 'success')
   }
 
