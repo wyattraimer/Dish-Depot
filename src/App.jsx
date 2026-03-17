@@ -3732,7 +3732,7 @@ function App() {
       ) : null}
 
       {isShareModalOpen && shareTargetRecipe ? (
-        <div className="modal show" role="dialog" aria-modal="true" onClick={closeShareModal}>
+        <div className="modal show share-modal-overlay" role="dialog" aria-modal="true" onClick={closeShareModal}>
           <div className="modal-content share-modal" onClick={(event) => event.stopPropagation()}>
             <span className="close" onClick={closeShareModal}>
               &times;

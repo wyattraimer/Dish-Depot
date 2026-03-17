@@ -1394,6 +1394,10 @@ body::before {
   max-width: 520px;
 }
 
+.share-modal-overlay {
+  z-index: 1301;
+}
+
 .share-modal-subtitle {
   margin: 0.4rem 0 0.9rem;
   color: var(--ink-700);
