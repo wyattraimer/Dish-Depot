@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import dishDepotLogo from './assets/dishdepot-no-background-674x674.png'
 import dishDepotLogoBadge from './assets/dishdepot-674x674.png'
+import { hasSupabaseConfig, supabase } from './lib/supabaseClient'
 
 const CATEGORIES = {
   breakfast: { icon: 'fa-coffee', color: '#ffc107' },
@@ -871,6 +872,11 @@ function App() {
     const savedTheme = localStorage.getItem(THEME_KEY)
     return savedTheme === 'dark' ? 'dark' : 'light'
   })
+  const [authMode, setAuthMode] = useState('signin')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
+  const [authUser, setAuthUser] = useState(null)
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
   const [importCandidates, setImportCandidates] = useState([])
   const [importSummary, setImportSummary] = useState(null)
@@ -1036,6 +1042,32 @@ function App() {
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+  }, [])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase) {
+      return undefined
+    }
+
+    let isMounted = true
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) {
+        return
+      }
+      setAuthUser(data.session?.user || null)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user || null)
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -1299,6 +1331,75 @@ function App() {
 
   function toggleTheme() {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+  }
+
+  async function handleAuthSubmit(event) {
+    event.preventDefault()
+
+    if (!hasSupabaseConfig || !supabase) {
+      showMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.', 'info')
+      return
+    }
+
+    const email = authEmail.trim()
+    if (!email || !authPassword) {
+      showMessage('Please enter both email and password.', 'error')
+      return
+    }
+
+    setAuthBusy(true)
+
+    try {
+      if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password: authPassword,
+          options: {
+            emailRedirectTo: window.location.origin,
+          },
+        })
+
+        if (error) {
+          showMessage(error.message, 'error')
+          return
+        }
+
+        if (data.session) {
+          showMessage('Account created and signed in.', 'success')
+        } else {
+          showMessage('Account created. Check your email to confirm your account.', 'info')
+        }
+        return
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password: authPassword,
+      })
+
+      if (error) {
+        showMessage(error.message, 'error')
+        return
+      }
+
+      showMessage('Signed in successfully.', 'success')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function handleSignOut() {
+    if (!supabase) {
+      return
+    }
+
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      showMessage(error.message, 'error')
+      return
+    }
+
+    showMessage('Signed out.', 'info')
   }
 
   function openModal(recipe = null) {
@@ -2190,15 +2291,73 @@ function App() {
                 </button>
               </div>
 
-              <label className="theme-switch" aria-label="Toggle dark mode">
-                <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
-                <span className="theme-switch-track">
-                  <span className="theme-switch-knob">
-                    <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
+              <div className="controls-nav-right">
+                <label className="theme-switch" aria-label="Toggle dark mode">
+                  <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
+                  <span className="theme-switch-track">
+                    <span className="theme-switch-knob">
+                      <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
+                    </span>
                   </span>
-                </span>
-                <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-              </label>
+                  <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+                </label>
+
+                {hasSupabaseConfig ? (
+                  authUser ? (
+                    <div className="auth-signed-in" aria-label="Account">
+                      <span className="auth-user-email" title={authUser.email || ''}>
+                        {authUser.email || 'Signed in'}
+                      </span>
+                      <button className="btn btn-secondary btn-small" type="button" onClick={handleSignOut}>
+                        <i className="fas fa-right-from-bracket" />
+                        Sign Out
+                      </button>
+                    </div>
+                  ) : (
+                    <form className="auth-form" onSubmit={handleAuthSubmit}>
+                      <div className="auth-mode-toggle" role="group" aria-label="Authentication mode">
+                        <button
+                          className={`btn btn-small ${authMode === 'signin' ? 'btn-primary' : 'btn-secondary'}`}
+                          type="button"
+                          onClick={() => setAuthMode('signin')}
+                        >
+                          Sign In
+                        </button>
+                        <button
+                          className={`btn btn-small ${authMode === 'signup' ? 'btn-primary' : 'btn-secondary'}`}
+                          type="button"
+                          onClick={() => setAuthMode('signup')}
+                        >
+                          Sign Up
+                        </button>
+                      </div>
+
+                      <input
+                        type="email"
+                        value={authEmail}
+                        onChange={(event) => setAuthEmail(event.target.value)}
+                        placeholder="Email"
+                        autoComplete="email"
+                        required
+                      />
+                      <input
+                        type="password"
+                        value={authPassword}
+                        onChange={(event) => setAuthPassword(event.target.value)}
+                        placeholder="Password"
+                        autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                        minLength={6}
+                        required
+                      />
+                      <button className="btn btn-primary btn-small" type="submit" disabled={authBusy}>
+                        {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Continue'}
+                      </button>
+                    </form>
+                  )
+                ) : (
+                  <span className="auth-config-note">Cloud sync disabled</span>
+                )}
+              </div>
             </div>
 
             <div className="controls-search-row">
