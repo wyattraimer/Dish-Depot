@@ -221,6 +221,21 @@ function toCloudRecipePayload(recipe, ownerId) {
   }
 }
 
+function buildRecipeFingerprint(recipe) {
+  const normalizeList = (value) =>
+    (Array.isArray(value) ? value : [])
+      .map((item) => String(item || '').trim().toLowerCase())
+      .filter(Boolean)
+      .join('|')
+
+  return [
+    String(recipe.url || '').trim().toLowerCase(),
+    String(recipe.name || '').trim().toLowerCase(),
+    normalizeList(recipe.ingredients),
+    normalizeList(recipe.directions),
+  ].join('::')
+}
+
 function formatCategory(category) {
   return category.charAt(0).toUpperCase() + category.slice(1)
 }
@@ -969,6 +984,7 @@ function App() {
   const [shareResults, setShareResults] = useState([])
   const [shareCanEdit, setShareCanEdit] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
+  const [isBulkUploading, setIsBulkUploading] = useState(false)
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false)
   const [importCandidates, setImportCandidates] = useState([])
   const [importSummary, setImportSummary] = useState(null)
@@ -1661,22 +1677,91 @@ function App() {
     })
   }
 
-  async function insertRecipeToCloud(localRecipe, localIdToReplace) {
+  async function insertRecipeToCloud(localRecipe, localIdToReplace, options = {}) {
+    const suppressErrorMessage = Boolean(options.suppressErrorMessage)
+
     if (!canSyncToCloud()) {
-      return
+      return { ok: false }
     }
 
     const payload = toCloudRecipePayload(localRecipe, authUser.id)
     const { data, error } = await supabase.from('recipes').insert(payload).select('id').single()
 
     if (error) {
-      showMessage(`Cloud sync failed: ${error.message}`, 'info')
-      return
+      if (!suppressErrorMessage) {
+        showMessage(`Cloud sync failed: ${error.message}`, 'info')
+      }
+      return { ok: false, error }
     }
 
     if (data?.id) {
       setRecipes((prev) => prev.map((recipe) => (String(recipe.id) === String(localIdToReplace) ? { ...recipe, id: data.id } : recipe)))
       replaceRecipeIdEverywhere(localIdToReplace, data.id)
+      return { ok: true, id: data.id }
+    }
+
+    return { ok: false }
+  }
+
+  async function uploadLocalRecipesToCloud() {
+    if (!canSyncToCloud()) {
+      showMessage('Sign in and reconnect to upload recipes to cloud.', 'info')
+      return
+    }
+
+    const localCandidates = recipes.filter((recipe) => !isUuidLike(recipe.id))
+    if (localCandidates.length === 0) {
+      showMessage('All local recipes are already in cloud sync.', 'info')
+      return
+    }
+
+    setIsBulkUploading(true)
+
+    try {
+      const { data: cloudRows, error } = await supabase
+        .from('recipes')
+        .select('id,name,url,ingredients,directions')
+        .eq('owner_id', authUser.id)
+        .is('deleted_at', null)
+
+      if (error) {
+        showMessage(`Could not check cloud recipes: ${error.message}`, 'info')
+        return
+      }
+
+      const cloudFingerprints = new Set((cloudRows || []).map(buildRecipeFingerprint))
+      let uploaded = 0
+      let skipped = 0
+      let failed = 0
+
+      for (const recipe of localCandidates) {
+        const fingerprint = buildRecipeFingerprint(recipe)
+        if (cloudFingerprints.has(fingerprint)) {
+          skipped += 1
+          continue
+        }
+
+        const result = await insertRecipeToCloud(recipe, recipe.id, { suppressErrorMessage: true })
+        if (result.ok) {
+          uploaded += 1
+          cloudFingerprints.add(fingerprint)
+        } else {
+          failed += 1
+        }
+      }
+
+      const parts = []
+      parts.push(`Uploaded ${uploaded}`)
+      if (skipped > 0) {
+        parts.push(`skipped ${skipped} duplicates`)
+      }
+      if (failed > 0) {
+        parts.push(`failed ${failed}`)
+      }
+
+      showMessage(parts.join(' • '), failed > 0 ? 'info' : 'success')
+    } finally {
+      setIsBulkUploading(false)
     }
   }
 
@@ -3085,6 +3170,16 @@ function App() {
                     Tools
                   </summary>
                   <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void uploadLocalRecipesToCloud()}
+                      disabled={!hasSupabaseConfig || !authUser || isBulkUploading}
+                    >
+                      <i className="fas fa-cloud-arrow-up" />
+                      {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
+                    </button>
                     <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
                       <i className="fas fa-cart-shopping" />
                       Shopping List
