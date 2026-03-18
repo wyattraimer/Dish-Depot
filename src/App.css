@@ -213,6 +213,12 @@ body::before {
 .recipe-scope-toggle {
   display: inline-flex;
   gap: 0.35rem;
+  min-width: 0;
+}
+
+.recipe-scope-toggle .btn,
+.auth-mode-toggle .btn {
+  min-width: 0;
 }
 
 .controls-filter-row {
@@ -225,6 +231,7 @@ body::before {
   align-items: center;
   gap: 0.52rem;
   margin-left: auto;
+  min-width: 0;
 }
 
 .auth-form {
@@ -232,6 +239,7 @@ body::before {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.45rem;
+  min-width: 0;
 }
 
 .auth-form-caption {
@@ -247,6 +255,7 @@ body::before {
   flex-wrap: wrap;
   gap: 0.45rem;
   width: 100%;
+  min-width: 0;
 }
 
 .auth-form input {
@@ -277,7 +286,15 @@ body::before {
 .auth-signed-in {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.45rem;
+  max-width: 100%;
+}
+
+.controls button,
+.controls input,
+.controls select {
+  max-width: 100%;
 }
 
 .auth-sync-pill {
@@ -2182,14 +2199,39 @@ body::before {
     gap: 0.45rem;
   }
 
+  .controls-nav-right > * {
+    min-width: 0;
+  }
+
+  .theme-switch {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
   .auth-form,
   .auth-signed-in {
     width: 100%;
     justify-content: flex-start;
   }
 
+  .auth-signed-in > * {
+    min-width: 0;
+  }
+
+  .auth-user-link {
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 auto;
+  }
+
   .auth-input-row {
     width: 100%;
+  }
+
+  .auth-input-row .btn {
+    flex: 1 1 180px;
+    min-width: 0;
   }
 
   .auth-user-email {
@@ -2220,15 +2262,34 @@ body::before {
     width: 100%;
   }
 
+  .controls-main-actions .btn,
+  .recipe-scope-toggle .btn,
+  .auth-mode-toggle .btn,
+  .auth-input-row .btn,
+  .controls-danger-zone .btn {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
   .controls-danger-zone {
-    margin-left: auto;
-    justify-content: flex-end;
+    width: 100%;
+    margin-left: 0;
+    justify-content: stretch;
+  }
+
+  .controls-danger-zone .btn {
+    width: 100%;
   }
 
   .controls-utility-row {
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 0.48rem;
     padding: 0.46rem 0.5rem;
+  }
+
+  .controls-tools-row {
+    width: 100%;
   }
 
   .tools-menu {
@@ -2347,7 +2408,9 @@ body::before {
   }
 
   .theme-switch {
-    margin-left: auto;
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
   }
 
   .meal-planner-header {
@@ -2492,6 +2555,21 @@ body::before {
   .controls-filter-group {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .controls-nav-right,
+  .controls-utility-row {
+    width: 100%;
+  }
+
+  .auth-signed-in {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .auth-user-link,
+  .auth-sync-pill {
+    width: 100%;
   }
 
   .controls-main-actions {
