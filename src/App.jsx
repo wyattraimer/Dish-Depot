@@ -817,6 +817,59 @@ function isRunningStandalonePwa() {
   return displayModeStandalone || displayModeFullscreen || displayModeMinimalUi || iosStandalone
 }
 
+const AVATAR_SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 30
+
+function extractAvatarStoragePath(value) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return ''
+  }
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return trimmed
+  }
+
+  try {
+    const parsed = new URL(trimmed)
+    const marker = '/avatars/'
+    const markerIndex = parsed.pathname.indexOf(marker)
+    if (markerIndex === -1) {
+      return ''
+    }
+    return decodeURIComponent(parsed.pathname.slice(markerIndex + marker.length))
+  } catch {
+    return ''
+  }
+}
+
+async function resolveAvatarDisplayUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    return ''
+  }
+
+  const trimmed = value.trim()
+  const storagePath = extractAvatarStoragePath(trimmed)
+  if (!storagePath || !hasSupabaseConfig || !supabase) {
+    return trimmed
+  }
+
+  const { data, error } = await supabase.storage.from('avatars').createSignedUrl(storagePath, AVATAR_SIGNED_URL_TTL_SECONDS)
+  if (!error && data?.signedUrl) {
+    return data.signedUrl
+  }
+
+  const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
+  if (publicData?.publicUrl) {
+    return publicData.publicUrl
+  }
+
+  return /^https?:\/\//i.test(trimmed) ? trimmed : ''
+}
+
 function FloatingControls({
   canShowFloating,
   showInstallBtn,
@@ -979,6 +1032,7 @@ function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [profileDisplayName, setProfileDisplayName] = useState('')
   const [profileUsername, setProfileUsername] = useState('')
+  const [profileAvatarValue, setProfileAvatarValue] = useState('')
   const [profileAvatarUrl, setProfileAvatarUrl] = useState('')
   const [profileBusy, setProfileBusy] = useState(false)
   const [profileUploading, setProfileUploading] = useState(false)
@@ -1194,6 +1248,7 @@ function App() {
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
       setProfileDisplayName('')
       setProfileUsername('')
+      setProfileAvatarValue('')
       setProfileAvatarUrl('')
       return
     }
@@ -1236,13 +1291,20 @@ function App() {
 
         setProfileDisplayName(fallbackData?.display_name || '')
         setProfileUsername(fallbackData?.username || '')
+        setProfileAvatarValue('')
         setProfileAvatarUrl('')
         return
       }
 
       setProfileDisplayName(data?.display_name || '')
       setProfileUsername(data?.username || '')
-      setProfileAvatarUrl(data?.avatar_url || '')
+      const avatarValue = data?.avatar_url || ''
+      setProfileAvatarValue(avatarValue)
+      const avatarDisplayUrl = await resolveAvatarDisplayUrl(avatarValue)
+      if (cancelled) {
+        return
+      }
+      setProfileAvatarUrl(avatarDisplayUrl)
     }
 
     void loadProfile()
@@ -2269,7 +2331,7 @@ function App() {
         id: authUser.id,
         display_name: profileDisplayName.trim() || null,
         username,
-        avatar_url: profileAvatarUrl.trim() || null,
+        avatar_url: profileAvatarValue.trim() || null,
       })
 
       if (error) {
@@ -2313,13 +2375,22 @@ function App() {
         return
       }
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-      if (!data?.publicUrl) {
-        showMessage('Upload succeeded but could not get image URL.', 'info')
-        return
+      const { data: signedData } = await supabase.storage
+        .from('avatars')
+        .createSignedUrl(path, AVATAR_SIGNED_URL_TTL_SECONDS)
+
+      if (signedData?.signedUrl) {
+        setProfileAvatarUrl(signedData.signedUrl)
+      } else {
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+        if (!data?.publicUrl) {
+          showMessage('Upload succeeded but could not get image URL.', 'info')
+          return
+        }
+        setProfileAvatarUrl(data.publicUrl)
       }
 
-      setProfileAvatarUrl(data.publicUrl)
+      setProfileAvatarValue(path)
       showMessage('Profile picture uploaded. Save profile to apply.', 'success')
     } finally {
       setProfileUploading(false)
