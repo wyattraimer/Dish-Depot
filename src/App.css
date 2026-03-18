@@ -2893,6 +2893,7 @@ body[data-theme='dark'] .shopping-manual-item-text {
 body[data-theme='dark'] .search-box input,
 body[data-theme='dark'] .category-select,
 body[data-theme='dark'] .form-group input,
+body[data-theme='dark'] .profile-auth-form input,
 body[data-theme='dark'] .form-group select,
 body[data-theme='dark'] .form-group textarea,
 body[data-theme='dark'] .toggle-btn,
@@ -2903,6 +2904,14 @@ body[data-theme='dark'] .tools-menu-panel {
   background: #1a2736;
   color: var(--ink-900);
   border-color: rgba(164, 180, 200, 0.28);
+}
+
+body[data-theme='dark'] .profile-auth-form input {
+  color: #1a2736;
+}
+
+body[data-theme='dark'] .profile-auth-form input::placeholder {
+  color: #4f6072;
 }
 
 body[data-theme='dark'] .controls .search-box input,
