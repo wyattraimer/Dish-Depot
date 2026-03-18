@@ -234,6 +234,13 @@ body::before {
   min-width: 0;
 }
 
+.controls-theme-sync-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
 .auth-form {
   display: flex;
   align-items: center;
@@ -2203,10 +2210,15 @@ body::before {
     min-width: 0;
   }
 
-  .theme-switch {
+  .controls-theme-sync-row {
     width: 100%;
-    margin-left: 0;
     justify-content: space-between;
+  }
+
+  .theme-switch {
+    width: auto;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .auth-form,
@@ -2408,9 +2420,9 @@ body::before {
   }
 
   .theme-switch {
-    width: 100%;
+    width: auto;
     margin-left: 0;
-    justify-content: space-between;
+    justify-content: flex-start;
   }
 
   .meal-planner-header {
@@ -2562,13 +2574,17 @@ body::before {
     width: 100%;
   }
 
+  .controls-theme-sync-row {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .auth-signed-in {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .auth-user-link,
-  .auth-sync-pill {
+  .auth-user-link {
     width: 100%;
   }
 

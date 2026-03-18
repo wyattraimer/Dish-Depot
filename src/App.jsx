@@ -3291,23 +3291,28 @@ function App() {
               </div>
 
               <div className="controls-nav-right">
-                <label className="theme-switch" aria-label="Toggle dark mode">
-                  <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
-                  <span className="theme-switch-track">
-                    <span className="theme-switch-knob">
-                      <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
+                <div className="controls-theme-sync-row">
+                  <label className="theme-switch" aria-label="Toggle dark mode">
+                    <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
+                    <span className="theme-switch-track">
+                      <span className="theme-switch-knob">
+                        <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
+                      </span>
                     </span>
-                  </span>
-                  <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-                </label>
+                    <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+                  </label>
+
+                  {hasSupabaseConfig && authUser ? (
+                    <span className="auth-sync-pill" aria-label="Cloud sync enabled">
+                      <i className="fas fa-cloud" />
+                      Sync On
+                    </span>
+                  ) : null}
+                </div>
 
                 {hasSupabaseConfig ? (
                   authUser ? (
                     <div className="auth-signed-in" aria-label="Account">
-                      <span className="auth-sync-pill">
-                        <i className="fas fa-cloud" />
-                        Sync On
-                      </span>
                       <button
                         className="auth-user-email auth-user-link"
                         type="button"
