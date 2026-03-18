@@ -2239,10 +2239,6 @@ function App() {
   }
 
   function openProfileModal() {
-    if (!authUser) {
-      return
-    }
-
     setIsProfileModalOpen(true)
   }
 
@@ -3311,91 +3307,16 @@ function App() {
                 </div>
 
                 {hasSupabaseConfig ? (
-                  authUser ? (
-                    <div className="auth-signed-in" aria-label="Account">
-                      <button
-                        className="auth-user-email auth-user-link"
-                        type="button"
-                        title="Open profile"
-                        onClick={openProfileModal}
-                      >
-                        {profileAvatarUrl ? (
-                          <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
-                        ) : (
-                          authUser.email || 'Signed in'
-                        )}
-                      </button>
-                      <button className="btn btn-secondary btn-small" type="button" onClick={handleSignOut}>
-                        <i className="fas fa-right-from-bracket" />
-                        Sign Out
-                      </button>
-                    </div>
-                  ) : (
-                    <form className="auth-form" onSubmit={handleAuthSubmit}>
-                      <p className="auth-form-caption">Sign in to sync recipes and share with others.</p>
-
-                      <div className="auth-mode-toggle" role="group" aria-label="Authentication mode">
-                        <button
-                          className={`btn btn-small ${authMode === 'signin' ? 'btn-primary' : 'btn-secondary'}`}
-                          type="button"
-                          onClick={() => setAuthMode('signin')}
-                        >
-                          Sign In
-                        </button>
-                        <button
-                          className={`btn btn-small ${authMode === 'signup' ? 'btn-primary' : 'btn-secondary'}`}
-                          type="button"
-                          onClick={() => setAuthMode('signup')}
-                        >
-                          Sign Up
-                        </button>
-                      </div>
-
-                      <div className="auth-input-row">
-                        {authMode === 'signup' ? (
-                          <>
-                            <input
-                              type="text"
-                              value={authDisplayName}
-                              onChange={(event) => setAuthDisplayName(event.target.value)}
-                              placeholder="Display name (optional)"
-                              autoComplete="name"
-                            />
-                            <input
-                              type="text"
-                              value={authUsername}
-                              onChange={(event) => setAuthUsername(event.target.value.toLowerCase())}
-                              placeholder="Username"
-                              autoComplete="username"
-                              minLength={3}
-                              required
-                            />
-                          </>
-                        ) : null}
-
-                        <input
-                          type="email"
-                          value={authEmail}
-                          onChange={(event) => setAuthEmail(event.target.value)}
-                          placeholder="Email"
-                          autoComplete="email"
-                          required
-                        />
-                        <input
-                          type="password"
-                          value={authPassword}
-                          onChange={(event) => setAuthPassword(event.target.value)}
-                          placeholder="Password"
-                          autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
-                          minLength={6}
-                          required
-                        />
-                        <button className="btn btn-primary btn-small" type="submit" disabled={authBusy}>
-                          {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
-                        </button>
-                      </div>
-                    </form>
-                  )
+                  <button className="auth-user-email auth-user-link" type="button" title="Open account" onClick={openProfileModal}>
+                    {authUser && profileAvatarUrl ? (
+                      <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
+                    ) : (
+                      <>
+                        <i className="fas fa-user" />
+                        {authUser?.email || 'Account'}
+                      </>
+                    )}
+                  </button>
                 ) : (
                   <span className="auth-config-note">Cloud sync disabled</span>
                 )}
@@ -4151,63 +4072,144 @@ function App() {
               &times;
             </span>
             <h2>Profile</h2>
-            <p className="profile-modal-subtitle">Update how other Dish Depot users find and recognize you.</p>
+            {authUser ? (
+              <>
+                <p className="profile-modal-subtitle">Update how other Dish Depot users find and recognize you.</p>
 
-            <form className="profile-form" onSubmit={handleProfileSave}>
-              <div className="profile-avatar-row">
-                <img
-                  className="profile-avatar-preview"
-                  src={profileAvatarUrl || dishDepotLogo}
-                  alt="Profile avatar preview"
-                />
-                <div className="profile-avatar-actions">
-                  <label htmlFor="profileAvatarUpload">Profile Picture</label>
-                  <input
-                    id="profileAvatarUpload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={profileUploading}
-                  />
-                  <small>{profileUploading ? 'Uploading image...' : 'Upload JPG/PNG/WEBP from this device.'}</small>
-                </div>
-              </div>
+                <form className="profile-form" onSubmit={handleProfileSave}>
+                  <div className="profile-avatar-row">
+                    <img
+                      className="profile-avatar-preview"
+                      src={profileAvatarUrl || dishDepotLogo}
+                      alt="Profile avatar preview"
+                    />
+                    <div className="profile-avatar-actions">
+                      <label htmlFor="profileAvatarUpload">Profile Picture</label>
+                      <input
+                        id="profileAvatarUpload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        disabled={profileUploading}
+                      />
+                      <small>{profileUploading ? 'Uploading image...' : 'Upload JPG/PNG/WEBP from this device.'}</small>
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label htmlFor="profileDisplayName">Display Name</label>
-                <input
-                  id="profileDisplayName"
-                  type="text"
-                  value={profileDisplayName}
-                  onChange={(event) => setProfileDisplayName(event.target.value)}
-                  placeholder="How your name appears"
-                  autoComplete="name"
-                />
-              </div>
+                  <div className="form-group">
+                    <label htmlFor="profileDisplayName">Display Name</label>
+                    <input
+                      id="profileDisplayName"
+                      type="text"
+                      value={profileDisplayName}
+                      onChange={(event) => setProfileDisplayName(event.target.value)}
+                      placeholder="How your name appears"
+                      autoComplete="name"
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label htmlFor="profileUsername">Username</label>
-                <input
-                  id="profileUsername"
-                  type="text"
-                  required
-                  minLength={3}
-                  value={profileUsername}
-                  onChange={(event) => setProfileUsername(event.target.value.toLowerCase())}
-                  placeholder="username"
-                  autoComplete="username"
-                />
-              </div>
+                  <div className="form-group">
+                    <label htmlFor="profileUsername">Username</label>
+                    <input
+                      id="profileUsername"
+                      type="text"
+                      required
+                      minLength={3}
+                      value={profileUsername}
+                      onChange={(event) => setProfileUsername(event.target.value.toLowerCase())}
+                      placeholder="username"
+                      autoComplete="username"
+                    />
+                  </div>
 
-              <div className="profile-form-actions">
-                <button className="btn btn-secondary" type="button" onClick={closeProfileModal}>
-                  Close
-                </button>
-                <button className="btn btn-primary" type="submit" disabled={profileBusy || profileUploading}>
-                  {profileBusy ? 'Saving...' : 'Save Profile'}
-                </button>
-              </div>
-            </form>
+                  <div className="profile-form-actions">
+                    <button className="btn btn-secondary" type="button" onClick={closeProfileModal}>
+                      Close
+                    </button>
+                    <button className="btn btn-secondary" type="button" onClick={handleSignOut}>
+                      <i className="fas fa-right-from-bracket" />
+                      Sign Out
+                    </button>
+                    <button className="btn btn-primary" type="submit" disabled={profileBusy || profileUploading}>
+                      {profileBusy ? 'Saving...' : 'Save Profile'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <>
+                <p className="profile-modal-subtitle">Sign in to sync recipes, sharing, and your account profile.</p>
+
+                <form className="profile-auth-form" onSubmit={handleAuthSubmit}>
+                  <div className="auth-mode-toggle" role="group" aria-label="Authentication mode">
+                    <button
+                      className={`btn btn-small ${authMode === 'signin' ? 'btn-primary' : 'btn-secondary'}`}
+                      type="button"
+                      onClick={() => setAuthMode('signin')}
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      className={`btn btn-small ${authMode === 'signup' ? 'btn-primary' : 'btn-secondary'}`}
+                      type="button"
+                      onClick={() => setAuthMode('signup')}
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+
+                  <div className="auth-input-row profile-auth-fields">
+                    {authMode === 'signup' ? (
+                      <>
+                        <input
+                          type="text"
+                          value={authDisplayName}
+                          onChange={(event) => setAuthDisplayName(event.target.value)}
+                          placeholder="Display name (optional)"
+                          autoComplete="name"
+                        />
+                        <input
+                          type="text"
+                          value={authUsername}
+                          onChange={(event) => setAuthUsername(event.target.value.toLowerCase())}
+                          placeholder="Username"
+                          autoComplete="username"
+                          minLength={3}
+                          required
+                        />
+                      </>
+                    ) : null}
+
+                    <input
+                      type="email"
+                      value={authEmail}
+                      onChange={(event) => setAuthEmail(event.target.value)}
+                      placeholder="Email"
+                      autoComplete="email"
+                      required
+                    />
+                    <input
+                      type="password"
+                      value={authPassword}
+                      onChange={(event) => setAuthPassword(event.target.value)}
+                      placeholder="Password"
+                      autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                      minLength={6}
+                      required
+                    />
+                  </div>
+
+                  <div className="profile-form-actions">
+                    <button className="btn btn-secondary" type="button" onClick={closeProfileModal}>
+                      Close
+                    </button>
+                    <button className="btn btn-primary" type="submit" disabled={authBusy}>
+                      {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       ) : null}

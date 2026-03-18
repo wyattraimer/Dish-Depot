@@ -265,7 +265,8 @@ body::before {
   min-width: 0;
 }
 
-.auth-form input {
+.auth-form input,
+.profile-auth-form input {
   min-width: 150px;
   border: 1px solid var(--border-soft);
   border-radius: 999px;
@@ -279,7 +280,8 @@ body::before {
   flex: 1 1 170px;
 }
 
-.auth-form input:focus {
+.auth-form input:focus,
+.profile-auth-form input:focus {
   outline: none;
   border-color: rgba(114, 165, 138, 0.9);
   box-shadow: 0 0 0 3px rgba(114, 165, 138, 0.14);
@@ -1465,6 +1467,17 @@ body::before {
 .profile-form {
   display: grid;
   gap: 0.72rem;
+}
+
+.profile-auth-form {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.profile-auth-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
 }
 
 .profile-avatar-row {
