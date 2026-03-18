@@ -1381,9 +1381,6 @@ function App() {
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
       setSharedRecipes([])
-      if (recipeScope === 'shared') {
-        setRecipeScope('mine')
-      }
       return
     }
 
@@ -1406,9 +1403,6 @@ function App() {
 
       if (!Array.isArray(shareRows) || shareRows.length === 0) {
         setSharedRecipes([])
-        if (recipeScope === 'shared') {
-          setRecipeScope('mine')
-        }
         return
       }
 
@@ -3713,13 +3707,21 @@ function App() {
             ) : (
               <section className="no-recipes">
                 <i className="fas fa-cookie-bite" />
-                <h2>{recipes.length > 0 ? 'No recipes found' : 'No recipes yet!'}</h2>
+                <h2>
+                  {recipeScope === 'shared'
+                    ? 'No shared recipes yet'
+                    : recipes.length > 0
+                      ? 'No recipes found'
+                      : 'No recipes yet!'}
+                </h2>
                 <p>
-                  {recipes.length > 0
-                    ? 'Try adjusting your search terms.'
-                    : 'Start building your collection by adding your favorite recipe websites.'}
+                  {recipeScope === 'shared'
+                    ? 'No one has shared a recipe with you yet. Shared recipes will appear here.'
+                    : recipes.length > 0
+                      ? 'Try adjusting your search terms.'
+                      : 'Start building your collection by adding your favorite recipe websites.'}
                 </p>
-                {recipes.length === 0 ? (
+                {recipeScope !== 'shared' && recipes.length === 0 ? (
                   <button className="btn btn-primary" type="button" onClick={() => openModal()}>
                     <i className="fas fa-plus" />
                     Add Your First Recipe
