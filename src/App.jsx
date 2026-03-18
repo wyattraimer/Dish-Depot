@@ -4123,9 +4123,6 @@ function App() {
                   </div>
 
                   <div className="profile-form-actions">
-                    <button className="btn btn-secondary" type="button" onClick={closeProfileModal}>
-                      Close
-                    </button>
                     <button className="btn btn-secondary" type="button" onClick={handleSignOut}>
                       <i className="fas fa-right-from-bracket" />
                       Sign Out
@@ -4200,9 +4197,6 @@ function App() {
                   </div>
 
                   <div className="profile-form-actions">
-                    <button className="btn btn-secondary" type="button" onClick={closeProfileModal}>
-                      Close
-                    </button>
                     <button className="btn btn-primary" type="submit" disabled={authBusy}>
                       {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
                     </button>
