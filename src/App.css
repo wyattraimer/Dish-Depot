@@ -310,6 +310,18 @@ body::before {
   cursor: pointer;
   font: inherit;
   text-align: left;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(90, 105, 122, 0.3);
+  background: #fff;
 }
 
 .auth-user-link:hover {
@@ -2808,6 +2820,11 @@ body[data-theme='dark'] .auth-sync-pill {
   color: #cfe9dc;
   border-color: rgba(134, 186, 160, 0.34);
   background: #1d3a33;
+}
+
+body[data-theme='dark'] .auth-user-avatar {
+  border-color: rgba(164, 180, 200, 0.36);
+  background: #1a2736;
 }
 
 body[data-theme='dark'] .profile-avatar-row {

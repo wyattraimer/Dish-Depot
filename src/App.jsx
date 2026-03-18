@@ -3314,7 +3314,11 @@ function App() {
                         title="Open profile"
                         onClick={openProfileModal}
                       >
-                        {authUser.email || 'Signed in'}
+                        {profileAvatarUrl ? (
+                          <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
+                        ) : (
+                          authUser.email || 'Signed in'
+                        )}
                       </button>
                       <button className="btn btn-secondary btn-small" type="button" onClick={handleSignOut}>
                         <i className="fas fa-right-from-bracket" />
