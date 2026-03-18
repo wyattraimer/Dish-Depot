@@ -4695,7 +4695,14 @@ function App() {
       </footer>
 
       <FloatingControls
-        canShowFloating={!isModalOpen && !isImportPreviewOpen && !isExportPreviewOpen && !isShoppingListOpen && !focusedRecipe}
+        canShowFloating={
+          !isModalOpen &&
+          !isImportPreviewOpen &&
+          !isExportPreviewOpen &&
+          !isShoppingListOpen &&
+          !focusedRecipe &&
+          !isProfileModalOpen
+        }
         showInstallBtn={showInstallBtn}
         showSwUpdateBanner={showSwUpdateBanner}
         onInstallClick={handleInstallClick}
