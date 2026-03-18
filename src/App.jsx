@@ -1212,7 +1212,31 @@ function App() {
       }
 
       if (error) {
-        showMessage(`Could not load profile: ${error.message}`, 'info')
+        const missingAvatarColumn = String(error.message || '').toLowerCase().includes('avatar_url')
+
+        if (!missingAvatarColumn) {
+          showMessage(`Could not load profile: ${error.message}`, 'info')
+          return
+        }
+
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('profiles')
+          .select('display_name,username')
+          .eq('id', authUser.id)
+          .maybeSingle()
+
+        if (cancelled) {
+          return
+        }
+
+        if (fallbackError) {
+          showMessage(`Could not load profile: ${fallbackError.message}`, 'info')
+          return
+        }
+
+        setProfileDisplayName(fallbackData?.display_name || '')
+        setProfileUsername(fallbackData?.username || '')
+        setProfileAvatarUrl('')
         return
       }
 
