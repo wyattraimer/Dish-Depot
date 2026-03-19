@@ -4871,14 +4871,6 @@ function App() {
         onDismissSwUpdate={() => setShowSwUpdateBanner(false)}
         onAddRecipe={() => openModal()}
       />
-
-      <div className="messages-wrap">
-        {messages.map((message) => (
-          <div key={message.id} className={`message message-${message.type}`}>
-            {message.text}
-          </div>
-        ))}
-      </div>
     </>
   )
 }
