@@ -941,10 +941,6 @@ function FloatingControls({
     window.requestAnimationFrame(step)
   }
 
-  if (!canShowFloating) {
-    return null
-  }
-
   return (
     <>
       {showInstallBtn ? (
@@ -966,7 +962,7 @@ function FloatingControls({
         </div>
       ) : null}
 
-      {showBackToTop && !showSwUpdateBanner ? (
+      {canShowFloating && showBackToTop && !showSwUpdateBanner ? (
         <button
           className={`btn btn-primary back-to-top-btn ${showInstallBtn ? 'back-to-top-btn-has-install' : ''}`}
           type="button"
@@ -978,7 +974,7 @@ function FloatingControls({
         </button>
       ) : null}
 
-      {!showSwUpdateBanner && showAddRecipeFab ? (
+      {canShowFloating && !showSwUpdateBanner && showAddRecipeFab ? (
         <button
           className={`btn btn-primary mobile-add-fab ${showInstallBtn ? 'mobile-add-fab-has-install' : ''} ${showBackToTop ? 'mobile-add-fab-has-top' : ''}`}
           type="button"
