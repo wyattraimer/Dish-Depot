@@ -2683,7 +2683,7 @@ function App() {
   async function handleDeleteRecipe(id) {
     const shouldDelete = window.confirm('Are you sure you want to delete this recipe?')
     if (!shouldDelete) {
-      return
+      return false
     }
 
     setRecipes((prev) => prev.filter((recipe) => recipe.id !== id))
@@ -2699,6 +2699,8 @@ function App() {
     })
 
     await softDeleteRecipeInCloud(id)
+
+    return true
   }
 
   async function togglePinnedRecipe(id) {
@@ -3997,17 +3999,40 @@ function App() {
                 Print / Save PDF
               </button>
               {canManageRecipe(focusedRecipe) ? (
-                <button
-                  className="btn btn-primary"
-                  type="button"
-                  onClick={() => {
-                    openModal(focusedRecipe)
-                    closeFocusedRecipe()
-                  }}
-                >
-                  <i className="fas fa-edit" />
-                  Edit Recipe
-                </button>
+                <>
+                  <button
+                    className={`btn ${focusedRecipe.pinned ? 'btn-pin-active' : 'btn-pin'}`}
+                    type="button"
+                    onClick={() => void togglePinnedRecipe(focusedRecipe.id)}
+                  >
+                    <i className={`fas ${focusedRecipe.pinned ? 'fa-star' : 'fa-star-half-alt'}`} />
+                    {focusedRecipe.pinned ? 'Pinned' : 'Pin'}
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    onClick={() => {
+                      openModal(focusedRecipe)
+                      closeFocusedRecipe()
+                    }}
+                  >
+                    <i className="fas fa-edit" />
+                    Edit Recipe
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    type="button"
+                    onClick={async () => {
+                      const deleted = await handleDeleteRecipe(focusedRecipe.id)
+                      if (deleted) {
+                        closeFocusedRecipe()
+                      }
+                    }}
+                  >
+                    <i className="fas fa-trash" />
+                    Delete
+                  </button>
+                </>
               ) : null}
             </div>
           </article>
