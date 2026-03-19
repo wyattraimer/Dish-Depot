@@ -1839,8 +1839,23 @@ function App() {
   }
 
   async function uploadLocalRecipesToCloud() {
+    if (!hasSupabaseConfig || !supabase) {
+      showMessage('Cloud sync is not configured yet.', 'info')
+      return
+    }
+
+    if (!authUser?.id) {
+      showMessage('Please sign in or create an account first to upload recipes to the cloud.', 'info')
+      return
+    }
+
+    if (!isOnline) {
+      showMessage('You are offline. Reconnect, then upload recipes to the cloud.', 'info')
+      return
+    }
+
     if (!canSyncToCloud()) {
-      showMessage('Sign in and reconnect to upload recipes to cloud.', 'info')
+      showMessage('Cloud sync is unavailable right now. Please try again.', 'info')
       return
     }
 
@@ -3540,7 +3555,7 @@ function App() {
                           type="button"
                           role="menuitem"
                           onClick={() => void uploadLocalRecipesToCloud()}
-                          disabled={!hasSupabaseConfig || !authUser || isBulkUploading}
+                          disabled={!hasSupabaseConfig || isBulkUploading}
                         >
                           <i className="fas fa-cloud-arrow-up" />
                           {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
