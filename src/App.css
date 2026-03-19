@@ -2397,6 +2397,11 @@ body::before {
     padding: 0.65rem 0.68rem;
   }
 
+  .controls-tools-row .ios-install-help {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   .controls-main-actions .btn,
   .controls-filter-group .category-filter,
   .controls-filter-group .results-count {
