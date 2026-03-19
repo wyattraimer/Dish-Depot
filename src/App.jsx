@@ -3389,137 +3389,141 @@ function App() {
               </div>
             </div>
 
-            <div className="controls-search-row">
-              <div className="search-box search-box-prominent">
-                <input
-                  type="text"
-                  placeholder="Search recipes, ingredients, or notes..."
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                />
-                <i className="fas fa-search" />
-              </div>
-            </div>
-
-            <div className="controls-filter-row">
-              <div className="controls-filter-group">
-                <div className="category-filter">
-                  <select
-                    className="category-select"
-                    value={categoryFilter}
-                    onChange={(event) => setCategoryFilter(event.target.value)}
-                  >
-                    <option value="">All Categories</option>
-                    {CATEGORY_OPTIONS.map((category) => (
-                      <option key={category} value={category}>
-                        {formatCategory(category)}
-                      </option>
-                    ))}
-                  </select>
-                  <i className="fas fa-filter" />
-                </div>
-                <div className="results-count" aria-live="polite">
-                  {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
-                </div>
-
-                {hasSupabaseConfig && authUser ? (
-                  <div className="recipe-scope-toggle" role="group" aria-label="Recipe scope">
-                    <button
-                      className={`btn btn-small ${recipeScope === 'mine' ? 'btn-primary' : 'btn-secondary'}`}
-                      type="button"
-                      onClick={() => setRecipeScope('mine')}
-                    >
-                      My Recipes
-                    </button>
-                    <button
-                      className={`btn btn-small ${recipeScope === 'shared' ? 'btn-primary' : 'btn-secondary'}`}
-                      type="button"
-                      onClick={() => setRecipeScope('shared')}
-                    >
-                      Shared With Me
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="controls-main-actions">
-                <button className="btn btn-primary btn-add-inline" type="button" onClick={() => openModal()}>
-                  <i className="fas fa-plus" />
-                  Add Recipe
-                </button>
-                <button className="btn btn-secondary" type="button" onClick={randomizeRecipe}>
-                  <i className="fas fa-dice" />
-                  Random Recipe
-                </button>
-                <button
-                  className={`btn ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
-                  type="button"
-                  onClick={() => setShowPinnedOnly((prev) => !prev)}
-                >
-                  <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
-                  {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
-                </button>
-              </div>
-            </div>
-
-            <div className="controls-utility-row">
-              <div className="controls-tools-row">
-                <details className="tools-menu">
-                  <summary
-                    className="btn btn-secondary btn-tools"
-                    aria-label="Open tools menu"
-                    aria-haspopup="menu"
-                    aria-controls="tools-menu-panel"
-                  >
-                    <i className="fas fa-screwdriver-wrench" />
-                    Tools
-                  </summary>
-                  <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => void uploadLocalRecipesToCloud()}
-                      disabled={!hasSupabaseConfig || !authUser || isBulkUploading}
-                    >
-                      <i className="fas fa-cloud-arrow-up" />
-                      {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
-                    </button>
-                    <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
-                      <i className="fas fa-cart-shopping" />
-                      Shopping List
-                    </button>
-                    <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
-                      <i className="fas fa-download" />
-                      Export
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => importInputRef.current?.click()}
-                    >
-                      <i className="fas fa-upload" />
-                      Import
-                    </button>
+            {activeView === 'recipes' ? (
+              <>
+                <div className="controls-search-row">
+                  <div className="search-box search-box-prominent">
                     <input
-                      ref={importInputRef}
-                      type="file"
-                      accept=".json"
-                      style={{ display: 'none' }}
-                      onChange={handleImportFile}
+                      type="text"
+                      placeholder="Search recipes, ingredients, or notes..."
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
                     />
+                    <i className="fas fa-search" />
                   </div>
-                </details>
-              </div>
+                </div>
 
-              <div className="controls-danger-zone">
-                <button className="btn btn-danger btn-small" type="button" onClick={deleteAllRecipes}>
-                  <i className="fas fa-trash-alt" />
-                  Delete All Recipes
-                </button>
-              </div>
-            </div>
+                <div className="controls-filter-row">
+                  <div className="controls-filter-group">
+                    <div className="category-filter">
+                      <select
+                        className="category-select"
+                        value={categoryFilter}
+                        onChange={(event) => setCategoryFilter(event.target.value)}
+                      >
+                        <option value="">All Categories</option>
+                        {CATEGORY_OPTIONS.map((category) => (
+                          <option key={category} value={category}>
+                            {formatCategory(category)}
+                          </option>
+                        ))}
+                      </select>
+                      <i className="fas fa-filter" />
+                    </div>
+                    <div className="results-count" aria-live="polite">
+                      {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
+                    </div>
+
+                    {hasSupabaseConfig && authUser ? (
+                      <div className="recipe-scope-toggle" role="group" aria-label="Recipe scope">
+                        <button
+                          className={`btn btn-small ${recipeScope === 'mine' ? 'btn-primary' : 'btn-secondary'}`}
+                          type="button"
+                          onClick={() => setRecipeScope('mine')}
+                        >
+                          My Recipes
+                        </button>
+                        <button
+                          className={`btn btn-small ${recipeScope === 'shared' ? 'btn-primary' : 'btn-secondary'}`}
+                          type="button"
+                          onClick={() => setRecipeScope('shared')}
+                        >
+                          Shared With Me
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="controls-main-actions">
+                    <button className="btn btn-primary btn-add-inline" type="button" onClick={() => openModal()}>
+                      <i className="fas fa-plus" />
+                      Add Recipe
+                    </button>
+                    <button className="btn btn-secondary" type="button" onClick={randomizeRecipe}>
+                      <i className="fas fa-dice" />
+                      Random Recipe
+                    </button>
+                    <button
+                      className={`btn ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
+                      type="button"
+                      onClick={() => setShowPinnedOnly((prev) => !prev)}
+                    >
+                      <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
+                      {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="controls-utility-row">
+                  <div className="controls-tools-row">
+                    <details className="tools-menu">
+                      <summary
+                        className="btn btn-secondary btn-tools"
+                        aria-label="Open tools menu"
+                        aria-haspopup="menu"
+                        aria-controls="tools-menu-panel"
+                      >
+                        <i className="fas fa-screwdriver-wrench" />
+                        Tools
+                      </summary>
+                      <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          role="menuitem"
+                          onClick={() => void uploadLocalRecipesToCloud()}
+                          disabled={!hasSupabaseConfig || !authUser || isBulkUploading}
+                        >
+                          <i className="fas fa-cloud-arrow-up" />
+                          {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
+                        </button>
+                        <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
+                          <i className="fas fa-cart-shopping" />
+                          Shopping List
+                        </button>
+                        <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
+                          <i className="fas fa-download" />
+                          Export
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          role="menuitem"
+                          onClick={() => importInputRef.current?.click()}
+                        >
+                          <i className="fas fa-upload" />
+                          Import
+                        </button>
+                        <input
+                          ref={importInputRef}
+                          type="file"
+                          accept=".json"
+                          style={{ display: 'none' }}
+                          onChange={handleImportFile}
+                        />
+                      </div>
+                    </details>
+                  </div>
+
+                  <div className="controls-danger-zone">
+                    <button className="btn btn-danger btn-small" type="button" onClick={deleteAllRecipes}>
+                      <i className="fas fa-trash-alt" />
+                      Delete All Recipes
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : null}
 
             {!isInstalledPwa ? (
               <details className="ios-install-help">
