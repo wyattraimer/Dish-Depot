@@ -1088,6 +1088,8 @@ function App() {
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
+  const profileAvatarEditBtnRef = useRef(null)
+  const profileAvatarMenuRef = useRef(null)
   const networkStatusRef = useRef(navigator.onLine)
   const cloudSyncUserRef = useRef('')
   const cloudMealPlanUserRef = useRef('')
@@ -1679,6 +1681,36 @@ function App() {
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
+
+  useEffect(() => {
+    if (!isAvatarActionMenuOpen) {
+      return undefined
+    }
+
+    const handleOutsideAvatarMenuClick = (event) => {
+      if (!(event.target instanceof Node)) {
+        return
+      }
+
+      if (profileAvatarMenuRef.current?.contains(event.target)) {
+        return
+      }
+
+      if (profileAvatarEditBtnRef.current?.contains(event.target)) {
+        return
+      }
+
+      setIsAvatarActionMenuOpen(false)
+    }
+
+    document.addEventListener('mousedown', handleOutsideAvatarMenuClick)
+    document.addEventListener('touchstart', handleOutsideAvatarMenuClick)
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideAvatarMenuClick)
+      document.removeEventListener('touchstart', handleOutsideAvatarMenuClick)
+    }
+  }, [isAvatarActionMenuOpen])
 
   useEffect(() => {
     setShoppingChecklist((prev) => {
@@ -4239,6 +4271,7 @@ function App() {
                 <form className="profile-form" onSubmit={handleProfileSave}>
                   <div className="profile-avatar-row">
                     <button
+                      ref={profileAvatarEditBtnRef}
                       className="profile-avatar-edit-btn"
                       type="button"
                       onClick={handleAvatarEditClick}
@@ -4265,7 +4298,13 @@ function App() {
                     />
 
                     {isAvatarActionMenuOpen ? (
-                      <div id="profile-avatar-actions-menu" className="profile-avatar-actions-menu" role="menu" aria-label="Profile photo actions">
+                      <div
+                        ref={profileAvatarMenuRef}
+                        id="profile-avatar-actions-menu"
+                        className="profile-avatar-actions-menu"
+                        role="menu"
+                        aria-label="Profile photo actions"
+                      >
                         <button className="btn btn-secondary" type="button" role="menuitem" onClick={handleSelectAvatarPhoto}>
                           <i className="fas fa-image" />
                           Select Photo
