@@ -3048,6 +3048,17 @@ body[data-theme='dark'] .tools-menu-panel {
   border-color: rgba(164, 180, 200, 0.28);
 }
 
+body[data-theme='dark'] .toggle-btn.toggle-btn-active {
+  background: linear-gradient(140deg, var(--tomato-600), var(--tomato-500));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 8px 16px rgba(209, 72, 62, 0.28);
+}
+
+body[data-theme='dark'] .toggle-btn.toggle-btn-active:hover {
+  box-shadow: 0 10px 20px rgba(209, 72, 62, 0.34);
+}
+
 body[data-theme='dark'] .profile-auth-form input {
   background: #f4f7fb;
   color: #1a2736;
