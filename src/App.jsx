@@ -3364,28 +3364,30 @@ function App() {
                     <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
                   </label>
 
-                  {hasSupabaseConfig && authUser ? (
-                    <span className="auth-sync-pill" aria-label="Cloud sync enabled">
-                      <i className="fas fa-cloud" />
-                      Sync On
-                    </span>
-                  ) : null}
-                </div>
+                  <div className="controls-account-row">
+                    {hasSupabaseConfig && authUser ? (
+                      <span className="auth-sync-pill" aria-label="Cloud sync enabled">
+                        <i className="fas fa-cloud" />
+                        Sync On
+                      </span>
+                    ) : null}
 
-                {hasSupabaseConfig ? (
-                  <button className="auth-user-email auth-user-link" type="button" title="Open account" onClick={openProfileModal}>
-                    {authUser && profileAvatarUrl ? (
-                      <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
+                    {hasSupabaseConfig ? (
+                      <button className="auth-user-email auth-user-link" type="button" title="Open account" onClick={openProfileModal}>
+                        {authUser && profileAvatarUrl ? (
+                          <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
+                        ) : (
+                          <>
+                            <i className="fas fa-user" />
+                            {authUser?.email || 'Account'}
+                          </>
+                        )}
+                      </button>
                     ) : (
-                      <>
-                        <i className="fas fa-user" />
-                        {authUser?.email || 'Account'}
-                      </>
+                      <span className="auth-config-note">Cloud sync disabled</span>
                     )}
-                  </button>
-                ) : (
-                  <span className="auth-config-note">Cloud sync disabled</span>
-                )}
+                  </div>
+                </div>
               </div>
             </div>
 
