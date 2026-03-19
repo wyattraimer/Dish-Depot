@@ -990,6 +990,12 @@ body::before {
   font-size: 0.9rem;
 }
 
+.recipe-actions .shared-readonly-pill {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  justify-content: center;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -2874,13 +2880,13 @@ body::before {
   }
 
   .recipe-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.36rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.34rem;
   }
 
   .recipe-actions .btn {
-    min-height: 34px;
-    padding: 0.3rem;
+    min-height: 33px;
+    padding: 0.28rem;
   }
 
   .recipe-actions .btn i {

@@ -3786,6 +3786,21 @@ function App() {
                             <i className="fas fa-print" />
                             <span className="visually-hidden">Print</span>
                           </button>
+                          {canShareRecipe(recipe) && hasSupabaseConfig && authUser ? (
+                            <button
+                              className="btn btn-small btn-secondary"
+                              type="button"
+                              aria-label="Share recipe"
+                              title="Share recipe"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openShareModal(recipe)
+                              }}
+                            >
+                              <i className="fas fa-share-nodes" />
+                              <span className="visually-hidden">Share</span>
+                            </button>
+                          ) : null}
                           {canManage ? (
                             <>
                               <button
