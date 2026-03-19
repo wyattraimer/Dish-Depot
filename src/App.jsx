@@ -1091,6 +1091,7 @@ function App() {
 
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
+  const toolsMenuRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
   const profileAvatarEditBtnRef = useRef(null)
   const profileAvatarMenuRef = useRef(null)
@@ -1732,6 +1733,31 @@ function App() {
       document.removeEventListener('touchstart', handleOutsideAvatarMenuClick)
     }
   }, [isAvatarActionMenuOpen])
+
+  useEffect(() => {
+    const handleOutsideToolsMenuClick = (event) => {
+      if (!(event.target instanceof Node)) {
+        return
+      }
+
+      const toolsMenu = toolsMenuRef.current
+      if (!toolsMenu?.hasAttribute('open')) {
+        return
+      }
+
+      if (toolsMenu.contains(event.target)) {
+        return
+      }
+
+      toolsMenu.removeAttribute('open')
+    }
+
+    document.addEventListener('mousedown', handleOutsideToolsMenuClick)
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideToolsMenuClick)
+    }
+  }, [])
 
   useEffect(() => {
     setShoppingChecklist((prev) => {
@@ -3594,7 +3620,7 @@ function App() {
 
                 <div className="controls-utility-row">
                   <div className="controls-tools-row">
-                    <details className="tools-menu">
+                    <details ref={toolsMenuRef} className="tools-menu">
                       <summary
                         className="btn btn-secondary btn-tools"
                         aria-label="Open tools menu"
