@@ -2827,7 +2827,17 @@ body::before {
   }
 
   .recipe-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.36rem;
+  }
+
+  .recipe-actions .btn {
+    min-height: 34px;
+    padding: 0.3rem;
+  }
+
+  .recipe-actions .btn i {
+    font-size: 0.84rem;
   }
 
   .toggle-buttons {
