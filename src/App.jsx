@@ -1086,6 +1086,7 @@ function App() {
 
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
+  const profileAvatarInputRef = useRef(null)
   const networkStatusRef = useRef(navigator.onLine)
   const cloudSyncUserRef = useRef('')
   const cloudMealPlanUserRef = useRef('')
@@ -2391,6 +2392,36 @@ function App() {
       setProfileUploading(false)
       event.target.value = ''
     }
+  }
+
+  function removeProfileAvatar() {
+    setProfileAvatarValue('')
+    setProfileAvatarUrl('')
+    showMessage('Profile picture removed. Save profile to apply.', 'info')
+  }
+
+  function openAvatarFilePicker() {
+    profileAvatarInputRef.current?.click()
+  }
+
+  function handleAvatarEditClick() {
+    if (profileUploading) {
+      return
+    }
+
+    const hasAvatar = Boolean(profileAvatarValue || profileAvatarUrl)
+    if (!hasAvatar) {
+      openAvatarFilePicker()
+      return
+    }
+
+    const shouldChange = window.confirm('Press OK to choose a new profile picture. Press Cancel to remove your current picture.')
+    if (shouldChange) {
+      openAvatarFilePicker()
+      return
+    }
+
+    removeProfileAvatar()
   }
 
   function openModal(recipe = null) {
@@ -4158,22 +4189,29 @@ function App() {
 
                 <form className="profile-form" onSubmit={handleProfileSave}>
                   <div className="profile-avatar-row">
+                    <button
+                      className="profile-avatar-edit-btn"
+                      type="button"
+                      onClick={handleAvatarEditClick}
+                      disabled={profileUploading}
+                      aria-label="Edit profile picture"
+                    >
+                      <i className="fas fa-pen" />
+                    </button>
                     <img
                       className="profile-avatar-preview"
                       src={profileAvatarUrl || dishDepotLogo}
                       alt="Profile avatar preview"
                     />
-                    <div className="profile-avatar-actions">
-                      <label htmlFor="profileAvatarUpload">Profile Picture</label>
-                      <input
-                        id="profileAvatarUpload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        disabled={profileUploading}
-                      />
-                      <small>{profileUploading ? 'Uploading image...' : 'Upload JPG/PNG/WEBP from this device.'}</small>
-                    </div>
+                    <input
+                      ref={profileAvatarInputRef}
+                      id="profileAvatarUpload"
+                      className="profile-avatar-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      disabled={profileUploading}
+                    />
                   </div>
 
                   <div className="form-group">

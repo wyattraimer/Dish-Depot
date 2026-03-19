@@ -1494,42 +1494,48 @@ body::before {
 }
 
 .profile-avatar-row {
-  display: flex;
-  align-items: center;
-  gap: 0.72rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
   border: 1px solid rgba(90, 105, 122, 0.2);
   border-radius: 12px;
   background: var(--control-surface-light-muted);
-  padding: 0.55rem;
+  padding: 0.7rem;
 }
 
 .profile-avatar-preview {
-  width: 64px;
-  height: 64px;
+  width: 78px;
+  height: 78px;
   border-radius: 50%;
   border: 1px solid rgba(90, 105, 122, 0.3);
   object-fit: cover;
   background: #fff;
 }
 
-.profile-avatar-actions {
-  display: grid;
-  gap: 0.22rem;
+.profile-avatar-edit-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(90, 105, 122, 0.3);
+  background: var(--control-surface-light);
+  color: var(--ink-700);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
-.profile-avatar-actions label {
-  font-size: 0.85rem;
-  color: var(--ink-900);
-  font-weight: 700;
+.profile-avatar-edit-btn:hover {
+  border-color: rgba(114, 165, 138, 0.5);
 }
 
-.profile-avatar-actions input {
-  font-size: 0.8rem;
+.profile-avatar-edit-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(114, 165, 138, 0.16);
 }
 
-.profile-avatar-actions small {
-  font-size: 0.74rem;
-  color: var(--ink-500);
+.profile-avatar-input {
+  display: none;
 }
 
 .profile-form-actions {
@@ -3016,6 +3022,12 @@ body[data-theme='dark'] .profile-avatar-row {
 body[data-theme='dark'] .profile-avatar-preview {
   background: #1a2736;
   border-color: rgba(164, 180, 200, 0.35);
+}
+
+body[data-theme='dark'] .profile-avatar-edit-btn {
+  background: #1a2736;
+  color: #d8e7f5;
+  border-color: rgba(164, 180, 200, 0.34);
 }
 
 body[data-theme='dark'] .share-result-item {
