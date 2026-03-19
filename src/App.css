@@ -491,6 +491,10 @@ body::before {
   padding: 0.62rem 0.74rem;
 }
 
+.controls-tools-row .ios-install-help {
+  margin-top: 0;
+}
+
 .ios-install-help summary {
   display: inline-flex;
   align-items: center;

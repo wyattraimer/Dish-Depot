@@ -3624,29 +3624,29 @@ function App() {
                         />
                       </div>
                     </details>
+
+                    {!isInstalledPwa ? (
+                      <details className="ios-install-help">
+                        <summary>
+                          <i className="fas fa-mobile-screen-button" />
+                          iPhone App Install Tips
+                        </summary>
+                        <p>
+                          Recommended: Use Brave as your default browser to help block ads and popups.
+                        </p>
+                        <ol>
+                          <li>When you want to install this app, open this website in Safari on your iPhone.</li>
+                          <li>Tap the button with three dots on the bottom right.</li>
+                          <li>Tap 'Share' (square with the up arrow).</li>
+                          <li>Tap 'More'.</li>
+                          <li>Select Add to Home Screen.</li>
+                          <li>Tap Add to finish.</li>
+                        </ol>
+                      </details>
+                    ) : null}
                   </div>
                 </div>
               </>
-            ) : null}
-
-            {!isInstalledPwa ? (
-              <details className="ios-install-help">
-                <summary>
-                  <i className="fas fa-mobile-screen-button" />
-                  iPhone App Install Tips
-                </summary>
-                <p>
-                  Recommended: Use Brave as your default browser to help block ads and popups.
-                </p>
-                <ol>
-                  <li>When you want to install this app, open this website in Safari on your iPhone.</li>
-                  <li>Tap the button with three dots on the bottom right.</li>
-                  <li>Tap 'Share' (square with the up arrow).</li>
-                  <li>Tap 'More'.</li>
-                  <li>Select Add to Home Screen.</li>
-                  <li>Tap Add to finish.</li>
-                </ol>
-              </details>
             ) : null}
           </section>
 
