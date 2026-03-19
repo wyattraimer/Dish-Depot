@@ -3562,6 +3562,10 @@ function App() {
                           <i className="fas fa-upload" />
                           Import
                         </button>
+                        <button className="btn btn-danger" type="button" role="menuitem" onClick={deleteAllRecipes}>
+                          <i className="fas fa-trash-alt" />
+                          Delete All Recipes
+                        </button>
                         <input
                           ref={importInputRef}
                           type="file"
@@ -3571,13 +3575,6 @@ function App() {
                         />
                       </div>
                     </details>
-                  </div>
-
-                  <div className="controls-danger-zone">
-                    <button className="btn btn-danger btn-small" type="button" onClick={deleteAllRecipes}>
-                      <i className="fas fa-trash-alt" />
-                      Delete All Recipes
-                    </button>
                   </div>
                 </div>
               </>
