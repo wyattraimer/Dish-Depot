@@ -2396,10 +2396,39 @@ function App() {
     }
   }
 
-  function removeProfileAvatar() {
-    setProfileAvatarValue('')
-    setProfileAvatarUrl('')
-    showMessage('Profile picture removed. Save profile to apply.', 'info')
+  async function removeProfileAvatar() {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      setProfileAvatarValue('')
+      setProfileAvatarUrl('')
+      showMessage('Profile picture removed locally.', 'info')
+      return
+    }
+
+    const previousAvatarValue = profileAvatarValue.trim()
+    const storagePath = extractAvatarStoragePath(previousAvatarValue)
+
+    setProfileUploading(true)
+    try {
+      if (storagePath) {
+        const { error: removeStorageError } = await supabase.storage.from('avatars').remove([storagePath])
+        if (removeStorageError) {
+          showMessage(`Could not remove avatar file: ${removeStorageError.message}`, 'error')
+          return
+        }
+      }
+
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', authUser.id)
+      if (updateError) {
+        showMessage(`Could not remove profile picture: ${updateError.message}`, 'error')
+        return
+      }
+
+      setProfileAvatarValue('')
+      setProfileAvatarUrl('')
+      showMessage('Profile picture removed.', 'success')
+    } finally {
+      setProfileUploading(false)
+    }
   }
 
   function openAvatarFilePicker() {
@@ -2415,9 +2444,9 @@ function App() {
     openAvatarFilePicker()
   }
 
-  function handleRemoveAvatarPhoto() {
+  async function handleRemoveAvatarPhoto() {
     setIsAvatarActionMenuOpen(false)
-    removeProfileAvatar()
+    await removeProfileAvatar()
   }
 
   function openModal(recipe = null) {
