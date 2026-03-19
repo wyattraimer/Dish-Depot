@@ -2258,6 +2258,11 @@ body::before {
     gap: 0.5rem;
   }
 
+  .controls-search-row {
+    margin-top: 0.3rem;
+    margin-bottom: 0.4rem;
+  }
+
   .controls-nav-right {
     width: 100%;
     flex-direction: column;
@@ -2670,6 +2675,11 @@ body::before {
   .controls-filter-group {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .controls-search-row {
+    margin-top: 0.38rem;
+    margin-bottom: 0.48rem;
   }
 
   .controls-nav-right,
