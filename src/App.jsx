@@ -872,6 +872,7 @@ async function resolveAvatarDisplayUrl(value) {
 
 function FloatingControls({
   canShowFloating,
+  showAddRecipeFab,
   showInstallBtn,
   showSwUpdateBanner,
   onInstallClick,
@@ -977,7 +978,7 @@ function FloatingControls({
         </button>
       ) : null}
 
-      {!showSwUpdateBanner ? (
+      {!showSwUpdateBanner && showAddRecipeFab ? (
         <button
           className={`btn btn-primary mobile-add-fab ${showInstallBtn ? 'mobile-add-fab-has-install' : ''} ${showBackToTop ? 'mobile-add-fab-has-top' : ''}`}
           type="button"
@@ -4772,6 +4773,7 @@ function App() {
           !focusedRecipe &&
           !isProfileModalOpen
         }
+        showAddRecipeFab={activeView === 'recipes'}
         showInstallBtn={showInstallBtn}
         showSwUpdateBanner={showSwUpdateBanner}
         onInstallClick={handleInstallClick}
