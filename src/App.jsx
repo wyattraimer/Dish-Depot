@@ -1215,6 +1215,19 @@ function App() {
   }, [focusedRecipe])
 
   useEffect(() => {
+    if (!isProfileModalOpen) {
+      return undefined
+    }
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isProfileModalOpen])
+
+  useEffect(() => {
     const onBeforeInstallPrompt = (event) => {
       event.preventDefault()
       setDeferredPrompt(event)
