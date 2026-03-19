@@ -489,6 +489,7 @@ body::before {
   border-radius: 14px;
   background: var(--control-surface-light);
   padding: 0.62rem 0.74rem;
+  text-align: center;
 }
 
 .controls-tools-row .ios-install-help {
@@ -496,13 +497,17 @@ body::before {
 }
 
 .ios-install-help summary {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  width: 100%;
   gap: 0.45rem;
   cursor: pointer;
   color: var(--ink-900);
   font-size: 0.9rem;
   font-weight: 700;
+  padding: 0.1rem 0.2rem;
+  border-radius: 10px;
 }
 
 .ios-install-help summary::marker {
@@ -517,7 +522,8 @@ body::before {
 
 .ios-install-help ol {
   margin: 0;
-  padding-left: 1.15rem;
+  padding-left: 0;
+  list-style-position: inside;
   color: var(--ink-700);
   font-size: 0.84rem;
   line-height: 1.5;
