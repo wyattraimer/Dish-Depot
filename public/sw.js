@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2'
+const CACHE_VERSION = 'v3'
 const CACHE_NAME = `dish-depot-${CACHE_VERSION}`
 const withScope = (path = '') => new URL(path, self.registration.scope).toString()
 const OFFLINE_URL = withScope('offline.html')
