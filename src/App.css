@@ -1494,27 +1494,32 @@ body::before {
 }
 
 .profile-avatar-row {
-  display: grid;
-  justify-items: center;
-  gap: 0.5rem;
+  position: relative;
+  width: 88px;
+  height: 88px;
   border: 1px solid rgba(90, 105, 122, 0.2);
-  border-radius: 12px;
+  border-radius: 50%;
   background: var(--control-surface-light-muted);
-  padding: 0.7rem;
+  overflow: visible;
+  justify-self: center;
 }
 
 .profile-avatar-preview {
-  width: 78px;
-  height: 78px;
+  width: 100%;
+  height: 100%;
+  display: block;
   border-radius: 50%;
-  border: 1px solid rgba(90, 105, 122, 0.3);
+  border: none;
   object-fit: cover;
   background: #fff;
 }
 
 .profile-avatar-edit-btn {
-  width: 34px;
-  height: 34px;
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   border: 1px solid rgba(90, 105, 122, 0.3);
   background: var(--control-surface-light);
@@ -1523,6 +1528,8 @@ body::before {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  z-index: 1;
+  box-shadow: 0 2px 6px rgba(22, 29, 38, 0.18);
 }
 
 .profile-avatar-edit-btn:hover {
@@ -2718,13 +2725,18 @@ body::before {
   }
 
   .profile-avatar-row {
-    align-items: flex-start;
-    flex-direction: column;
+    width: 74px;
+    height: 74px;
   }
 
   .profile-avatar-preview {
-    width: 58px;
-    height: 58px;
+    width: 100%;
+    height: 100%;
+  }
+
+  .profile-avatar-edit-btn {
+    width: 26px;
+    height: 26px;
   }
 
   .profile-form-actions {
