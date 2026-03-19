@@ -3684,72 +3684,84 @@ function App() {
                               <button
                                 className="btn btn-small btn-visit"
                                 type="button"
+                                aria-label="Visit recipe"
+                                title="Visit recipe"
                                 onClick={(event) => {
                                   event.stopPropagation()
                                   visitRecipe(recipe.url)
                                 }}
                               >
                                 <i className="fas fa-external-link-alt" />
-                                Visit
+                                <span className="visually-hidden">Visit</span>
                               </button>
                               <button
                                 className="btn btn-small btn-copy"
                                 type="button"
+                                aria-label="Copy recipe URL"
+                                title="Copy recipe URL"
                                 onClick={(event) => {
                                   event.stopPropagation()
                                   copyRecipeUrl(recipe.url)
                                 }}
                               >
                                 <i className="fas fa-copy" />
-                                Copy URL
+                                <span className="visually-hidden">Copy URL</span>
                               </button>
                             </>
                           ) : null}
                           <button
                             className="btn btn-small btn-print"
                             type="button"
+                            aria-label="Print recipe"
+                            title="Print recipe"
                             onClick={(event) => {
                               event.stopPropagation()
                               printRecipesAsPdf([recipe])
                             }}
                           >
                             <i className="fas fa-print" />
-                            Print
+                            <span className="visually-hidden">Print</span>
                           </button>
                           {canManage ? (
                             <>
                               <button
                                 className={`btn btn-small ${recipe.pinned ? 'btn-pin-active' : 'btn-pin'}`}
                                 type="button"
+                                aria-label={recipe.pinned ? 'Unpin recipe' : 'Pin recipe'}
+                                title={recipe.pinned ? 'Unpin recipe' : 'Pin recipe'}
                                 onClick={(event) => {
                                   event.stopPropagation()
                                   void togglePinnedRecipe(recipe.id)
                                 }}
                               >
                                 <i className={`fas ${recipe.pinned ? 'fa-star' : 'fa-star-half-alt'}`} />
-                                {recipe.pinned ? 'Pinned' : 'Pin'}
+                                <span className="visually-hidden">{recipe.pinned ? 'Pinned' : 'Pin'}</span>
                               </button>
                               <button
                                 className="btn btn-small btn-primary"
                                 type="button"
+                                aria-label="Edit recipe"
+                                title="Edit recipe"
                                 onClick={(event) => {
                                   event.stopPropagation()
                                   openModal(recipe)
                                 }}
                               >
                                 <i className="fas fa-edit" />
-                                Edit
+                                <span className="visually-hidden">Edit</span>
                               </button>
                               <button
                                 className="btn btn-small btn-danger"
                                 type="button"
+                                aria-label="Delete recipe"
+                                title="Delete recipe"
                                 onClick={(event) => {
                                   event.stopPropagation()
                                   void handleDeleteRecipe(recipe.id)
                                 }}
                               >
                                 <i className="fas fa-trash" />
-                                Delete
+                                <span className="visually-hidden">Delete</span>
                               </button>
                             </>
                           ) : (
