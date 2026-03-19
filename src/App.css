@@ -909,6 +909,10 @@ body::before {
   gap: 0.68rem;
 }
 
+.recipe-body.recipe-body-compact {
+  gap: 0.52rem;
+}
+
 .recipe-image {
   width: 100%;
   max-height: 200px;

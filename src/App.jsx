@@ -127,6 +127,7 @@ const DEFAULT_RECIPES = [
 const STORAGE_KEY = 'recipeBookmarks'
 const THEME_KEY = 'recipeTheme'
 const MEAL_PLAN_KEY = 'recipeMealPlan'
+const CARD_VIEW_COMPACT_KEY = 'recipeCardViewCompact'
 const FALLBACK_API_BASE =
   import.meta.env.PROD && window.location.hostname.endsWith('coloradomesa.edu')
     ? 'https://recipes-zmky.onrender.com/api'
@@ -1008,6 +1009,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [showPinnedOnly, setShowPinnedOnly] = useState(false)
+  const [isCompactCardView, setIsCompactCardView] = useState(() => localStorage.getItem(CARD_VIEW_COMPACT_KEY) === '1')
   const [activeView, setActiveView] = useState('recipes')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [focusedRecipe, setFocusedRecipe] = useState(null)
@@ -1173,6 +1175,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(mealPlan))
   }, [mealPlan])
+
+  useEffect(() => {
+    localStorage.setItem(CARD_VIEW_COMPACT_KEY, isCompactCardView ? '1' : '0')
+  }, [isCompactCardView])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -3620,6 +3626,16 @@ function App() {
                         <button
                           className="btn btn-secondary"
                           type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={isCompactCardView}
+                          onClick={() => setIsCompactCardView((prev) => !prev)}
+                        >
+                          <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
+                          Compact Card View
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
                           role="menuitem"
                           onClick={() => importInputRef.current?.click()}
                         >
@@ -3705,12 +3721,12 @@ function App() {
                         </div>
                       </div>
 
-                      <div className="recipe-body">
+                      <div className={`recipe-body ${isCompactCardView ? 'recipe-body-compact' : ''}`}>
                         {recipe.image ? <img src={recipe.image} alt={recipe.name} className="recipe-image" /> : null}
 
-                        {recipe.notes ? <p className="recipe-notes">{recipe.notes}</p> : null}
+                        {!isCompactCardView && recipe.notes ? <p className="recipe-notes">{recipe.notes}</p> : null}
 
-                        {hasDetailedRecipe ? (
+                        {!isCompactCardView && hasDetailedRecipe ? (
                           <>
                             {hasIngredients ? (
                               <div className="recipe-section">
