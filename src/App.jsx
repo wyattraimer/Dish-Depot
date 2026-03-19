@@ -876,6 +876,7 @@ function FloatingControls({
   showInstallBtn,
   showSwUpdateBanner,
   onInstallClick,
+  onDismissInstall,
   onTriggerSwUpdate,
   onDismissSwUpdate,
   onAddRecipe,
@@ -944,10 +945,15 @@ function FloatingControls({
   return (
     <>
       {showInstallBtn ? (
-        <button id="pwaInstallBtn" className="btn btn-secondary pwa-install-btn" type="button" onClick={onInstallClick}>
-          <i className="fas fa-download" />
-          Install App
-        </button>
+        <div className="pwa-install-wrap" role="group" aria-label="Install app prompt">
+          <button id="pwaInstallBtn" className="btn btn-secondary pwa-install-btn" type="button" onClick={onInstallClick}>
+            <i className="fas fa-download" />
+            Install App
+          </button>
+          <button className="pwa-install-dismiss" type="button" onClick={onDismissInstall} aria-label="Dismiss install app prompt">
+            <i className="fas fa-times" />
+          </button>
+        </div>
       ) : null}
 
       {showSwUpdateBanner ? (
@@ -4926,6 +4932,7 @@ function App() {
         showInstallBtn={showInstallBtn}
         showSwUpdateBanner={showSwUpdateBanner}
         onInstallClick={handleInstallClick}
+        onDismissInstall={() => setShowInstallBtn(false)}
         onTriggerSwUpdate={triggerSwUpdate}
         onDismissSwUpdate={() => setShowSwUpdateBanner(false)}
         onAddRecipe={() => openModal()}

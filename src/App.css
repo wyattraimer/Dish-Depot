@@ -2057,11 +2057,40 @@ body::before {
   color: var(--tomato-600);
 }
 
-.pwa-install-btn {
+.pwa-install-wrap {
   position: fixed;
   right: 16px;
   bottom: 16px;
   z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.pwa-install-btn {
+  position: static;
+}
+
+.pwa-install-dismiss {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--control-surface-light);
+  color: var(--ink-700);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.pwa-install-dismiss:hover {
+  border-color: rgba(114, 165, 138, 0.5);
+}
+
+.pwa-install-dismiss:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(114, 165, 138, 0.16);
 }
 
 .sw-update-banner {
@@ -2881,12 +2910,22 @@ body::before {
     min-width: 0;
   }
 
-  .pwa-install-btn {
+  .pwa-install-wrap {
     right: 12px;
     left: 12px;
     width: auto;
     bottom: 10px;
+    justify-content: space-between;
+  }
+
+  .pwa-install-btn {
     min-height: 48px;
+    flex: 1 1 auto;
+  }
+
+  .pwa-install-dismiss {
+    width: 40px;
+    height: 40px;
   }
 
   .main {
@@ -3116,6 +3155,12 @@ body[data-theme='dark'] .profile-avatar-edit-btn {
 
 body[data-theme='dark'] .profile-avatar-actions-menu {
   background: #1a2736;
+  border-color: rgba(164, 180, 200, 0.34);
+}
+
+body[data-theme='dark'] .pwa-install-dismiss {
+  background: #1a2736;
+  color: #d8e7f5;
   border-color: rgba(164, 180, 200, 0.34);
 }
 
