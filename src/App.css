@@ -2246,8 +2246,10 @@ body::before {
 
   .auth-user-link {
     min-width: 0;
-    max-width: 100%;
-    flex: 1 1 auto;
+    width: auto;
+    max-width: min(100%, 280px);
+    flex: 0 1 auto;
+    align-self: flex-start;
   }
 
   .auth-input-row {
@@ -2598,7 +2600,9 @@ body::before {
   }
 
   .auth-user-link {
-    width: 100%;
+    width: auto;
+    max-width: min(100%, 260px);
+    align-self: flex-start;
   }
 
   .controls-main-actions {
