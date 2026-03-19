@@ -1545,6 +1545,26 @@ body::before {
   display: none;
 }
 
+.profile-avatar-actions-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  display: grid;
+  gap: 0.4rem;
+  min-width: 150px;
+  padding: 0.45rem;
+  border-radius: 12px;
+  border: 1px solid rgba(90, 105, 122, 0.24);
+  background: var(--control-surface-light);
+  box-shadow: 0 10px 26px rgba(26, 33, 43, 0.18);
+  z-index: 4;
+}
+
+.profile-avatar-actions-menu .btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+
 .profile-form-actions {
   display: flex;
   justify-content: flex-end;
@@ -3039,6 +3059,11 @@ body[data-theme='dark'] .profile-avatar-preview {
 body[data-theme='dark'] .profile-avatar-edit-btn {
   background: #1a2736;
   color: #d8e7f5;
+  border-color: rgba(164, 180, 200, 0.34);
+}
+
+body[data-theme='dark'] .profile-avatar-actions-menu {
+  background: #1a2736;
   border-color: rgba(164, 180, 200, 0.34);
 }
 

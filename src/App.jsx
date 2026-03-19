@@ -1035,6 +1035,7 @@ function App() {
   const [profileUsername, setProfileUsername] = useState('')
   const [profileAvatarValue, setProfileAvatarValue] = useState('')
   const [profileAvatarUrl, setProfileAvatarUrl] = useState('')
+  const [isAvatarActionMenuOpen, setIsAvatarActionMenuOpen] = useState(false)
   const [profileBusy, setProfileBusy] = useState(false)
   const [profileUploading, setProfileUploading] = useState(false)
   const [recipeScope, setRecipeScope] = useState('mine')
@@ -2302,6 +2303,7 @@ function App() {
 
   function closeProfileModal() {
     setIsProfileModalOpen(false)
+    setIsAvatarActionMenuOpen(false)
     setProfileBusy(false)
     setProfileUploading(false)
   }
@@ -2405,22 +2407,16 @@ function App() {
   }
 
   function handleAvatarEditClick() {
-    if (profileUploading) {
-      return
-    }
+    setIsAvatarActionMenuOpen((prev) => !prev)
+  }
 
-    const hasAvatar = Boolean(profileAvatarValue || profileAvatarUrl)
-    if (!hasAvatar) {
-      openAvatarFilePicker()
-      return
-    }
+  function handleSelectAvatarPhoto() {
+    setIsAvatarActionMenuOpen(false)
+    openAvatarFilePicker()
+  }
 
-    const shouldChange = window.confirm('Press OK to choose a new profile picture. Press Cancel to remove your current picture.')
-    if (shouldChange) {
-      openAvatarFilePicker()
-      return
-    }
-
+  function handleRemoveAvatarPhoto() {
+    setIsAvatarActionMenuOpen(false)
     removeProfileAvatar()
   }
 
@@ -4195,6 +4191,8 @@ function App() {
                       onClick={handleAvatarEditClick}
                       disabled={profileUploading}
                       aria-label="Edit profile picture"
+                      aria-expanded={isAvatarActionMenuOpen}
+                      aria-controls="profile-avatar-actions-menu"
                     >
                       <i className="fas fa-pen" />
                     </button>
@@ -4212,6 +4210,25 @@ function App() {
                       onChange={handleAvatarUpload}
                       disabled={profileUploading}
                     />
+
+                    {isAvatarActionMenuOpen ? (
+                      <div id="profile-avatar-actions-menu" className="profile-avatar-actions-menu" role="menu" aria-label="Profile photo actions">
+                        <button className="btn btn-secondary" type="button" role="menuitem" onClick={handleSelectAvatarPhoto}>
+                          <i className="fas fa-image" />
+                          Select Photo
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          role="menuitem"
+                          onClick={handleRemoveAvatarPhoto}
+                          disabled={!profileAvatarValue && !profileAvatarUrl}
+                        >
+                          <i className="fas fa-trash" />
+                          Remove Photo
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="form-group">
