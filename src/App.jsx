@@ -3600,7 +3600,7 @@ function App() {
                         ) : (
                           <>
                             <i className="fas fa-user" />
-                            {authUser?.email || 'Account'}
+                            {isOnline ? authUser?.email || 'Account' : null}
                           </>
                         )}
                       </button>
