@@ -1589,27 +1589,31 @@ function App() {
       }, 3000)
     }
 
-    const onOnline = () => setOnlineStatus(true, true)
+    const onOnline = () => {
+      void verifyReachability({ notify: true })
+    }
     const onOffline = () => setOnlineStatus(false, true)
 
-    const verifyReachability = async () => {
+    const verifyReachability = async ({ notify = false } = {}) => {
       if (!navigator.onLine) {
-        setOnlineStatus(false, false)
+        setOnlineStatus(false, notify)
         return
       }
 
       const controller = new AbortController()
       const timeoutId = window.setTimeout(() => controller.abort(), 3200)
+      const probeUrl = `${API_BASE}/health?_=${Date.now()}`
 
       try {
-        const response = await fetch(`${API_BASE}/health`, {
+        const response = await fetch(probeUrl, {
           method: 'GET',
           cache: 'no-store',
+          headers: { pragma: 'no-cache', 'cache-control': 'no-cache' },
           signal: controller.signal,
         })
-        setOnlineStatus(response.ok, false)
+        setOnlineStatus(response.ok, notify)
       } catch {
-        setOnlineStatus(false, false)
+        setOnlineStatus(false, notify)
       } finally {
         window.clearTimeout(timeoutId)
       }
@@ -1617,7 +1621,10 @@ function App() {
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        setOnlineStatus(navigator.onLine, false)
+        if (!navigator.onLine) {
+          setOnlineStatus(false, false)
+          return
+        }
         void verifyReachability()
       }
     }
@@ -1628,8 +1635,8 @@ function App() {
     window.addEventListener('pageshow', onVisibilityChange)
     document.addEventListener('visibilitychange', onVisibilityChange)
 
-    networkStatusRef.current = navigator.onLine
-    setIsOnline(navigator.onLine)
+    networkStatusRef.current = false
+    setIsOnline(false)
     void verifyReachability()
 
     return () => {
@@ -1824,7 +1831,7 @@ function App() {
   }
 
   function canSyncToCloud() {
-    return Boolean(hasSupabaseConfig && supabase && authUser?.id && isOnline && navigator.onLine)
+    return Boolean(hasSupabaseConfig && supabase && authUser?.id && isOnline)
   }
 
   async function syncMealPlanSlotToCloud(day, slot, recipeId) {
@@ -3530,7 +3537,7 @@ function App() {
         </div>
       </header>
 
-      {!(isOnline && navigator.onLine) ? (
+      {!isOnline ? (
         <div className="app-offline-banner" role="status" aria-live="polite">
           <div className="container">You are offline. Cloud sync and URL extraction are temporarily unavailable.</div>
         </div>
@@ -3574,11 +3581,11 @@ function App() {
                   <div className="controls-account-row">
                     {hasSupabaseConfig && authUser ? (
                       <span
-                        className={`auth-sync-pill ${isOnline && navigator.onLine ? '' : 'auth-sync-pill-offline'}`}
-                        aria-label={isOnline && navigator.onLine ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
+                        className={`auth-sync-pill ${isOnline ? '' : 'auth-sync-pill-offline'}`}
+                        aria-label={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
                       >
-                        <i className={`fas ${isOnline && navigator.onLine ? 'fa-cloud' : 'fa-cloud-slash'}`} />
-                        {isOnline && navigator.onLine ? 'Sync On' : 'Sync Off'}
+                        <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
+                        {isOnline ? 'Sync On' : 'Sync Off'}
                       </span>
                     ) : null}
 
