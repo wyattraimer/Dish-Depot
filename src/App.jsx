@@ -128,6 +128,7 @@ const STORAGE_KEY = 'recipeBookmarks'
 const THEME_KEY = 'recipeTheme'
 const MEAL_PLAN_KEY = 'recipeMealPlan'
 const CARD_VIEW_COMPACT_KEY = 'recipeCardViewCompact'
+const WELCOME_DISMISSED_KEY = 'dishDepotWelcomeDismissed'
 const FALLBACK_API_BASE =
   import.meta.env.PROD && window.location.hostname.endsWith('coloradomesa.edu')
     ? 'https://recipes-zmky.onrender.com/api'
@@ -1011,6 +1012,7 @@ function App() {
   const [showPinnedOnly, setShowPinnedOnly] = useState(false)
   const [isCompactCardView, setIsCompactCardView] = useState(() => localStorage.getItem(CARD_VIEW_COMPACT_KEY) === '1')
   const [activeView, setActiveView] = useState('recipes')
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [focusedRecipe, setFocusedRecipe] = useState(null)
   const [currentEditingId, setCurrentEditingId] = useState(null)
@@ -1168,6 +1170,16 @@ function App() {
     () => unresolvedShoppingItems.filter((item) => !hiddenUnresolvedKeys.has(item.key)),
     [unresolvedShoppingItems, hiddenUnresolvedKeys],
   )
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(WELCOME_DISMISSED_KEY) !== '1') {
+        setIsWelcomeModalOpen(true)
+      }
+    } catch {
+      setIsWelcomeModalOpen(true)
+    }
+  }, [])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes))
@@ -1692,6 +1704,7 @@ function App() {
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
+        setIsWelcomeModalOpen(false)
         setIsModalOpen(false)
         setIsImportPreviewOpen(false)
         setIsExportPreviewOpen(false)
@@ -3457,6 +3470,15 @@ function App() {
     setShowSwUpdateBanner(false)
   }
 
+  function closeWelcomeModal() {
+    setIsWelcomeModalOpen(false)
+    try {
+      localStorage.setItem(WELCOME_DISMISSED_KEY, '1')
+    } catch (error) {
+      console.warn('Could not persist welcome modal state', error)
+    }
+  }
+
   return (
     <>
       {messages.length > 0 ? (
@@ -3466,6 +3488,30 @@ function App() {
               {message.text}
             </div>
           ))}
+        </div>
+      ) : null}
+
+      {isWelcomeModalOpen ? (
+        <div className="modal show" role="dialog" aria-modal="true" aria-labelledby="welcome-modal-title" onClick={closeWelcomeModal}>
+          <div className="modal-content welcome-modal" onClick={(event) => event.stopPropagation()}>
+            <span className="close" onClick={closeWelcomeModal}>
+              &times;
+            </span>
+            <h2 id="welcome-modal-title">Welcome to Dish Depot</h2>
+            <p className="welcome-modal-subtitle">
+              Dish Depot is your personal recipe home for collecting favorites, organizing meals, and planning what to cook next.
+            </p>
+            <ul className="welcome-modal-list">
+              <li>Save recipe links or add custom recipes with your own ingredients and steps.</li>
+              <li>Pin favorites, search quickly, and keep everything organized by category.</li>
+              <li>Build a weekly meal plan and generate a shopping list from selected recipes.</li>
+            </ul>
+            <div className="welcome-modal-actions">
+              <button className="btn btn-primary" type="button" onClick={closeWelcomeModal}>
+                Get Started
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 

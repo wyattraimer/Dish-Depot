@@ -1282,6 +1282,29 @@ body::before {
   font-size: 0.93rem;
 }
 
+.welcome-modal {
+  max-width: 620px;
+}
+
+.welcome-modal-subtitle {
+  margin: 0 0 0.9rem;
+  color: var(--ink-700);
+  font-size: 0.96rem;
+}
+
+.welcome-modal-list {
+  margin: 0 0 1rem;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.55rem;
+  color: var(--ink-900);
+}
+
+.welcome-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .import-summary {
   display: flex;
   flex-wrap: wrap;
