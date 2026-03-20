@@ -1023,7 +1023,8 @@ function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [showSwUpdateBanner, setShowSwUpdateBanner] = useState(false)
-  const [isOnline, setIsOnline] = useState(false)
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine)
+  const [isApiReachable, setIsApiReachable] = useState(true)
   const [isInstalledPwa, setIsInstalledPwa] = useState(() => isRunningStandalonePwa())
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_KEY)
@@ -1564,6 +1565,9 @@ function App() {
       const changed = networkStatusRef.current !== online
       networkStatusRef.current = online
       setIsOnline(online)
+      if (!online) {
+        setIsApiReachable(false)
+      }
 
       if (!changed) {
         return
@@ -1589,14 +1593,12 @@ function App() {
       }, 3000)
     }
 
-    const onOnline = () => {
-      void verifyReachability({ notify: true })
-    }
+    const onOnline = () => setOnlineStatus(true, true)
     const onOffline = () => setOnlineStatus(false, true)
 
-    const verifyReachability = async ({ notify = false } = {}) => {
+    const verifyReachability = async () => {
       if (!navigator.onLine) {
-        setOnlineStatus(false, notify)
+        setIsApiReachable(false)
         return
       }
 
@@ -1611,9 +1613,9 @@ function App() {
           headers: { pragma: 'no-cache', 'cache-control': 'no-cache' },
           signal: controller.signal,
         })
-        setOnlineStatus(response.ok, notify)
+        setIsApiReachable(response.ok)
       } catch {
-        setOnlineStatus(false, notify)
+        setIsApiReachable(false)
       } finally {
         window.clearTimeout(timeoutId)
       }
@@ -1621,10 +1623,7 @@ function App() {
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        if (!navigator.onLine) {
-          setOnlineStatus(false, false)
-          return
-        }
+        setOnlineStatus(navigator.onLine, false)
         void verifyReachability()
       }
     }
@@ -1635,8 +1634,8 @@ function App() {
     window.addEventListener('pageshow', onVisibilityChange)
     document.addEventListener('visibilitychange', onVisibilityChange)
 
-    networkStatusRef.current = false
-    setIsOnline(false)
+    networkStatusRef.current = navigator.onLine
+    setIsOnline(navigator.onLine)
     void verifyReachability()
 
     return () => {
@@ -2871,6 +2870,7 @@ function App() {
       const warnings = payload.meta?.warnings || []
 
       setExtractWarnings(warnings)
+      setIsApiReachable(true)
       setExtractCandidate({
         data: extracted,
         meta: payload.meta || null,
@@ -2885,9 +2885,14 @@ function App() {
         failedMessage.toLowerCase().includes('network')
 
       if (isNetworkFailure) {
-        networkStatusRef.current = false
-        setIsOnline(false)
-        showMessage('You are offline (or the API is unreachable). URL extraction is unavailable right now.', 'info')
+        setIsApiReachable(false)
+        if (!navigator.onLine) {
+          networkStatusRef.current = false
+          setIsOnline(false)
+          showMessage('You are offline. URL extraction is unavailable right now.', 'info')
+        } else {
+          showMessage('The extraction service is currently unreachable. Please try again in a moment.', 'info')
+        }
       } else {
         showMessage(failedMessage, 'error')
       }
@@ -4224,12 +4229,20 @@ function App() {
                       disabled={isExtracting}
                     >
                       <i className={`fas ${isExtracting ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`} />
-                      {isExtracting ? 'Extracting...' : isOnline ? 'Extract Details from URL' : 'Extraction Unavailable Offline'}
+                      {isExtracting
+                        ? 'Extracting...'
+                        : !isOnline
+                          ? 'Extraction Unavailable Offline'
+                          : !isApiReachable
+                            ? 'Extraction Service Unreachable'
+                            : 'Extract Details from URL'}
                     </button>
                     <p className="extract-notice">
-                      {isOnline
-                        ? 'First extract can take 30 - 50 seconds while the API wakes up. After that, extracts are usually much faster.'
-                        : 'You are offline. URL extraction needs internet, but your saved recipes, planner, and cached pages still work.'}
+                      {!isOnline
+                        ? 'You are offline. URL extraction needs internet, but your saved recipes, planner, and cached pages still work.'
+                        : !isApiReachable
+                          ? 'The extraction service is currently unreachable. Your recipes are safe locally; try extraction again in a moment.'
+                          : 'First extract can take 30 - 50 seconds while the API wakes up. After that, extracts are usually much faster.'}
                     </p>
                   </div>
 
