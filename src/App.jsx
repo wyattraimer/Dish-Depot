@@ -1023,7 +1023,7 @@ function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [showSwUpdateBanner, setShowSwUpdateBanner] = useState(false)
-  const [isOnline, setIsOnline] = useState(() => navigator.onLine)
+  const [isOnline, setIsOnline] = useState(false)
   const [isInstalledPwa, setIsInstalledPwa] = useState(() => isRunningStandalonePwa())
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_KEY)
@@ -1599,7 +1599,7 @@ function App() {
       }
 
       const controller = new AbortController()
-      const timeoutId = window.setTimeout(() => controller.abort(), 4500)
+      const timeoutId = window.setTimeout(() => controller.abort(), 3200)
 
       try {
         const response = await fetch(`${API_BASE}/health`, {
@@ -1617,6 +1617,7 @@ function App() {
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        setOnlineStatus(navigator.onLine, false)
         void verifyReachability()
       }
     }
@@ -1624,6 +1625,7 @@ function App() {
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
     window.addEventListener('focus', onVisibilityChange)
+    window.addEventListener('pageshow', onVisibilityChange)
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     networkStatusRef.current = navigator.onLine
@@ -1634,6 +1636,7 @@ function App() {
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
       window.removeEventListener('focus', onVisibilityChange)
+      window.removeEventListener('pageshow', onVisibilityChange)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [])
@@ -1821,7 +1824,7 @@ function App() {
   }
 
   function canSyncToCloud() {
-    return Boolean(hasSupabaseConfig && supabase && authUser?.id && isOnline)
+    return Boolean(hasSupabaseConfig && supabase && authUser?.id && isOnline && navigator.onLine)
   }
 
   async function syncMealPlanSlotToCloud(day, slot, recipeId) {
@@ -3527,7 +3530,7 @@ function App() {
         </div>
       </header>
 
-      {!isOnline ? (
+      {!(isOnline && navigator.onLine) ? (
         <div className="app-offline-banner" role="status" aria-live="polite">
           <div className="container">You are offline. Cloud sync and URL extraction are temporarily unavailable.</div>
         </div>
@@ -3571,11 +3574,11 @@ function App() {
                   <div className="controls-account-row">
                     {hasSupabaseConfig && authUser ? (
                       <span
-                        className={`auth-sync-pill ${isOnline ? '' : 'auth-sync-pill-offline'}`}
-                        aria-label={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
+                        className={`auth-sync-pill ${isOnline && navigator.onLine ? '' : 'auth-sync-pill-offline'}`}
+                        aria-label={isOnline && navigator.onLine ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
                       >
-                        <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
-                        {isOnline ? 'Sync On' : 'Sync Off'}
+                        <i className={`fas ${isOnline && navigator.onLine ? 'fa-cloud' : 'fa-cloud-slash'}`} />
+                        {isOnline && navigator.onLine ? 'Sync On' : 'Sync Off'}
                       </span>
                     ) : null}
 
