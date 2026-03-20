@@ -3527,6 +3527,12 @@ function App() {
         </div>
       </header>
 
+      {!isOnline ? (
+        <div className="app-offline-banner" role="status" aria-live="polite">
+          <div className="container">You are offline. Cloud sync and URL extraction are temporarily unavailable.</div>
+        </div>
+      ) : null}
+
       <main className="main">
         <div className="container">
           <section className="controls">
@@ -3564,9 +3570,12 @@ function App() {
 
                   <div className="controls-account-row">
                     {hasSupabaseConfig && authUser ? (
-                      <span className="auth-sync-pill" aria-label="Cloud sync enabled">
-                        <i className="fas fa-cloud" />
-                        Sync On
+                      <span
+                        className={`auth-sync-pill ${isOnline ? '' : 'auth-sync-pill-offline'}`}
+                        aria-label={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
+                      >
+                        <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
+                        {isOnline ? 'Sync On' : 'Sync Off'}
                       </span>
                     ) : null}
 
