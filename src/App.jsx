@@ -1565,9 +1565,6 @@ function App() {
       const changed = networkStatusRef.current !== online
       networkStatusRef.current = online
       setIsOnline(online)
-      if (!online) {
-        setIsApiReachable(false)
-      }
 
       if (!changed) {
         return
@@ -1593,18 +1590,21 @@ function App() {
       }, 3000)
     }
 
-    const onOnline = () => setOnlineStatus(true, true)
+    const onOnline = () => {
+      setIsApiReachable(true)
+      void verifyConnectivity({ notify: true })
+    }
     const onOffline = () => setOnlineStatus(false, true)
 
-    const verifyReachability = async () => {
+    const verifyConnectivity = async ({ notify = false } = {}) => {
       if (!navigator.onLine) {
-        setIsApiReachable(false)
+        setOnlineStatus(false, notify)
         return
       }
 
       const controller = new AbortController()
       const timeoutId = window.setTimeout(() => controller.abort(), 3200)
-      const probeUrl = `${API_BASE}/health?_=${Date.now()}`
+      const probeUrl = new URL(`${import.meta.env.BASE_URL}online-check.txt?_=${Date.now()}`, window.location.origin).toString()
 
       try {
         const response = await fetch(probeUrl, {
@@ -1613,9 +1613,9 @@ function App() {
           headers: { pragma: 'no-cache', 'cache-control': 'no-cache' },
           signal: controller.signal,
         })
-        setIsApiReachable(response.ok)
+        setOnlineStatus(response.ok, notify)
       } catch {
-        setIsApiReachable(false)
+        setOnlineStatus(false, notify)
       } finally {
         window.clearTimeout(timeoutId)
       }
@@ -1623,8 +1623,7 @@ function App() {
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        setOnlineStatus(navigator.onLine, false)
-        void verifyReachability()
+        void verifyConnectivity()
       }
     }
 
@@ -1636,7 +1635,7 @@ function App() {
 
     networkStatusRef.current = navigator.onLine
     setIsOnline(navigator.onLine)
-    void verifyReachability()
+    void verifyConnectivity()
 
     return () => {
       window.removeEventListener('online', onOnline)

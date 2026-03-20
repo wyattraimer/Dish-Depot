@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v5'
+const CACHE_VERSION = 'v6'
 const CACHE_NAME = `dish-depot-${CACHE_VERSION}`
 const withScope = (path = '') => new URL(path, self.registration.scope).toString()
 const OFFLINE_URL = withScope('offline.html')
@@ -57,6 +57,7 @@ self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(req.url)
   const isSameOrigin = requestUrl.origin === self.location.origin
   const apiPathPrefix = new URL('api/', self.registration.scope).pathname
+  const onlineCheckPath = new URL('online-check.txt', self.registration.scope).pathname
 
   if (req.mode === 'navigate') {
     event.respondWith(
@@ -98,6 +99,16 @@ self.addEventListener('fetch', (event) => {
           new Response('Offline', { status: 503, statusText: 'Offline' })
         )
       })(),
+    )
+    return
+  }
+
+  if (
+    isSameOrigin &&
+    requestUrl.pathname === onlineCheckPath
+  ) {
+    event.respondWith(
+      fetch(req, { cache: 'no-store' }).catch(() => new Response('Offline', { status: 503, statusText: 'Offline' })),
     )
     return
   }
