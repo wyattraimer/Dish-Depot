@@ -135,6 +135,13 @@ const FALLBACK_API_BASE =
     : '/api'
 const API_BASE = (import.meta.env.VITE_API_BASE || FALLBACK_API_BASE).replace(/\/$/, '')
 const EXTRACT_ENDPOINT = `${API_BASE}/recipes/extract`
+const GROUP_ROLE_ORDER = {
+  viewer: 1,
+  contributor: 2,
+  editor: 3,
+  admin: 4,
+}
+const GROUP_ROLE_OPTIONS = ['viewer', 'contributor', 'editor', 'admin']
 
 function getAuthRedirectUrl() {
   const redirectUrl = new URL(import.meta.env.BASE_URL || '/', window.location.origin)
@@ -146,6 +153,10 @@ function getPasswordResetRedirectUrl() {
   const redirectUrl = new URL(import.meta.env.BASE_URL || '/', window.location.origin)
   redirectUrl.searchParams.set('auth', 'recovery')
   return redirectUrl.toString()
+}
+
+function hasGroupRoleOrHigher(role, minimum) {
+  return (GROUP_ROLE_ORDER[role] || 0) >= (GROUP_ROLE_ORDER[minimum] || 0)
 }
 
 const MEAL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -1064,6 +1075,18 @@ function App() {
   const [profileUploading, setProfileUploading] = useState(false)
   const [recipeScope, setRecipeScope] = useState('mine')
   const [sharedRecipes, setSharedRecipes] = useState([])
+  const [groupRecipes, setGroupRecipes] = useState([])
+  const [groups, setGroups] = useState([])
+  const [groupMemberships, setGroupMemberships] = useState([])
+  const [selectedGroupId, setSelectedGroupId] = useState('')
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
+  const [groupNameDraft, setGroupNameDraft] = useState('')
+  const [groupBusy, setGroupBusy] = useState(false)
+  const [groupInviteLookup, setGroupInviteLookup] = useState('')
+  const [groupInviteResults, setGroupInviteResults] = useState([])
+  const [groupInviteRole, setGroupInviteRole] = useState('viewer')
+  const [groupMembers, setGroupMembers] = useState([])
+  const [groupMembersLoading, setGroupMembersLoading] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareTargetRecipe, setShareTargetRecipe] = useState(null)
   const [shareLookupText, setShareLookupText] = useState('')
@@ -1119,7 +1142,25 @@ function App() {
   const cloudSyncUserRef = useRef('')
   const cloudMealPlanUserRef = useRef('')
 
-  const scopedRecipes = useMemo(() => (recipeScope === 'shared' ? sharedRecipes : recipes), [recipeScope, sharedRecipes, recipes])
+  const selectedGroup = useMemo(() => groups.find((group) => group.id === selectedGroupId) || null, [groups, selectedGroupId])
+
+  const selectedGroupRole = useMemo(() => {
+    const membership = groupMemberships.find((item) => item.groupId === selectedGroupId)
+    return membership?.role || ''
+  }, [groupMemberships, selectedGroupId])
+
+  const canContributeToSelectedGroup = hasGroupRoleOrHigher(selectedGroupRole, 'contributor')
+  const canAdminSelectedGroup = hasGroupRoleOrHigher(selectedGroupRole, 'admin')
+
+  const scopedRecipes = useMemo(() => {
+    if (recipeScope === 'shared') {
+      return sharedRecipes
+    }
+    if (recipeScope === 'group') {
+      return groupRecipes
+    }
+    return recipes
+  }, [recipeScope, sharedRecipes, groupRecipes, recipes])
 
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase().trim()
@@ -1560,6 +1601,155 @@ function App() {
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
+      setGroups([])
+      setGroupMemberships([])
+      setGroupRecipes([])
+      setSelectedGroupId('')
+      if (recipeScope === 'group') {
+        setRecipeScope('mine')
+      }
+      return
+    }
+
+    let cancelled = false
+
+    const loadGroups = async () => {
+      const { data: membershipRows, error: membershipError } = await supabase
+        .from('group_members')
+        .select('group_id,role')
+        .eq('user_id', authUser.id)
+
+      if (cancelled) {
+        return
+      }
+
+      if (membershipError) {
+        showMessage(`Could not load groups: ${membershipError.message}`, 'info')
+        return
+      }
+
+      const memberships = Array.isArray(membershipRows)
+        ? membershipRows.map((row) => ({
+            groupId: row.group_id,
+            role: row.role || 'viewer',
+          }))
+        : []
+
+      setGroupMemberships(memberships)
+
+      const groupIds = memberships.map((row) => row.groupId).filter((id) => isUuidLike(id))
+      if (groupIds.length === 0) {
+        setGroups([])
+        setSelectedGroupId('')
+        setGroupRecipes([])
+        if (recipeScope === 'group') {
+          setRecipeScope('mine')
+        }
+        return
+      }
+
+      const { data: groupRows, error: groupError } = await supabase
+        .from('groups')
+        .select('id,name,created_by,created_at')
+        .in('id', groupIds)
+        .order('name', { ascending: true })
+
+      if (cancelled) {
+        return
+      }
+
+      if (groupError) {
+        showMessage(`Could not load groups: ${groupError.message}`, 'info')
+        return
+      }
+
+      const mappedGroups = Array.isArray(groupRows) ? groupRows : []
+      setGroups(mappedGroups)
+
+      setSelectedGroupId((prev) => {
+        if (prev && mappedGroups.some((group) => group.id === prev)) {
+          return prev
+        }
+        return mappedGroups[0]?.id || ''
+      })
+    }
+
+    void loadGroups()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, isOnline, recipeScope])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline || !isUuidLike(selectedGroupId)) {
+      setGroupRecipes([])
+      return
+    }
+
+    let cancelled = false
+
+    const loadGroupRecipes = async () => {
+      const { data: relationRows, error: relationError } = await supabase
+        .from('group_recipes')
+        .select('recipe_id,added_by')
+        .eq('group_id', selectedGroupId)
+
+      if (cancelled) {
+        return
+      }
+
+      if (relationError) {
+        showMessage(`Could not load group recipes: ${relationError.message}`, 'info')
+        setGroupRecipes([])
+        return
+      }
+
+      const rows = Array.isArray(relationRows) ? relationRows : []
+      const recipeIds = rows.map((row) => row.recipe_id).filter((id) => isUuidLike(id))
+
+      if (recipeIds.length === 0) {
+        setGroupRecipes([])
+        return
+      }
+
+      const { data: recipeRows, error: recipeError } = await supabase
+        .from('recipes')
+        .select('id,owner_id,name,url,image,notes,ingredients,directions,categories,pinned,type,visibility,share_slug,updated_at,deleted_at')
+        .in('id', recipeIds)
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+
+      if (cancelled) {
+        return
+      }
+
+      if (recipeError) {
+        showMessage(`Could not load group recipes: ${recipeError.message}`, 'info')
+        setGroupRecipes([])
+        return
+      }
+
+      const canEditGroupRecipes = hasGroupRoleOrHigher(selectedGroupRole, 'editor')
+      const mapped = migrateRecipes(
+        (recipeRows || []).map((row) => ({
+          ...mapSupabaseRecipeToApp(row),
+          sharedReadOnly: !(canEditGroupRecipes || row.owner_id === authUser.id),
+        })),
+      )
+
+      setGroupRecipes(mapped)
+    }
+
+    void loadGroupRecipes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, isOnline, selectedGroupId, selectedGroupRole])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
       return
     }
 
@@ -1790,6 +1980,7 @@ function App() {
       if (event.key === 'Escape') {
         setIsWelcomeModalOpen(false)
         setIsModalOpen(false)
+        setIsGroupModalOpen(false)
         setIsImportPreviewOpen(false)
         setIsExportPreviewOpen(false)
         setIsShoppingListOpen(false)
@@ -2138,6 +2329,336 @@ function App() {
 
   function canShareRecipe(recipe) {
     return Boolean(authUser?.id && recipe?.ownerId && recipe.ownerId === authUser.id)
+  }
+
+  async function addRecipeToSelectedGroup(recipe) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      showMessage('Sign in to share recipes to a group.', 'info')
+      return
+    }
+
+    if (!isUuidLike(selectedGroupId)) {
+      showMessage('Choose a group first.', 'info')
+      return
+    }
+
+    if (!canContributeToSelectedGroup) {
+      showMessage('You do not have permission to contribute to this group.', 'info')
+      return
+    }
+
+    if (!isUuidLike(recipe?.id)) {
+      showMessage('Save this recipe to cloud first, then add it to a group.', 'info')
+      return
+    }
+
+    const { error } = await supabase.from('group_recipes').upsert(
+      {
+        group_id: selectedGroupId,
+        recipe_id: recipe.id,
+        added_by: authUser.id,
+      },
+      { onConflict: 'group_id,recipe_id' },
+    )
+
+    if (error) {
+      showMessage(`Could not add recipe to group: ${error.message}`, 'error')
+      return
+    }
+
+    showMessage(`Added recipe to ${selectedGroup?.name || 'group'}.`, 'success')
+
+    if (recipeScope === 'group') {
+      setGroupRecipes((prev) => {
+        if (prev.some((item) => item.id === recipe.id)) {
+          return prev
+        }
+        const canEditGroupRecipes = hasGroupRoleOrHigher(selectedGroupRole, 'editor')
+        const normalizedRecipe = migrateRecipes([
+          {
+            ...recipe,
+            sharedReadOnly: !(canEditGroupRecipes || recipe.ownerId === authUser.id),
+          },
+        ])[0]
+        return [normalizedRecipe, ...prev]
+      })
+    }
+  }
+
+  async function loadSelectedGroupMembers(groupId = selectedGroupId) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
+      setGroupMembers([])
+      return
+    }
+
+    setGroupMembersLoading(true)
+
+    try {
+      const { data: memberRows, error } = await supabase
+        .from('group_members')
+        .select('user_id,role')
+        .eq('group_id', groupId)
+
+      if (error) {
+        showMessage(`Could not load group members: ${error.message}`, 'info')
+        setGroupMembers([])
+        return
+      }
+
+      const rows = Array.isArray(memberRows) ? memberRows : []
+      const ids = [...new Set(rows.map((row) => row.user_id).filter((id) => isUuidLike(id)))]
+
+      let profileMap = new Map()
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase.from('profiles').select('id,username,display_name').in('id', ids)
+        if (Array.isArray(profiles)) {
+          profileMap = new Map(
+            profiles.map((profile) => [profile.id, { username: profile.username || '', displayName: profile.display_name || '' }]),
+          )
+        }
+      }
+
+      setGroupMembers(
+        rows.map((row) => {
+          const profile = profileMap.get(row.user_id)
+          return {
+            userId: row.user_id,
+            role: row.role || 'viewer',
+            username: profile?.username || '',
+            displayName: profile?.displayName || '',
+          }
+        }),
+      )
+    } finally {
+      setGroupMembersLoading(false)
+    }
+  }
+
+  async function openGroupModal() {
+    setIsGroupModalOpen(true)
+    setGroupInviteLookup('')
+    setGroupInviteResults([])
+    await loadSelectedGroupMembers()
+  }
+
+  function closeGroupModal() {
+    setIsGroupModalOpen(false)
+    setGroupInviteLookup('')
+    setGroupInviteResults([])
+  }
+
+  async function handleCreateGroup(event) {
+    event.preventDefault()
+
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      showMessage('Sign in to create a group.', 'info')
+      return
+    }
+
+    const name = groupNameDraft.trim()
+    if (!name) {
+      showMessage('Enter a group name first.', 'error')
+      return
+    }
+
+    setGroupBusy(true)
+
+    try {
+      const { data: groupRow, error: groupError } = await supabase
+        .from('groups')
+        .insert({ name, created_by: authUser.id })
+        .select('id,name,created_by,created_at')
+        .single()
+
+      if (groupError || !groupRow?.id) {
+        showMessage(`Could not create group: ${groupError?.message || 'Unknown error'}`, 'error')
+        return
+      }
+
+      const { error: membershipError } = await supabase.from('group_members').upsert(
+        {
+          group_id: groupRow.id,
+          user_id: authUser.id,
+          role: 'admin',
+          added_by: authUser.id,
+        },
+        { onConflict: 'group_id,user_id' },
+      )
+
+      if (membershipError) {
+        showMessage(`Group created, but membership setup failed: ${membershipError.message}`, 'info')
+        return
+      }
+
+      setGroups((prev) => [...prev, groupRow].sort((a, b) => a.name.localeCompare(b.name)))
+      setGroupMemberships((prev) => [...prev, { groupId: groupRow.id, role: 'admin' }])
+      setSelectedGroupId(groupRow.id)
+      setRecipeScope('group')
+      setGroupNameDraft('')
+      showMessage(`Group "${groupRow.name}" created.`, 'success')
+    } finally {
+      setGroupBusy(false)
+    }
+  }
+
+  async function searchGroupInviteCandidates(event) {
+    event.preventDefault()
+
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
+      showMessage('Select a group first.', 'info')
+      return
+    }
+
+    const query = groupInviteLookup.trim().toLowerCase()
+    if (!query) {
+      showMessage('Enter a username to search.', 'error')
+      return
+    }
+
+    setGroupBusy(true)
+
+    try {
+      const { data, error } = await supabase.rpc('search_profiles_for_sharing', {
+        query_text: query,
+        limit_count: 8,
+      })
+
+      if (error) {
+        showMessage(`Could not search users: ${error.message}`, 'error')
+        return
+      }
+
+      const existingIds = new Set(groupMembers.map((member) => member.userId))
+      const normalized = Array.isArray(data)
+        ? data
+            .filter((row) => isUuidLike(row?.id) && !existingIds.has(row.id))
+            .map((row) => ({
+              id: row.id,
+              username: (row.username || '').trim(),
+              displayName: (row.display_name || '').trim(),
+            }))
+        : []
+
+      setGroupInviteResults(normalized)
+      if (normalized.length === 0) {
+        showMessage('No new users found for that username.', 'info')
+      }
+    } finally {
+      setGroupBusy(false)
+    }
+  }
+
+  async function addUserToSelectedGroup(recipient) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
+      return
+    }
+
+    if (!canAdminSelectedGroup) {
+      showMessage('Only group admins can manage members.', 'info')
+      return
+    }
+
+    setGroupBusy(true)
+
+    try {
+      const { error } = await supabase.from('group_members').upsert(
+        {
+          group_id: selectedGroupId,
+          user_id: recipient.id,
+          role: groupInviteRole,
+          added_by: authUser.id,
+        },
+        { onConflict: 'group_id,user_id' },
+      )
+
+      if (error) {
+        showMessage(`Could not add member: ${error.message}`, 'error')
+        return
+      }
+
+      setGroupMembers((prev) => [
+        ...prev,
+        {
+          userId: recipient.id,
+          role: groupInviteRole,
+          username: recipient.username || '',
+          displayName: recipient.displayName || '',
+        },
+      ])
+      setGroupInviteLookup('')
+      setGroupInviteResults([])
+      showMessage('Member added to group.', 'success')
+    } finally {
+      setGroupBusy(false)
+    }
+  }
+
+  async function updateGroupMemberRole(member, nextRole) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
+      return
+    }
+
+    if (!canAdminSelectedGroup) {
+      showMessage('Only group admins can change roles.', 'info')
+      return
+    }
+
+    setGroupBusy(true)
+
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .update({ role: nextRole })
+        .eq('group_id', selectedGroupId)
+        .eq('user_id', member.userId)
+
+      if (error) {
+        showMessage(`Could not update role: ${error.message}`, 'error')
+        return
+      }
+
+      setGroupMembers((prev) => prev.map((item) => (item.userId === member.userId ? { ...item, role: nextRole } : item)))
+      if (member.userId === authUser.id) {
+        setGroupMemberships((prev) => prev.map((item) => (item.groupId === selectedGroupId ? { ...item, role: nextRole } : item)))
+      }
+      showMessage('Member role updated.', 'success')
+    } finally {
+      setGroupBusy(false)
+    }
+  }
+
+  async function removeUserFromSelectedGroup(member) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
+      return
+    }
+
+    if (!canAdminSelectedGroup && member.userId !== authUser.id) {
+      showMessage('Only group admins can remove other members.', 'info')
+      return
+    }
+
+    const { error } = await supabase.from('group_members').delete().eq('group_id', selectedGroupId).eq('user_id', member.userId)
+
+    if (error) {
+      showMessage(`Could not remove member: ${error.message}`, 'error')
+      return
+    }
+
+    setGroupMembers((prev) => prev.filter((item) => item.userId !== member.userId))
+
+    if (member.userId === authUser.id) {
+      setGroupMemberships((prev) => prev.filter((item) => item.groupId !== selectedGroupId))
+      setGroups((prev) => prev.filter((group) => group.id !== selectedGroupId))
+      setSelectedGroupId((prev) => (prev === selectedGroupId ? '' : prev))
+      if (recipeScope === 'group') {
+        setRecipeScope('mine')
+      }
+      closeGroupModal()
+      showMessage('You left the group.', 'info')
+      return
+    }
+
+    showMessage('Member removed from group.', 'success')
   }
 
   async function loadShareRecipients(recipeId) {
@@ -3827,6 +4348,34 @@ function App() {
                         >
                           Shared With Me
                         </button>
+                        <button
+                          className={`btn btn-small ${recipeScope === 'group' ? 'btn-primary' : 'btn-secondary'}`}
+                          type="button"
+                          onClick={() => setRecipeScope('group')}
+                        >
+                          Groups
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {recipeScope === 'group' ? (
+                      <div className="group-scope-controls">
+                        <select
+                          className="category-select"
+                          value={selectedGroupId}
+                          onChange={(event) => setSelectedGroupId(event.target.value)}
+                        >
+                          {groups.length === 0 ? <option value="">No groups yet</option> : null}
+                          {groups.map((group) => (
+                            <option key={group.id} value={group.id}>
+                              {group.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => void openGroupModal()}>
+                          <i className="fas fa-users" />
+                          Manage Groups
+                        </button>
                       </div>
                     ) : null}
                   </div>
@@ -4076,6 +4625,22 @@ function App() {
                               <span className="visually-hidden">Share</span>
                             </button>
                           ) : null}
+                          {hasSupabaseConfig && authUser && isUuidLike(selectedGroupId) ? (
+                            <button
+                              className="btn btn-small btn-secondary"
+                              type="button"
+                              aria-label="Add recipe to selected group"
+                              title={canContributeToSelectedGroup ? `Add to ${selectedGroup?.name || 'group'}` : 'No permission to contribute'}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void addRecipeToSelectedGroup(recipe)
+                              }}
+                              disabled={!canContributeToSelectedGroup}
+                            >
+                              <i className="fas fa-users" />
+                              <span className="visually-hidden">Add to Group</span>
+                            </button>
+                          ) : null}
                           {canManage ? (
                             <>
                               <button
@@ -4136,18 +4701,32 @@ function App() {
                 <h2>
                   {recipeScope === 'shared'
                     ? 'No shared recipes yet'
-                    : recipes.length > 0
-                      ? 'No recipes found'
-                      : 'No recipes yet!'}
+                    : recipeScope === 'group'
+                      ? groups.length === 0
+                        ? 'No groups yet'
+                        : 'No group recipes yet'
+                      : recipes.length > 0
+                        ? 'No recipes found'
+                        : 'No recipes yet!'}
                 </h2>
                 <p>
                   {recipeScope === 'shared'
                     ? 'No one has shared a recipe with you yet. Shared recipes will appear here.'
-                    : recipes.length > 0
-                      ? 'Try adjusting your search terms.'
-                      : 'Start building your collection by adding your favorite recipe websites.'}
+                    : recipeScope === 'group'
+                      ? groups.length === 0
+                        ? 'Create your first group to start collaborating with family, friends, or event teams.'
+                        : 'This group has no contributed recipes yet. Add one from any recipe card.'
+                      : recipes.length > 0
+                        ? 'Try adjusting your search terms.'
+                        : 'Start building your collection by adding your favorite recipe websites.'}
                 </p>
-                {recipeScope !== 'shared' && recipes.length === 0 ? (
+                {recipeScope === 'group' && groups.length === 0 ? (
+                  <button className="btn btn-primary" type="button" onClick={() => void openGroupModal()}>
+                    <i className="fas fa-users" />
+                    Create Your First Group
+                  </button>
+                ) : null}
+                {recipeScope !== 'shared' && recipeScope !== 'group' && recipes.length === 0 ? (
                   <button className="btn btn-primary" type="button" onClick={() => openModal()}>
                     <i className="fas fa-plus" />
                     Add Your First Recipe
@@ -4270,6 +4849,17 @@ function App() {
                 <button className="btn btn-secondary" type="button" onClick={() => openShareModal(focusedRecipe)}>
                   <i className="fas fa-share-nodes" />
                   Share
+                </button>
+              ) : null}
+              {hasSupabaseConfig && authUser && isUuidLike(selectedGroupId) ? (
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => void addRecipeToSelectedGroup(focusedRecipe)}
+                  disabled={!canContributeToSelectedGroup}
+                >
+                  <i className="fas fa-users" />
+                  Add to {selectedGroup?.name || 'Group'}
                 </button>
               ) : null}
               {focusedRecipe.url ? (
@@ -4819,6 +5409,144 @@ function App() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      ) : null}
+
+      {isGroupModalOpen ? (
+        <div className="modal show share-modal-overlay" role="dialog" aria-modal="true" onClick={closeGroupModal}>
+          <div className="modal-content share-modal" onClick={(event) => event.stopPropagation()}>
+            <span className="close" onClick={closeGroupModal}>
+              &times;
+            </span>
+            <h2>Groups</h2>
+            <p className="share-modal-subtitle">Create and manage collaborative groups for shared recipes.</p>
+
+            <form className="share-form" onSubmit={handleCreateGroup}>
+              <div className="form-group">
+                <label htmlFor="groupNameInput">Create Group</label>
+                <div className="share-lookup-row">
+                  <input
+                    id="groupNameInput"
+                    type="text"
+                    value={groupNameDraft}
+                    onChange={(event) => setGroupNameDraft(event.target.value)}
+                    placeholder="The Johnson Family"
+                  />
+                  <button className="btn btn-secondary" type="submit" disabled={groupBusy}>
+                    {groupBusy ? 'Creating...' : 'Create'}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {groups.length > 0 ? (
+              <div className="form-group">
+                <label htmlFor="groupSelectInModal">Selected Group</label>
+                <select
+                  id="groupSelectInModal"
+                  value={selectedGroupId}
+                  onChange={(event) => {
+                    const nextGroupId = event.target.value
+                    setSelectedGroupId(nextGroupId)
+                    setGroupMembers([])
+                    void loadSelectedGroupMembers(nextGroupId)
+                  }}
+                >
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+
+            {isUuidLike(selectedGroupId) ? (
+              <>
+                <form className="share-form" onSubmit={searchGroupInviteCandidates}>
+                  <div className="form-group">
+                    <label htmlFor="groupInviteLookup">Invite by Username</label>
+                    <div className="share-lookup-row">
+                      <input
+                        id="groupInviteLookup"
+                        type="text"
+                        value={groupInviteLookup}
+                        onChange={(event) => setGroupInviteLookup(event.target.value.toLowerCase())}
+                        placeholder="chefmaria"
+                        autoComplete="off"
+                        disabled={!canAdminSelectedGroup}
+                      />
+                      <select value={groupInviteRole} onChange={(event) => setGroupInviteRole(event.target.value)} disabled={!canAdminSelectedGroup}>
+                        {GROUP_ROLE_OPTIONS.map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
+                      </select>
+                      <button className="btn btn-secondary" type="submit" disabled={groupBusy || !canAdminSelectedGroup}>
+                        {groupBusy ? 'Searching...' : 'Find User'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                {groupInviteResults.length > 0 ? (
+                  <div className="share-results" aria-label="Group invite results">
+                    {groupInviteResults.map((result) => (
+                      <div key={result.id} className="share-result-item">
+                        <div>
+                          <strong>{result.username ? `@${result.username}` : result.displayName || result.id}</strong>
+                          <small>{result.displayName || 'No display name set'}</small>
+                        </div>
+                        <button className="btn btn-secondary" type="button" onClick={() => void addUserToSelectedGroup(result)} disabled={!canAdminSelectedGroup || groupBusy}>
+                          Add
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <section className="share-existing" aria-label="Group members">
+                  <h3>Members</h3>
+                  {groupMembersLoading ? <p className="share-empty">Loading members...</p> : null}
+                  {!groupMembersLoading && groupMembers.length === 0 ? <p className="share-empty">No members yet.</p> : null}
+                  {!groupMembersLoading && groupMembers.length > 0 ? (
+                    <div className="share-existing-list">
+                      {groupMembers.map((member) => (
+                        <div key={member.userId} className="share-existing-item">
+                          <div>
+                            <strong>{member.username ? `@${member.username}` : member.displayName || member.userId}</strong>
+                            <small>{member.displayName || 'No display name set'}</small>
+                          </div>
+                          <div className="share-existing-actions">
+                            <select
+                              value={member.role}
+                              onChange={(event) => void updateGroupMemberRole(member, event.target.value)}
+                              disabled={!canAdminSelectedGroup || groupBusy || member.userId === authUser?.id}
+                            >
+                              {GROUP_ROLE_OPTIONS.map((role) => (
+                                <option key={role} value={role}>
+                                  {role}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              className="btn btn-danger"
+                              type="button"
+                              onClick={() => void removeUserFromSelectedGroup(member)}
+                              disabled={groupBusy || (!canAdminSelectedGroup && member.userId !== authUser?.id)}
+                            >
+                              {member.userId === authUser?.id ? 'Leave' : 'Remove'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}
