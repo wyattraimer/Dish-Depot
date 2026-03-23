@@ -1088,6 +1088,9 @@ function App() {
   const [groupInviteRole, setGroupInviteRole] = useState('viewer')
   const [groupMembers, setGroupMembers] = useState([])
   const [groupMembersLoading, setGroupMembersLoading] = useState(false)
+  const [pendingGroupInvites, setPendingGroupInvites] = useState([])
+  const [groupInvitesLoading, setGroupInvitesLoading] = useState(false)
+  const [isGroupInvitesModalOpen, setIsGroupInvitesModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareTargetRecipe, setShareTargetRecipe] = useState(null)
   const [shareLookupText, setShareLookupText] = useState('')
@@ -1726,6 +1729,57 @@ function App() {
   }, [authUser?.id])
 
   useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      setPendingGroupInvites([])
+      return
+    }
+
+    let cancelled = false
+
+    const loadPendingInvites = async () => {
+      setGroupInvitesLoading(true)
+
+      try {
+        const { data, error } = await supabase.rpc('get_pending_group_invites')
+
+        if (cancelled) {
+          return
+        }
+
+        if (error) {
+          showMessage(`Could not load group invites: ${error.message}`, 'info')
+          setPendingGroupInvites([])
+          return
+        }
+
+        const invites = Array.isArray(data)
+          ? data.map((row) => ({
+              id: row.id,
+              groupId: row.group_id,
+              role: row.role || 'viewer',
+              token: row.token || '',
+              createdAt: row.created_at || '',
+              expiresAt: row.expires_at || '',
+              groupName: row.group_name || 'Group',
+            }))
+          : []
+
+        setPendingGroupInvites(invites)
+      } finally {
+        if (!cancelled) {
+          setGroupInvitesLoading(false)
+        }
+      }
+    }
+
+    void loadPendingInvites()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id])
+
+  useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
       setGroupRecipes([])
       return
@@ -2027,6 +2081,7 @@ function App() {
         setIsWelcomeModalOpen(false)
         setIsModalOpen(false)
         setIsGroupModalOpen(false)
+        setIsGroupInvitesModalOpen(false)
         setIsImportPreviewOpen(false)
         setIsExportPreviewOpen(false)
         setIsShoppingListOpen(false)
@@ -2664,33 +2719,39 @@ function App() {
     setGroupBusy(true)
 
     try {
-      const { error } = await supabase.from('group_members').upsert(
-        {
-          group_id: selectedGroupId,
-          user_id: recipient.id,
-          role: groupInviteRole,
-          added_by: authUser.id,
-        },
-        { onConflict: 'group_id,user_id' },
-      )
+      const { data: existingInvites, error: existingError } = await supabase
+        .from('group_invites')
+        .select('id')
+        .eq('group_id', selectedGroupId)
+        .eq('invited_user_id', recipient.id)
+        .is('accepted_at', null)
+        .limit(1)
 
-      if (error) {
-        showMessage(`Could not add member: ${error.message}`, 'error')
+      if (existingError) {
+        showMessage(`Could not check pending invites: ${existingError.message}`, 'error')
         return
       }
 
-      setGroupMembers((prev) => [
-        ...prev,
-        {
-          userId: recipient.id,
-          role: groupInviteRole,
-          username: recipient.username || '',
-          displayName: recipient.displayName || '',
-        },
-      ])
+      if (Array.isArray(existingInvites) && existingInvites.length > 0) {
+        showMessage('This user already has a pending invite for the group.', 'info')
+        return
+      }
+
+      const { error } = await supabase.from('group_invites').insert({
+        group_id: selectedGroupId,
+        invited_user_id: recipient.id,
+        role: groupInviteRole,
+        invited_by: authUser.id,
+      })
+
+      if (error) {
+        showMessage(`Could not send invite: ${error.message}`, 'error')
+        return
+      }
+
       setGroupInviteLookup('')
-      setGroupInviteResults([])
-      showMessage('Member added to group.', 'success')
+      setGroupInviteResults((prev) => prev.filter((row) => row.id !== recipient.id))
+      showMessage('Invite sent. The user can choose to join from their invite list.', 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -2762,6 +2823,92 @@ function App() {
     }
 
     showMessage('Member removed from group.', 'success')
+  }
+
+  function openGroupInvitesModal() {
+    setIsGroupInvitesModalOpen(true)
+  }
+
+  function closeGroupInvitesModal() {
+    setIsGroupInvitesModalOpen(false)
+  }
+
+  async function acceptPendingGroupInvite(invite) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      return
+    }
+
+    if (!invite?.token) {
+      showMessage('This invite is missing a valid token.', 'error')
+      return
+    }
+
+    setGroupInvitesLoading(true)
+
+    try {
+      const { data, error } = await supabase.rpc('accept_group_invite', {
+        invite_token: invite.token,
+      })
+
+      if (error) {
+        showMessage(error.message || 'Could not accept invite.', 'error')
+        return
+      }
+
+      const accepted = Array.isArray(data) ? data[0] : data
+      const acceptedGroupId = accepted?.group_id || invite.groupId
+      const acceptedGroupName = accepted?.group_name || invite.groupName || 'Group'
+      const acceptedRole = accepted?.role || invite.role || 'viewer'
+
+      setPendingGroupInvites((prev) => prev.filter((item) => item.id !== invite.id))
+      setGroups((prev) => {
+        if (prev.some((group) => group.id === acceptedGroupId)) {
+          return prev
+        }
+
+        const placeholder = {
+          id: acceptedGroupId,
+          name: acceptedGroupName,
+          created_by: '',
+          created_at: new Date().toISOString(),
+        }
+        return [...prev, placeholder].sort((a, b) => a.name.localeCompare(b.name))
+      })
+      setGroupMemberships((prev) => {
+        if (prev.some((item) => item.groupId === acceptedGroupId)) {
+          return prev
+        }
+        return [...prev, { groupId: acceptedGroupId, role: acceptedRole }]
+      })
+      setSelectedGroupId(acceptedGroupId)
+      setRecipeScope('group')
+
+      showMessage(`Joined ${acceptedGroupName}.`, 'success')
+    } finally {
+      setGroupInvitesLoading(false)
+    }
+  }
+
+  async function declinePendingGroupInvite(invite) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      return
+    }
+
+    setGroupInvitesLoading(true)
+
+    try {
+      const { error } = await supabase.from('group_invites').delete().eq('id', invite.id).eq('invited_user_id', authUser.id)
+
+      if (error) {
+        showMessage(error.message || 'Could not decline invite.', 'error')
+        return
+      }
+
+      setPendingGroupInvites((prev) => prev.filter((item) => item.id !== invite.id))
+      showMessage(`Declined invite to ${invite.groupName || 'group'}.`, 'info')
+    } finally {
+      setGroupInvitesLoading(false)
+    }
   }
 
   async function loadShareRecipients(recipeId) {
@@ -4381,6 +4528,14 @@ function App() {
                       </span>
                     ) : null}
 
+                    {hasSupabaseConfig && authUser ? (
+                      <button className="btn btn-secondary btn-small group-invites-pill" type="button" onClick={openGroupInvitesModal}>
+                        <i className="fas fa-envelope-open-text" />
+                        Invites
+                        {pendingGroupInvites.length > 0 ? <span className="group-invites-count">{pendingGroupInvites.length}</span> : null}
+                      </button>
+                    ) : null}
+
                     {hasSupabaseConfig ? (
                       <button className="auth-user-email auth-user-link" type="button" title="Open account" onClick={openProfileModal}>
                         {authUser && profileAvatarUrl ? (
@@ -5596,7 +5751,8 @@ function App() {
               <>
                 <form className="share-form" onSubmit={searchGroupInviteCandidates}>
                   <div className="form-group">
-                    <label htmlFor="groupInviteLookup">Invite by Username</label>
+                    <label htmlFor="groupInviteLookup">Send Invite by Username</label>
+                    <p className="share-helper-note">Invited users will be able to accept or decline before joining.</p>
                     <div className="share-lookup-row">
                       <input
                         id="groupInviteLookup"
@@ -5614,9 +5770,9 @@ function App() {
                           </option>
                         ))}
                       </select>
-                      <button className="btn btn-secondary" type="submit" disabled={groupBusy || !canAdminSelectedGroup}>
-                        {groupBusy ? 'Searching...' : 'Find User'}
-                      </button>
+                        <button className="btn btn-secondary" type="submit" disabled={groupBusy || !canAdminSelectedGroup}>
+                          {groupBusy ? 'Searching...' : 'Find User'}
+                        </button>
                     </div>
                   </div>
                 </form>
@@ -5630,7 +5786,7 @@ function App() {
                           <small>{result.displayName || 'No display name set'}</small>
                         </div>
                         <button className="btn btn-secondary" type="button" onClick={() => void addUserToSelectedGroup(result)} disabled={!canAdminSelectedGroup || groupBusy}>
-                          Add
+                          Send Invite
                         </button>
                       </div>
                     ))}
@@ -5676,6 +5832,44 @@ function App() {
                   ) : null}
                 </section>
               </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {isGroupInvitesModalOpen ? (
+        <div className="modal show share-modal-overlay" role="dialog" aria-modal="true" onClick={closeGroupInvitesModal}>
+          <div className="modal-content share-modal" onClick={(event) => event.stopPropagation()}>
+            <span className="close" onClick={closeGroupInvitesModal}>
+              &times;
+            </span>
+            <h2>Group Invites</h2>
+            <p className="share-modal-subtitle">Accept or decline invitations to join collaborative groups.</p>
+
+            {groupInvitesLoading ? <p className="share-empty">Loading invites...</p> : null}
+            {!groupInvitesLoading && pendingGroupInvites.length === 0 ? (
+              <p className="share-empty">No pending invites right now.</p>
+            ) : null}
+
+            {!groupInvitesLoading && pendingGroupInvites.length > 0 ? (
+              <div className="share-existing-list" aria-label="Pending group invites">
+                {pendingGroupInvites.map((invite) => (
+                  <div key={invite.id} className="share-existing-item">
+                    <div>
+                      <strong>{invite.groupName || 'Group'}</strong>
+                      <small>Role: {invite.role}</small>
+                    </div>
+                    <div className="share-existing-actions">
+                      <button className="btn btn-secondary" type="button" onClick={() => void acceptPendingGroupInvite(invite)} disabled={groupInvitesLoading}>
+                        Accept
+                      </button>
+                      <button className="btn btn-danger" type="button" onClick={() => void declinePendingGroupInvite(invite)} disabled={groupInvitesLoading}>
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : null}
           </div>
         </div>
