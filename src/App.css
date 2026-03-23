@@ -1757,7 +1757,17 @@ body::before {
 }
 
 .share-lookup-row input {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.share-lookup-row select {
+  width: auto;
+  flex: 0 0 132px;
+}
+
+.share-lookup-row .btn {
+  flex: 0 0 auto;
 }
 
 .share-results {
