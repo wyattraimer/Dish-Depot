@@ -377,6 +377,12 @@ body::before {
   background: linear-gradient(135deg, rgba(255, 229, 229, 0.95), rgba(255, 241, 241, 0.95));
 }
 
+.auth-return-banner-info {
+  color: #0f4b7a;
+  border-color: rgba(59, 130, 246, 0.35);
+  background: linear-gradient(135deg, rgba(222, 239, 255, 0.95), rgba(238, 247, 255, 0.95));
+}
+
 .auth-return-banner-inner {
   min-height: 48px;
   display: flex;

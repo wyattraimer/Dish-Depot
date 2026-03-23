@@ -142,6 +142,12 @@ function getAuthRedirectUrl() {
   return redirectUrl.toString()
 }
 
+function getPasswordResetRedirectUrl() {
+  const redirectUrl = new URL(import.meta.env.BASE_URL || '/', window.location.origin)
+  redirectUrl.searchParams.set('auth', 'recovery')
+  return redirectUrl.toString()
+}
+
 const MEAL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner']
 const CLOUD_MEAL_PLAN_WEEK = '2000-01-03'
@@ -1043,6 +1049,10 @@ function App() {
   const [authDisplayName, setAuthDisplayName] = useState('')
   const [authUsername, setAuthUsername] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
+  const [resetPasswordBusy, setResetPasswordBusy] = useState(false)
+  const [isResetFlowActive, setIsResetFlowActive] = useState(false)
+  const [resetPasswordDraft, setResetPasswordDraft] = useState('')
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('')
   const [authUser, setAuthUser] = useState(null)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [profileDisplayName, setProfileDisplayName] = useState('')
@@ -1281,8 +1291,14 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setAuthUser(session?.user || null)
+
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResetFlowActive(true)
+        setIsProfileModalOpen(true)
+        setAuthReturnNotice({ type: 'info', text: 'Choose a new password to finish resetting your account.' })
+      }
     })
 
     return () => {
@@ -1315,6 +1331,10 @@ function App() {
     if (authError || authErrorDescription) {
       const decoded = decodeURIComponent(authErrorDescription || authError || 'Authentication link failed.')
       setAuthReturnNotice({ type: 'error', text: decoded })
+    } else if (authValue === 'recovery' || authType === 'recovery') {
+      setIsResetFlowActive(true)
+      setIsProfileModalOpen(true)
+      setAuthReturnNotice({ type: 'info', text: 'Choose a new password to finish resetting your account.' })
     } else if (authValue === 'confirmed' || authType === 'signup' || authCode) {
       setAuthReturnNotice({
         type: 'success',
@@ -2466,6 +2486,83 @@ function App() {
 
     showMessage('Signed out.', 'info')
     setIsProfileModalOpen(false)
+  }
+
+  async function handleRequestPasswordReset() {
+    if (!hasSupabaseConfig || !supabase) {
+      showMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.', 'info')
+      return
+    }
+
+    const email = authEmail.trim()
+    if (!email) {
+      showMessage('Enter your email first, then click Forgot Password.', 'info')
+      return
+    }
+
+    setAuthBusy(true)
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: getPasswordResetRedirectUrl(),
+      })
+
+      if (error) {
+        showMessage(error.message, 'error')
+        return
+      }
+
+      showMessage('Password reset email sent. Check your inbox and open the reset link.', 'info')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function handleCompletePasswordReset(event) {
+    event.preventDefault()
+
+    if (!hasSupabaseConfig || !supabase) {
+      showMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.', 'info')
+      return
+    }
+
+    if (!authUser) {
+      showMessage('Reset session missing. Open the password reset link from your email again.', 'error')
+      return
+    }
+
+    const nextPassword = resetPasswordDraft.trim()
+    const confirmPassword = resetPasswordConfirm.trim()
+
+    if (nextPassword.length < 6) {
+      showMessage('Use a password with at least 6 characters.', 'error')
+      return
+    }
+
+    if (nextPassword !== confirmPassword) {
+      showMessage('Passwords do not match.', 'error')
+      return
+    }
+
+    setResetPasswordBusy(true)
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: nextPassword })
+
+      if (error) {
+        showMessage(error.message, 'error')
+        return
+      }
+
+      setIsResetFlowActive(false)
+      setResetPasswordDraft('')
+      setResetPasswordConfirm('')
+      setAuthMode('signin')
+      setAuthReturnNotice({ type: 'success', text: 'Password updated. You can continue using Dish Depot.' })
+      showMessage('Password updated successfully.', 'success')
+    } finally {
+      setResetPasswordBusy(false)
+    }
   }
 
   function openProfileModal() {
@@ -4505,7 +4602,52 @@ function App() {
               &times;
             </span>
             <h2>Profile</h2>
-            {authUser ? (
+            {isResetFlowActive ? (
+              <>
+                <p className="profile-modal-subtitle">Set a new password for your Dish Depot account.</p>
+
+                <form className="profile-auth-form" onSubmit={handleCompletePasswordReset}>
+                  <div className="auth-input-row profile-auth-fields">
+                    <input
+                      type="password"
+                      value={resetPasswordDraft}
+                      onChange={(event) => setResetPasswordDraft(event.target.value)}
+                      placeholder="New password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      required
+                    />
+                    <input
+                      type="password"
+                      value={resetPasswordConfirm}
+                      onChange={(event) => setResetPasswordConfirm(event.target.value)}
+                      placeholder="Confirm new password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      required
+                    />
+                  </div>
+
+                  <div className="profile-form-actions">
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      onClick={() => {
+                        setIsResetFlowActive(false)
+                        setResetPasswordDraft('')
+                        setResetPasswordConfirm('')
+                      }}
+                      disabled={resetPasswordBusy}
+                    >
+                      Cancel
+                    </button>
+                    <button className="btn btn-primary" type="submit" disabled={resetPasswordBusy}>
+                      {resetPasswordBusy ? 'Updating...' : 'Update Password'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : authUser ? (
               <>
                 <p className="profile-modal-subtitle">Update how other Dish Depot users find and recognize you.</p>
 
@@ -4665,6 +4807,11 @@ function App() {
                   </div>
 
                   <div className="profile-form-actions">
+                    {authMode === 'signin' ? (
+                      <button className="btn btn-secondary" type="button" onClick={() => void handleRequestPasswordReset()} disabled={authBusy}>
+                        Forgot Password?
+                      </button>
+                    ) : null}
                     <button className="btn btn-primary" type="submit" disabled={authBusy}>
                       {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
                     </button>
