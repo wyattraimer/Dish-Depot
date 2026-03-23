@@ -2500,11 +2500,27 @@ function App() {
 
       let profileMap = new Map()
       if (ids.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id,username,display_name').in('id', ids)
-        if (Array.isArray(profiles)) {
+        const { data: memberProfiles, error: profileRpcError } = await supabase.rpc('get_group_member_profiles', {
+          target_group_id: groupId,
+        })
+
+        if (!profileRpcError && Array.isArray(memberProfiles)) {
           profileMap = new Map(
-            profiles.map((profile) => [profile.id, { username: profile.username || '', displayName: profile.display_name || '' }]),
+            memberProfiles.map((profile) => [
+              profile.user_id,
+              {
+                username: profile.username || '',
+                displayName: profile.display_name || '',
+              },
+            ]),
           )
+        } else {
+          const { data: profiles } = await supabase.from('profiles').select('id,username,display_name').in('id', ids)
+          if (Array.isArray(profiles)) {
+            profileMap = new Map(
+              profiles.map((profile) => [profile.id, { username: profile.username || '', displayName: profile.display_name || '' }]),
+            )
+          }
         }
       }
 
@@ -5630,8 +5646,8 @@ function App() {
                       {groupMembers.map((member) => (
                         <div key={member.userId} className="share-existing-item">
                           <div>
-                            <strong>{member.username ? `@${member.username}` : member.displayName || member.userId}</strong>
-                            <small>{member.displayName || 'No display name set'}</small>
+                            <strong>{member.displayName || (member.username ? `@${member.username}` : member.userId)}</strong>
+                            <small>{member.username ? `@${member.username}` : 'No username set'}</small>
                           </div>
                           <div className="share-existing-actions">
                             <select
