@@ -136,6 +136,12 @@ const FALLBACK_API_BASE =
 const API_BASE = (import.meta.env.VITE_API_BASE || FALLBACK_API_BASE).replace(/\/$/, '')
 const EXTRACT_ENDPOINT = `${API_BASE}/recipes/extract`
 
+function getAuthRedirectUrl() {
+  const redirectUrl = new URL(import.meta.env.BASE_URL || '/', window.location.origin)
+  redirectUrl.searchParams.set('auth', 'confirmed')
+  return redirectUrl.toString()
+}
+
 const MEAL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner']
 const CLOUD_MEAL_PLAN_WEEK = '2000-01-03'
@@ -1020,6 +1026,7 @@ function App() {
   const [form, setForm] = useState(emptyForm)
   const [highlightedId, setHighlightedId] = useState(null)
   const [messages, setMessages] = useState([])
+  const [authReturnNotice, setAuthReturnNotice] = useState(null)
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [showSwUpdateBanner, setShowSwUpdateBanner] = useState(false)
@@ -1281,6 +1288,55 @@ function App() {
     return () => {
       isMounted = false
       subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    const readParams = (raw) => {
+      const params = new URLSearchParams(raw)
+      return {
+        auth: params.get('auth') || '',
+        type: params.get('type') || '',
+        code: params.get('code') || '',
+        error: params.get('error') || '',
+        errorDescription: params.get('error_description') || '',
+      }
+    }
+
+    const fromQuery = readParams(window.location.search)
+    const fromHash = window.location.hash.startsWith('#') ? readParams(window.location.hash.slice(1)) : null
+
+    const authValue = fromQuery.auth || fromHash?.auth || ''
+    const authType = fromQuery.type || fromHash?.type || ''
+    const authCode = fromQuery.code || fromHash?.code || ''
+    const authError = fromQuery.error || fromHash?.error || ''
+    const authErrorDescription = fromQuery.errorDescription || fromHash?.errorDescription || ''
+
+    if (authError || authErrorDescription) {
+      const decoded = decodeURIComponent(authErrorDescription || authError || 'Authentication link failed.')
+      setAuthReturnNotice({ type: 'error', text: decoded })
+    } else if (authValue === 'confirmed' || authType === 'signup' || authCode) {
+      setAuthReturnNotice({
+        type: 'success',
+        text: 'Your email was confirmed. You can now sign in and sync your Dish Depot account.',
+      })
+    }
+
+    const params = new URLSearchParams(window.location.search)
+    const keysToRemove = ['auth', 'type', 'code', 'error', 'error_description']
+    let changed = false
+
+    keysToRemove.forEach((key) => {
+      if (params.has(key)) {
+        params.delete(key)
+        changed = true
+      }
+    })
+
+    if (changed || window.location.hash) {
+      const nextSearch = params.toString()
+      const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`
+      window.history.replaceState({}, '', nextUrl)
     }
   }, [])
 
@@ -2360,7 +2416,7 @@ function App() {
           email,
           password: authPassword,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: getAuthRedirectUrl(),
             data: {
               name: normalizedDisplayName,
               username: normalizedUsername,
@@ -2376,7 +2432,7 @@ function App() {
         if (data.session) {
           showMessage('Account created and signed in.', 'success')
         } else {
-          showMessage('Account created. Check your email to confirm your account.', 'info')
+          showMessage('Account created. Check your inbox to confirm your email, then return to sign in.', 'info')
         }
         return
       }
@@ -3540,6 +3596,17 @@ function App() {
           </div>
         </div>
       </header>
+
+      {authReturnNotice ? (
+        <div className={`auth-return-banner auth-return-banner-${authReturnNotice.type}`} role="status" aria-live="polite">
+          <div className="container auth-return-banner-inner">
+            <span>{authReturnNotice.text}</span>
+            <button className="auth-return-close" type="button" onClick={() => setAuthReturnNotice(null)} aria-label="Dismiss message">
+              <i className="fas fa-times" />
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {!isOnline ? (
         <div className="app-offline-banner" role="status" aria-live="polite">

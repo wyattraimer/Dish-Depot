@@ -165,6 +165,10 @@ body::before {
   .app-offline-banner {
     margin: 0 12px;
   }
+
+  .auth-return-banner {
+    margin: 0 12px 0.55rem;
+  }
 }
 
 .main {
@@ -352,6 +356,49 @@ body::before {
   font-size: 0.9rem;
   font-weight: 600;
   padding: 0.7rem 0;
+}
+
+.auth-return-banner {
+  margin: 0 20px 0.55rem;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  box-shadow: 0 10px 18px rgba(70, 84, 101, 0.12);
+}
+
+.auth-return-banner-success {
+  color: #0f5132;
+  border-color: rgba(60, 179, 113, 0.35);
+  background: linear-gradient(135deg, rgba(221, 255, 236, 0.95), rgba(238, 255, 246, 0.95));
+}
+
+.auth-return-banner-error {
+  color: #7f1d1d;
+  border-color: rgba(239, 68, 68, 0.35);
+  background: linear-gradient(135deg, rgba(255, 229, 229, 0.95), rgba(255, 241, 241, 0.95));
+}
+
+.auth-return-banner-inner {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.52rem 0;
+}
+
+.auth-return-close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.65);
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .auth-user-email {
