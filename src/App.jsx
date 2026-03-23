@@ -159,6 +159,41 @@ function hasGroupRoleOrHigher(role, minimum) {
   return (GROUP_ROLE_ORDER[role] || 0) >= (GROUP_ROLE_ORDER[minimum] || 0)
 }
 
+function formatInviteTimestamp(value) {
+  if (!value) {
+    return 'Unknown time'
+  }
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Unknown time'
+  }
+
+  return parsed.toLocaleString()
+}
+
+function formatInviteExpiry(expiresAt) {
+  if (!expiresAt) {
+    return 'No expiration set'
+  }
+
+  const parsed = new Date(expiresAt)
+  if (Number.isNaN(parsed.getTime())) {
+    return 'No expiration set'
+  }
+
+  const diffMs = parsed.getTime() - Date.now()
+  if (diffMs <= 0) {
+    return 'Expired'
+  }
+
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  if (days === 1) {
+    return 'Expires in 1 day'
+  }
+  return `Expires in ${days} days`
+}
+
 const MEAL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner']
 const CLOUD_MEAL_PLAN_WEEK = '2000-01-03'
@@ -1088,6 +1123,7 @@ function App() {
   const [groupInviteRole, setGroupInviteRole] = useState('viewer')
   const [groupMembers, setGroupMembers] = useState([])
   const [groupMembersLoading, setGroupMembersLoading] = useState(false)
+  const [groupPendingInvites, setGroupPendingInvites] = useState([])
   const [pendingGroupInvites, setPendingGroupInvites] = useState([])
   const [groupInvitesLoading, setGroupInvitesLoading] = useState(false)
   const [isGroupInvitesModalOpen, setIsGroupInvitesModalOpen] = useState(false)
@@ -1755,6 +1791,9 @@ function App() {
               groupId: row.group_id,
               role: row.role || 'viewer',
               token: row.token || '',
+              invitedBy: row.invited_by || '',
+              inviterUsername: row.inviter_username || '',
+              inviterDisplayName: row.inviter_display_name || '',
               createdAt: row.created_at || '',
               expiresAt: row.expires_at || '',
               groupName: row.group_name || 'Group',
@@ -2563,17 +2602,57 @@ function App() {
     }
   }
 
+  async function loadSelectedGroupPendingInvites(groupId = selectedGroupId) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
+      setGroupPendingInvites([])
+      return
+    }
+
+    setGroupInvitesLoading(true)
+
+    try {
+      const { data, error } = await supabase.rpc('get_group_pending_invites', {
+        target_group_id: groupId,
+      })
+
+      if (error) {
+        showMessage(`Could not load pending invites: ${error.message}`, 'info')
+        setGroupPendingInvites([])
+        return
+      }
+
+      const invites = Array.isArray(data)
+        ? data.map((row) => ({
+            id: row.id,
+            invitedUserId: row.invited_user_id || '',
+            role: row.role || 'viewer',
+            token: row.token || '',
+            createdAt: row.created_at || '',
+            expiresAt: row.expires_at || '',
+            invitedUsername: row.invited_username || '',
+            invitedDisplayName: row.invited_display_name || '',
+          }))
+        : []
+
+      setGroupPendingInvites(invites)
+    } finally {
+      setGroupInvitesLoading(false)
+    }
+  }
+
   async function openGroupModal() {
     setIsGroupModalOpen(true)
     setGroupInviteLookup('')
     setGroupInviteResults([])
     await loadSelectedGroupMembers()
+    await loadSelectedGroupPendingInvites()
   }
 
   function closeGroupModal() {
     setIsGroupModalOpen(false)
     setGroupInviteLookup('')
     setGroupInviteResults([])
+    setGroupPendingInvites([])
   }
 
   async function handleCreateGroup(event) {
@@ -2719,7 +2798,109 @@ function App() {
 
       setGroupInviteLookup('')
       setGroupInviteResults((prev) => prev.filter((row) => row.id !== recipient.id))
+      await loadSelectedGroupPendingInvites(selectedGroupId)
       showMessage('Invite sent. The user can choose to join from their invite list.', 'success')
+    } finally {
+      setGroupBusy(false)
+    }
+  }
+
+  async function resendGroupInvite(invite) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
+      return
+    }
+
+    if (!canAdminSelectedGroup) {
+      showMessage('Only group admins can resend invites.', 'info')
+      return
+    }
+
+    setGroupBusy(true)
+
+    try {
+      const { error } = await supabase
+        .from('group_invites')
+        .update({
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+        })
+        .eq('id', invite.id)
+        .eq('group_id', selectedGroupId)
+
+      if (error) {
+        showMessage(`Could not resend invite: ${error.message}`, 'error')
+        return
+      }
+
+      await loadSelectedGroupPendingInvites(selectedGroupId)
+      showMessage('Invite refreshed and resent.', 'success')
+    } finally {
+      setGroupBusy(false)
+    }
+  }
+
+  async function cancelGroupInvite(invite) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
+      return
+    }
+
+    if (!canAdminSelectedGroup) {
+      showMessage('Only group admins can cancel invites.', 'info')
+      return
+    }
+
+    setGroupBusy(true)
+
+    try {
+      const { error } = await supabase.from('group_invites').delete().eq('id', invite.id).eq('group_id', selectedGroupId)
+
+      if (error) {
+        showMessage(`Could not cancel invite: ${error.message}`, 'error')
+        return
+      }
+
+      setGroupPendingInvites((prev) => prev.filter((item) => item.id !== invite.id))
+      showMessage('Invite canceled.', 'success')
+    } finally {
+      setGroupBusy(false)
+    }
+  }
+
+  async function deleteSelectedGroup() {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
+      return
+    }
+
+    if (!canAdminSelectedGroup) {
+      showMessage('Only group admins can delete groups.', 'info')
+      return
+    }
+
+    const groupName = selectedGroup?.name || 'this group'
+    const confirmed = window.confirm(`Delete ${groupName}? This removes the group, invites, and group recipe links for all members.`)
+    if (!confirmed) {
+      return
+    }
+
+    setGroupBusy(true)
+
+    try {
+      const { error } = await supabase.from('groups').delete().eq('id', selectedGroupId)
+
+      if (error) {
+        showMessage(`Could not delete group: ${error.message}`, 'error')
+        return
+      }
+
+      setGroups((prev) => prev.filter((group) => group.id !== selectedGroupId))
+      setGroupMemberships((prev) => prev.filter((item) => item.groupId !== selectedGroupId))
+      setGroupMembers([])
+      setGroupPendingInvites([])
+      setGroupRecipes([])
+      setSelectedGroupId('')
+      setRecipeScope('mine')
+      closeGroupModal()
+      showMessage(`${groupName} deleted.`, 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -5703,7 +5884,9 @@ function App() {
                     const nextGroupId = event.target.value
                     setSelectedGroupId(nextGroupId)
                     setGroupMembers([])
+                    setGroupPendingInvites([])
                     void loadSelectedGroupMembers(nextGroupId)
+                    void loadSelectedGroupPendingInvites(nextGroupId)
                   }}
                 >
                   {groups.map((group) => (
@@ -5761,6 +5944,34 @@ function App() {
                   </div>
                 ) : null}
 
+                <section className="share-existing" aria-label="Pending invites for selected group">
+                  <h3>Pending Invites</h3>
+                  {groupInvitesLoading ? <p className="share-empty">Loading pending invites...</p> : null}
+                  {!groupInvitesLoading && groupPendingInvites.length === 0 ? <p className="share-empty">No pending invites.</p> : null}
+                  {!groupInvitesLoading && groupPendingInvites.length > 0 ? (
+                    <div className="share-existing-list">
+                      {groupPendingInvites.map((invite) => (
+                        <div key={invite.id} className="share-existing-item">
+                          <div>
+                            <strong>{invite.invitedDisplayName || (invite.invitedUsername ? `@${invite.invitedUsername}` : invite.invitedUserId)}</strong>
+                            <small>
+                              {invite.invitedUsername ? `@${invite.invitedUsername}` : 'No username set'} · {invite.role} · {formatInviteExpiry(invite.expiresAt)}
+                            </small>
+                          </div>
+                          <div className="share-existing-actions">
+                            <button className="btn btn-secondary" type="button" onClick={() => void resendGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
+                              Resend
+                            </button>
+                            <button className="btn btn-danger" type="button" onClick={() => void cancelGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+
                 <section className="share-existing" aria-label="Group members">
                   <h3>Members</h3>
                   {groupMembersLoading ? <p className="share-empty">Loading members...</p> : null}
@@ -5799,6 +6010,15 @@ function App() {
                     </div>
                   ) : null}
                 </section>
+
+                {canAdminSelectedGroup ? (
+                  <div className="share-form-actions">
+                    <button className="btn btn-danger" type="button" onClick={() => void deleteSelectedGroup()} disabled={groupBusy}>
+                      <i className="fas fa-trash" />
+                      Delete Group
+                    </button>
+                  </div>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -5825,7 +6045,13 @@ function App() {
                   <div key={invite.id} className="share-existing-item">
                     <div>
                       <strong>{invite.groupName || 'Group'}</strong>
-                      <small>Role: {invite.role}</small>
+                      <small>
+                        Role: {invite.role} · {formatInviteExpiry(invite.expiresAt)}
+                        {invite.inviterDisplayName || invite.inviterUsername
+                          ? ` · Invited by ${invite.inviterDisplayName || `@${invite.inviterUsername}`}`
+                          : ''}
+                      </small>
+                      <small>Sent: {formatInviteTimestamp(invite.createdAt)}</small>
                     </div>
                     <div className="share-existing-actions">
                       <button className="btn btn-secondary" type="button" onClick={() => void acceptPendingGroupInvite(invite)} disabled={groupInvitesLoading}>
