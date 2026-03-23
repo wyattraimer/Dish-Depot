@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 .last-run.json
+supabase-groups-feature.sql
 
 node_modules
 dist

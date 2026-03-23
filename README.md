@@ -10,6 +10,7 @@ Dish Depot is a recipe management Progressive Web App (PWA) for collecting, orga
 - Generate and export shopping lists from selected recipes.
 - Print recipes or save them as PDF.
 - Keep using core app features with offline-friendly behavior.
+- Create collaborative Groups with role-based access and shared group recipes.
 
 ## Architecture
 
