@@ -1655,9 +1655,6 @@ function App() {
       setGroupMemberships([])
       setGroupRecipes([])
       setSelectedGroupId('')
-      if (recipeScope === 'group') {
-        setRecipeScope('mine')
-      }
       return
     }
 
@@ -1692,9 +1689,6 @@ function App() {
         setGroups([])
         setSelectedGroupId('')
         setGroupRecipes([])
-        if (recipeScope === 'group') {
-          setRecipeScope('mine')
-        }
         return
       }
 
@@ -1729,7 +1723,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, isOnline, recipeScope])
+  }, [authUser?.id, isOnline])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline || !isUuidLike(selectedGroupId)) {
