@@ -2565,15 +2565,12 @@ function App() {
         return
       }
 
-      const { error: membershipError } = await supabase.from('group_members').upsert(
-        {
-          group_id: groupRow.id,
-          user_id: authUser.id,
-          role: 'admin',
-          added_by: authUser.id,
-        },
-        { onConflict: 'group_id,user_id' },
-      )
+      const { error: membershipError } = await supabase.from('group_members').insert({
+        group_id: groupRow.id,
+        user_id: authUser.id,
+        role: 'admin',
+        added_by: authUser.id,
+      })
 
       if (membershipError) {
         showMessage(`Group created, but membership setup failed: ${membershipError.message}`, 'info')
