@@ -1664,10 +1664,7 @@ function App() {
     let cancelled = false
 
     const loadGroups = async () => {
-      const { data: membershipRows, error: membershipError } = await supabase
-        .from('group_members')
-        .select('group_id,role')
-        .eq('user_id', authUser.id)
+      const { data: membershipRows, error: membershipError } = await supabase.rpc('get_my_group_memberships')
 
       if (cancelled) {
         return
