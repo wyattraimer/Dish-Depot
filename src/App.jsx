@@ -1650,7 +1650,7 @@ function App() {
   }, [authUser?.id, isOnline, recipeScope])
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
       setGroups([])
       setGroupMemberships([])
       setGroupRecipes([])
@@ -1723,10 +1723,10 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, isOnline])
+  }, [authUser?.id])
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline || !isUuidLike(selectedGroupId)) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
       setGroupRecipes([])
       return
     }
@@ -1792,7 +1792,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, isOnline, selectedGroupId, selectedGroupRole])
+  }, [authUser?.id, selectedGroupId, selectedGroupRole])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
