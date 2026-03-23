@@ -2539,10 +2539,9 @@ function App() {
     setGroupMembersLoading(true)
 
     try {
-      const { data: memberRows, error } = await supabase
-        .from('group_members')
-        .select('user_id,role')
-        .eq('group_id', groupId)
+      const { data: memberProfiles, error } = await supabase.rpc('get_group_member_profiles', {
+        target_group_id: groupId,
+      })
 
       if (error) {
         showMessage(`Could not load group members: ${error.message}`, 'info')
@@ -2550,46 +2549,18 @@ function App() {
         return
       }
 
-      const rows = Array.isArray(memberRows) ? memberRows : []
-      const ids = [...new Set(rows.map((row) => row.user_id).filter((id) => isUuidLike(id)))]
+      const mappedMembers = Array.isArray(memberProfiles)
+        ? memberProfiles
+            .filter((row) => isUuidLike(row?.user_id))
+            .map((row) => ({
+              userId: row.user_id,
+              role: row.role || 'viewer',
+              username: row.username || '',
+              displayName: row.display_name || '',
+            }))
+        : []
 
-      let profileMap = new Map()
-      if (ids.length > 0) {
-        const { data: memberProfiles, error: profileRpcError } = await supabase.rpc('get_group_member_profiles', {
-          target_group_id: groupId,
-        })
-
-        if (!profileRpcError && Array.isArray(memberProfiles)) {
-          profileMap = new Map(
-            memberProfiles.map((profile) => [
-              profile.user_id,
-              {
-                username: profile.username || '',
-                displayName: profile.display_name || '',
-              },
-            ]),
-          )
-        } else {
-          const { data: profiles } = await supabase.from('profiles').select('id,username,display_name').in('id', ids)
-          if (Array.isArray(profiles)) {
-            profileMap = new Map(
-              profiles.map((profile) => [profile.id, { username: profile.username || '', displayName: profile.display_name || '' }]),
-            )
-          }
-        }
-      }
-
-      setGroupMembers(
-        rows.map((row) => {
-          const profile = profileMap.get(row.user_id)
-          return {
-            userId: row.user_id,
-            role: row.role || 'viewer',
-            username: profile?.username || '',
-            displayName: profile?.displayName || '',
-          }
-        }),
-      )
+      setGroupMembers(mappedMembers)
     } finally {
       setGroupMembersLoading(false)
     }
