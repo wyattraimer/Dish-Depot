@@ -1044,6 +1044,7 @@ function App() {
   const [highlightedId, setHighlightedId] = useState(null)
   const [messages, setMessages] = useState([])
   const [authReturnNotice, setAuthReturnNotice] = useState(null)
+  const [pendingGroupInviteToken, setPendingGroupInviteToken] = useState('')
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [showSwUpdateBanner, setShowSwUpdateBanner] = useState(false)
@@ -1355,6 +1356,7 @@ function App() {
         auth: params.get('auth') || '',
         type: params.get('type') || '',
         code: params.get('code') || '',
+        groupInvite: params.get('groupInvite') || '',
         error: params.get('error') || '',
         errorDescription: params.get('error_description') || '',
       }
@@ -1366,6 +1368,7 @@ function App() {
     const authValue = fromQuery.auth || fromHash?.auth || ''
     const authType = fromQuery.type || fromHash?.type || ''
     const authCode = fromQuery.code || fromHash?.code || ''
+    const groupInviteToken = fromQuery.groupInvite || fromHash?.groupInvite || ''
     const authError = fromQuery.error || fromHash?.error || ''
     const authErrorDescription = fromQuery.errorDescription || fromHash?.errorDescription || ''
 
@@ -1383,8 +1386,16 @@ function App() {
       })
     }
 
+    if (groupInviteToken) {
+      setPendingGroupInviteToken(groupInviteToken)
+      if (!authUser?.id) {
+        setIsProfileModalOpen(true)
+        setAuthReturnNotice({ type: 'info', text: 'Sign in to accept your group invite.' })
+      }
+    }
+
     const params = new URLSearchParams(window.location.search)
-    const keysToRemove = ['auth', 'type', 'code', 'error', 'error_description']
+    const keysToRemove = ['auth', 'type', 'code', 'groupInvite', 'error', 'error_description']
     let changed = false
 
     keysToRemove.forEach((key) => {
@@ -1399,7 +1410,46 @@ function App() {
       const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`
       window.history.replaceState({}, '', nextUrl)
     }
-  }, [])
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!pendingGroupInviteToken || !hasSupabaseConfig || !supabase || !authUser?.id) {
+      return
+    }
+
+    let cancelled = false
+
+    const acceptInvite = async () => {
+      const { data, error } = await supabase.rpc('accept_group_invite', {
+        invite_token: pendingGroupInviteToken,
+      })
+
+      if (cancelled) {
+        return
+      }
+
+      if (error) {
+        showMessage(error.message || 'Could not accept group invite.', 'error')
+        setPendingGroupInviteToken('')
+        return
+      }
+
+      const accepted = Array.isArray(data) ? data[0] : data
+      if (accepted?.group_id) {
+        setSelectedGroupId(accepted.group_id)
+        setRecipeScope('group')
+      }
+
+      showMessage(`Joined ${accepted?.group_name || 'group'} successfully.`, 'success')
+      setPendingGroupInviteToken('')
+    }
+
+    void acceptInvite()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, pendingGroupInviteToken])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
@@ -1707,6 +1757,7 @@ function App() {
 
       const rows = Array.isArray(relationRows) ? relationRows : []
       const recipeIds = rows.map((row) => row.recipe_id).filter((id) => isUuidLike(id))
+      const addedByMap = new Map(rows.map((row) => [row.recipe_id, row.added_by]))
 
       if (recipeIds.length === 0) {
         setGroupRecipes([])
@@ -1734,6 +1785,7 @@ function App() {
       const mapped = migrateRecipes(
         (recipeRows || []).map((row) => ({
           ...mapSupabaseRecipeToApp(row),
+          groupAddedBy: addedByMap.get(row.id) || null,
           sharedReadOnly: !(canEditGroupRecipes || row.owner_id === authUser.id),
         })),
       )
@@ -2331,6 +2383,18 @@ function App() {
     return Boolean(authUser?.id && recipe?.ownerId && recipe.ownerId === authUser.id)
   }
 
+  function canRemoveRecipeFromSelectedGroup(recipe) {
+    if (!isUuidLike(selectedGroupId)) {
+      return false
+    }
+
+    if (hasGroupRoleOrHigher(selectedGroupRole, 'editor')) {
+      return true
+    }
+
+    return Boolean(authUser?.id && recipe?.groupAddedBy && recipe.groupAddedBy === authUser.id)
+  }
+
   async function addRecipeToSelectedGroup(recipe) {
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
       showMessage('Sign in to share recipes to a group.', 'info')
@@ -2377,12 +2441,44 @@ function App() {
         const normalizedRecipe = migrateRecipes([
           {
             ...recipe,
+            groupAddedBy: authUser.id,
             sharedReadOnly: !(canEditGroupRecipes || recipe.ownerId === authUser.id),
           },
         ])[0]
         return [normalizedRecipe, ...prev]
       })
     }
+  }
+
+  async function removeRecipeFromSelectedGroup(recipe) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      showMessage('Sign in to manage group recipes.', 'info')
+      return
+    }
+
+    if (!isUuidLike(selectedGroupId) || !isUuidLike(recipe?.id)) {
+      showMessage('Choose a group and recipe first.', 'info')
+      return
+    }
+
+    if (!canRemoveRecipeFromSelectedGroup(recipe)) {
+      showMessage('You do not have permission to remove this recipe from the group.', 'info')
+      return
+    }
+
+    const { error } = await supabase
+      .from('group_recipes')
+      .delete()
+      .eq('group_id', selectedGroupId)
+      .eq('recipe_id', recipe.id)
+
+    if (error) {
+      showMessage(`Could not remove recipe from group: ${error.message}`, 'error')
+      return
+    }
+
+    setGroupRecipes((prev) => prev.filter((item) => item.id !== recipe.id))
+    showMessage(`Removed recipe from ${selectedGroup?.name || 'group'}.`, 'success')
   }
 
   async function loadSelectedGroupMembers(groupId = selectedGroupId) {
@@ -4641,6 +4737,22 @@ function App() {
                               <span className="visually-hidden">Add to Group</span>
                             </button>
                           ) : null}
+                          {recipeScope === 'group' ? (
+                            <button
+                              className="btn btn-small btn-secondary"
+                              type="button"
+                              aria-label="Remove recipe from selected group"
+                              title={canRemoveRecipeFromSelectedGroup(recipe) ? `Remove from ${selectedGroup?.name || 'group'}` : 'No permission to remove'}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void removeRecipeFromSelectedGroup(recipe)
+                              }}
+                              disabled={!canRemoveRecipeFromSelectedGroup(recipe)}
+                            >
+                              <i className="fas fa-user-minus" />
+                              <span className="visually-hidden">Remove from Group</span>
+                            </button>
+                          ) : null}
                           {canManage ? (
                             <>
                               <button
@@ -4860,6 +4972,17 @@ function App() {
                 >
                   <i className="fas fa-users" />
                   Add to {selectedGroup?.name || 'Group'}
+                </button>
+              ) : null}
+              {recipeScope === 'group' ? (
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => void removeRecipeFromSelectedGroup(focusedRecipe)}
+                  disabled={!canRemoveRecipeFromSelectedGroup(focusedRecipe)}
+                >
+                  <i className="fas fa-user-minus" />
+                  Remove from {selectedGroup?.name || 'Group'}
                 </button>
               ) : null}
               {focusedRecipe.url ? (
