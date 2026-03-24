@@ -2950,7 +2950,10 @@ function App() {
       return
     }
 
-    const { error } = await supabase.from('group_members').delete().eq('group_id', selectedGroupId).eq('user_id', member.userId)
+    const { error } = await supabase.rpc('remove_group_member', {
+      target_group_id: selectedGroupId,
+      target_user_id: member.userId,
+    })
 
     if (error) {
       showMessage(`Could not remove member: ${error.message}`, 'error')
