@@ -342,6 +342,20 @@ body::before {
   align-self: auto;
 }
 
+.profile-theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0.2rem 0 0.8rem;
+}
+
+.profile-theme-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-700);
+}
+
 .auth-form {
   display: flex;
   align-items: center;

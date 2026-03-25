@@ -4702,18 +4702,7 @@ function App() {
               </div>
 
               <div className="controls-nav-right">
-                <div className="controls-theme-sync-row">
-                  <label className="theme-switch" aria-label="Toggle dark mode">
-                    <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
-                    <span className="theme-switch-track">
-                      <span className="theme-switch-knob">
-                        <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
-                      </span>
-                    </span>
-                    <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-                  </label>
-
-                  <div className="controls-account-row">
+                <div className="controls-account-row">
                     {hasSupabaseConfig && authUser ? (
                       <span
                         className={`auth-sync-pill ${isOnline ? 'auth-sync-pill-online' : 'auth-sync-pill-offline'}`}
@@ -4754,7 +4743,6 @@ function App() {
                     ) : (
                       <span className="auth-config-note">Cloud sync disabled</span>
                     )}
-                  </div>
                 </div>
               </div>
             </div>
@@ -5662,6 +5650,18 @@ function App() {
               &times;
             </span>
             <h2>Profile</h2>
+            <div className="profile-theme-row">
+              <span className="profile-theme-label">Theme</span>
+              <label className="theme-switch" aria-label="Toggle dark mode">
+                <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
+                <span className="theme-switch-track">
+                  <span className="theme-switch-knob">
+                    <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
+                  </span>
+                </span>
+                <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+              </label>
+            </div>
             {isResetFlowActive ? (
               <>
                 <p className="profile-modal-subtitle">Set a new password for your Dish Depot account.</p>
