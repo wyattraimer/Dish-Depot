@@ -228,6 +228,19 @@ body::before {
   min-width: 170px;
 }
 
+.recipe-scope-select {
+  font-weight: 700;
+  border-width: 2px;
+  border-color: rgba(209, 72, 62, 0.45);
+  background: linear-gradient(180deg, rgba(255, 247, 236, 0.95), rgba(255, 241, 224, 0.95));
+  box-shadow: 0 0 0 2px rgba(209, 72, 62, 0.09), 0 6px 14px rgba(209, 72, 62, 0.14);
+}
+
+.recipe-scope-select:focus {
+  border-color: rgba(209, 72, 62, 0.72);
+  box-shadow: 0 0 0 3px rgba(209, 72, 62, 0.2), 0 8px 18px rgba(209, 72, 62, 0.18);
+}
+
 .group-scope-controls {
   display: inline-flex;
   align-items: center;
@@ -3462,6 +3475,18 @@ body[data-theme='dark'] .controls .theme-switch-track {
 
 body[data-theme='dark'] .controls {
   background: #182432;
+}
+
+body[data-theme='dark'] .recipe-scope-select {
+  border-color: rgba(236, 137, 126, 0.55);
+  background: linear-gradient(180deg, rgba(56, 35, 33, 0.94), rgba(45, 30, 29, 0.94));
+  color: #f6e6e4;
+  box-shadow: 0 0 0 2px rgba(236, 137, 126, 0.12), 0 6px 14px rgba(0, 0, 0, 0.28);
+}
+
+body[data-theme='dark'] .recipe-scope-select:focus {
+  border-color: rgba(245, 167, 160, 0.78);
+  box-shadow: 0 0 0 3px rgba(236, 137, 126, 0.2), 0 10px 20px rgba(0, 0, 0, 0.32);
 }
 
 body[data-theme='dark'] .controls-advanced-panel {

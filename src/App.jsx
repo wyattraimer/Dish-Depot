@@ -4790,7 +4790,7 @@ function App() {
                         </label>
                         <select
                           id="recipeScopeSelect"
-                          className="category-select"
+                          className="category-select recipe-scope-select"
                           value={recipeScope}
                           onChange={(event) => setRecipeScope(event.target.value)}
                         >
