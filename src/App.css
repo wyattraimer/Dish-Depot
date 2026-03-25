@@ -279,6 +279,18 @@ body::before {
   margin-bottom: 0.45rem;
 }
 
+.controls-advanced-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0;
+  flex: 1 1 auto;
+}
+
+.controls-advanced-actions .btn {
+  min-width: 0;
+}
+
 .controls-filter-row {
   align-items: flex-end;
   padding-top: 0.08rem;
@@ -2610,6 +2622,16 @@ body::before {
     justify-content: flex-end;
   }
 
+  .controls-advanced-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .controls-advanced-actions .btn {
+    width: 100%;
+  }
+
   .scope-select-wrap {
     width: 100%;
     min-width: 0;
@@ -3011,6 +3033,10 @@ body::before {
     display: flex;
     justify-content: flex-end;
     gap: 0.45rem;
+  }
+
+  .controls-advanced-actions {
+    grid-template-columns: 1fr;
   }
 
   .controls-main-actions .btn {

@@ -4837,6 +4837,29 @@ function App() {
                     More Options
                   </summary>
                   <div className="controls-utility-row">
+                    <div className="controls-advanced-actions" role="group" aria-label="Quick tools">
+                      <button
+                        className={`btn ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
+                        type="button"
+                        aria-pressed={showPinnedOnly}
+                        onClick={() => setShowPinnedOnly((prev) => !prev)}
+                      >
+                        <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
+                        {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
+                      </button>
+                      <button className="btn btn-secondary" type="button" onClick={randomizeRecipe}>
+                        <i className="fas fa-dice" />
+                        Random Recipe
+                      </button>
+                      <button className="btn btn-secondary" type="button" onClick={openShoppingListBuilder}>
+                        <i className="fas fa-cart-shopping" />
+                        Shopping List
+                      </button>
+                      <button className="btn btn-secondary" type="button" onClick={() => setIsCompactCardView((prev) => !prev)}>
+                        <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
+                        Compact Card View
+                      </button>
+                    </div>
                     <div className="controls-tools-row">
                       <details ref={toolsMenuRef} className="tools-menu">
                         <summary
@@ -4850,20 +4873,6 @@ function App() {
                         </summary>
                         <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
                           <button
-                            className={`btn ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
-                            type="button"
-                            role="menuitemcheckbox"
-                            aria-checked={showPinnedOnly}
-                            onClick={() => setShowPinnedOnly((prev) => !prev)}
-                          >
-                            <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
-                            {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
-                          </button>
-                          <button className="btn btn-secondary" type="button" role="menuitem" onClick={randomizeRecipe}>
-                            <i className="fas fa-dice" />
-                            Random Recipe
-                          </button>
-                          <button
                             className="btn btn-secondary"
                             type="button"
                             role="menuitem"
@@ -4873,23 +4882,9 @@ function App() {
                             <i className="fas fa-cloud-arrow-up" />
                             {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
                           </button>
-                          <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
-                            <i className="fas fa-cart-shopping" />
-                            Shopping List
-                          </button>
                           <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
                             <i className="fas fa-download" />
                             Export
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            type="button"
-                            role="menuitemcheckbox"
-                            aria-checked={isCompactCardView}
-                            onClick={() => setIsCompactCardView((prev) => !prev)}
-                          >
-                            <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
-                            Compact Card View
                           </button>
                           <button
                             className="btn btn-secondary"
