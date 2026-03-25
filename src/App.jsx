@@ -4713,11 +4713,11 @@ function App() {
                   <div className="controls-account-row">
                     {hasSupabaseConfig && authUser ? (
                       <span
-                        className={`auth-sync-pill ${isOnline ? '' : 'auth-sync-pill-offline'}`}
+                        className={`auth-sync-pill ${isOnline ? 'auth-sync-pill-online' : 'auth-sync-pill-offline'}`}
                         aria-label={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
                       >
                         <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
-                        {isOnline ? 'Sync On' : 'Sync Off'}
+                        <span className="auth-sync-label">{isOnline ? 'Sync On' : 'Sync Off'}</span>
                       </span>
                     ) : null}
 

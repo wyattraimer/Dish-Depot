@@ -162,6 +162,14 @@ body::before {
     width: auto;
   }
 
+  .auth-sync-pill-online {
+    padding-inline: 0.44rem;
+  }
+
+  .auth-sync-pill-online .auth-sync-label {
+    display: none;
+  }
+
   .app-offline-banner {
     margin: 0 12px;
   }
@@ -403,9 +411,9 @@ body::before {
 }
 
 .auth-sync-pill-offline {
-  color: #7c2d12;
-  background: #ffedd5;
-  border: 1px solid rgba(234, 88, 12, 0.3);
+  color: #fbe2e2;
+  background: #8b2424;
+  border: 1px solid rgba(248, 113, 113, 0.46);
 }
 
 .group-invites-pill {
@@ -3419,6 +3427,12 @@ body[data-theme='dark'] .auth-sync-pill {
   color: #cfe9dc;
   border-color: rgba(134, 186, 160, 0.34);
   background: #1d3a33;
+}
+
+body[data-theme='dark'] .auth-sync-pill-offline {
+  color: #ffe3e3;
+  border-color: rgba(248, 113, 113, 0.52);
+  background: #7a1f1f;
 }
 
 body[data-theme='dark'] .auth-user-avatar {
