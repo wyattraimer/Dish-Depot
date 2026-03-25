@@ -170,6 +170,14 @@ body::before {
     display: none;
   }
 
+  .group-invites-pill {
+    padding-inline: 0.44rem;
+  }
+
+  .group-invites-pill .group-invites-label {
+    display: none;
+  }
+
   .app-offline-banner {
     margin: 0 12px;
   }

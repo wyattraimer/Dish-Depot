@@ -4724,7 +4724,7 @@ function App() {
                     {hasSupabaseConfig && authUser ? (
                       <button className="btn btn-secondary btn-small group-invites-pill" type="button" onClick={openGroupInvitesModal}>
                         <i className="fas fa-envelope-open-text" />
-                        Invites
+                        <span className="group-invites-label">Invites</span>
                         {pendingGroupInvites.length > 0 ? <span className="group-invites-count">{pendingGroupInvites.length}</span> : null}
                       </button>
                     ) : null}
