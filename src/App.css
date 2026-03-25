@@ -3391,6 +3391,24 @@ body[data-theme='dark'] .share-existing-item {
   background: #15212f;
 }
 
+body[data-theme='dark'] .modal-section {
+  border-color: rgba(164, 180, 200, 0.28);
+  background: linear-gradient(180deg, rgba(24, 36, 50, 0.9), rgba(19, 31, 44, 0.9));
+}
+
+body[data-theme='dark'] .modal-section summary {
+  color: #e6eef8;
+}
+
+body[data-theme='dark'] .modal-section summary::marker {
+  color: #a8bdd5;
+}
+
+body[data-theme='dark'] .modal-section[open] summary {
+  border-bottom: 1px solid rgba(164, 180, 200, 0.22);
+  padding-bottom: 0.4rem;
+}
+
 body[data-theme='dark'] .share-result-item strong {
   color: var(--ink-900);
 }
