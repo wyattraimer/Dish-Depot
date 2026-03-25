@@ -218,10 +218,14 @@ body::before {
   justify-content: flex-end;
 }
 
-.recipe-scope-toggle {
+.scope-select-wrap {
   display: inline-flex;
-  gap: 0.35rem;
-  min-width: 0;
+  align-items: center;
+  min-width: 170px;
+}
+
+.scope-select-wrap .category-select {
+  min-width: 170px;
 }
 
 .group-scope-controls {
@@ -235,9 +239,31 @@ body::before {
   min-width: 160px;
 }
 
-.recipe-scope-toggle .btn,
+.scope-select-wrap .btn,
 .auth-mode-toggle .btn {
   min-width: 0;
+}
+
+.controls-advanced-panel {
+  margin-top: 0.45rem;
+  border: 1px solid rgba(90, 105, 122, 0.2);
+  border-radius: 12px;
+  background: var(--control-surface-light-muted);
+  padding: 0.4rem 0.55rem;
+}
+
+.controls-advanced-summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.controls-advanced-panel[open] .controls-advanced-summary {
+  margin-bottom: 0.45rem;
 }
 
 .controls-filter-row {
@@ -2559,17 +2585,25 @@ body::before {
     max-width: 100%;
   }
 
-  .controls-filter-group,
-  .controls-main-actions {
+  .controls-filter-group {
     width: 100%;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .recipe-scope-toggle {
+  .controls-main-actions {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .scope-select-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .scope-select-wrap .category-select {
+    min-width: 0;
   }
 
   .group-scope-controls {
@@ -2599,7 +2633,7 @@ body::before {
   }
 
   .controls-main-actions .btn,
-  .recipe-scope-toggle .btn,
+  .scope-select-wrap .btn,
   .auth-mode-toggle .btn,
   .auth-input-row .btn,
   .controls-danger-zone .btn {
@@ -2961,9 +2995,8 @@ body::before {
   }
 
   .controls-main-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: stretch;
+    display: flex;
+    justify-content: flex-end;
     gap: 0.45rem;
   }
 
@@ -3429,6 +3462,15 @@ body[data-theme='dark'] .controls .theme-switch-track {
 
 body[data-theme='dark'] .controls {
   background: #182432;
+}
+
+body[data-theme='dark'] .controls-advanced-panel {
+  background: #15212f;
+  border-color: rgba(164, 180, 200, 0.28);
+}
+
+body[data-theme='dark'] .controls-advanced-summary {
+  color: #e6eef8;
 }
 
 body[data-theme='dark'] .btn.btn-small.btn-secondary,

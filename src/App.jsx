@@ -4784,28 +4784,20 @@ function App() {
                     </div>
 
                     {hasSupabaseConfig && authUser ? (
-                      <div className="recipe-scope-toggle" role="group" aria-label="Recipe scope">
-                        <button
-                          className={`btn btn-small ${recipeScope === 'mine' ? 'btn-primary' : 'btn-secondary'}`}
-                          type="button"
-                          onClick={() => setRecipeScope('mine')}
+                      <div className="scope-select-wrap" aria-label="Recipe scope">
+                        <label htmlFor="recipeScopeSelect" className="visually-hidden">
+                          Recipe scope
+                        </label>
+                        <select
+                          id="recipeScopeSelect"
+                          className="category-select"
+                          value={recipeScope}
+                          onChange={(event) => setRecipeScope(event.target.value)}
                         >
-                          My Recipes
-                        </button>
-                        <button
-                          className={`btn btn-small ${recipeScope === 'shared' ? 'btn-primary' : 'btn-secondary'}`}
-                          type="button"
-                          onClick={() => setRecipeScope('shared')}
-                        >
-                          Shared With Me
-                        </button>
-                        <button
-                          className={`btn btn-small ${recipeScope === 'group' ? 'btn-primary' : 'btn-secondary'}`}
-                          type="button"
-                          onClick={() => setRecipeScope('group')}
-                        >
-                          Groups
-                        </button>
+                          <option value="mine">My Recipes</option>
+                          <option value="shared">Shared With Me</option>
+                          <option value="group">Groups</option>
+                        </select>
                       </div>
                     ) : null}
 
@@ -4836,106 +4828,114 @@ function App() {
                       <i className="fas fa-plus" />
                       Add Recipe
                     </button>
-                    <button className="btn btn-secondary" type="button" onClick={randomizeRecipe}>
-                      <i className="fas fa-dice" />
-                      Random Recipe
-                    </button>
-                    <button
-                      className={`btn ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
-                      type="button"
-                      onClick={() => setShowPinnedOnly((prev) => !prev)}
-                    >
-                      <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
-                      {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
-                    </button>
                   </div>
                 </div>
 
-                <div className="controls-utility-row">
-                  <div className="controls-tools-row">
-                    <details ref={toolsMenuRef} className="tools-menu">
-                      <summary
-                        className="btn btn-secondary btn-tools"
-                        aria-label="Open tools menu"
-                        aria-haspopup="menu"
-                        aria-controls="tools-menu-panel"
-                      >
-                        <i className="fas fa-screwdriver-wrench" />
-                        Tools
-                      </summary>
-                      <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
-                        <button
-                          className="btn btn-secondary"
-                          type="button"
-                          role="menuitem"
-                          onClick={() => void uploadLocalRecipesToCloud()}
-                          disabled={!hasSupabaseConfig || isBulkUploading}
+                <details className="controls-advanced-panel">
+                  <summary className="controls-advanced-summary">
+                    <i className="fas fa-sliders" />
+                    More Options
+                  </summary>
+                  <div className="controls-utility-row">
+                    <div className="controls-tools-row">
+                      <details ref={toolsMenuRef} className="tools-menu">
+                        <summary
+                          className="btn btn-secondary btn-tools"
+                          aria-label="Open tools menu"
+                          aria-haspopup="menu"
+                          aria-controls="tools-menu-panel"
                         >
-                          <i className="fas fa-cloud-arrow-up" />
-                          {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
-                        </button>
-                        <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
-                          <i className="fas fa-cart-shopping" />
-                          Shopping List
-                        </button>
-                        <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
-                          <i className="fas fa-download" />
-                          Export
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          type="button"
-                          role="menuitemcheckbox"
-                          aria-checked={isCompactCardView}
-                          onClick={() => setIsCompactCardView((prev) => !prev)}
-                        >
-                          <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
-                          Compact Card View
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          type="button"
-                          role="menuitem"
-                          onClick={() => importInputRef.current?.click()}
-                        >
-                          <i className="fas fa-upload" />
-                          Import
-                        </button>
-                        <button className="btn btn-danger" type="button" role="menuitem" onClick={deleteAllRecipes}>
-                          <i className="fas fa-trash-alt" />
-                          Delete All Recipes
-                        </button>
-                        <input
-                          ref={importInputRef}
-                          type="file"
-                          accept=".json"
-                          style={{ display: 'none' }}
-                          onChange={handleImportFile}
-                        />
-                      </div>
-                    </details>
-
-                    {!isInstalledPwa ? (
-                      <details className="ios-install-help">
-                        <summary>
-                          <i className="fas fa-mobile-screen-button" />
-                          iPhone App Install Tips
+                          <i className="fas fa-screwdriver-wrench" />
+                          Tools
                         </summary>
-                        <p>
-                          Recommended: Use Brave as your default browser to help block ads and popups.
-                        </p>
-                        <ol>
-                          <li>When you want to install this app, open this website in Safari on your iPhone.</li>
-                          <li>Tap the button with three dots on the bottom right.</li>
-                          <li>Tap 'Share' (square with the up arrow).</li>
-                          <li>Tap 'More'.</li>
-                          <li>Select Add to Home Screen.</li>
-                          <li>Tap Add to finish.</li>
-                        </ol>
+                        <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
+                          <button
+                            className={`btn ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
+                            type="button"
+                            role="menuitemcheckbox"
+                            aria-checked={showPinnedOnly}
+                            onClick={() => setShowPinnedOnly((prev) => !prev)}
+                          >
+                            <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
+                            {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
+                          </button>
+                          <button className="btn btn-secondary" type="button" role="menuitem" onClick={randomizeRecipe}>
+                            <i className="fas fa-dice" />
+                            Random Recipe
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            type="button"
+                            role="menuitem"
+                            onClick={() => void uploadLocalRecipesToCloud()}
+                            disabled={!hasSupabaseConfig || isBulkUploading}
+                          >
+                            <i className="fas fa-cloud-arrow-up" />
+                            {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
+                          </button>
+                          <button className="btn btn-secondary" type="button" role="menuitem" onClick={openShoppingListBuilder}>
+                            <i className="fas fa-cart-shopping" />
+                            Shopping List
+                          </button>
+                          <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
+                            <i className="fas fa-download" />
+                            Export
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            type="button"
+                            role="menuitemcheckbox"
+                            aria-checked={isCompactCardView}
+                            onClick={() => setIsCompactCardView((prev) => !prev)}
+                          >
+                            <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
+                            Compact Card View
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            type="button"
+                            role="menuitem"
+                            onClick={() => importInputRef.current?.click()}
+                          >
+                            <i className="fas fa-upload" />
+                            Import
+                          </button>
+                          <button className="btn btn-danger" type="button" role="menuitem" onClick={deleteAllRecipes}>
+                            <i className="fas fa-trash-alt" />
+                            Delete All Recipes
+                          </button>
+                          <input
+                            ref={importInputRef}
+                            type="file"
+                            accept=".json"
+                            style={{ display: 'none' }}
+                            onChange={handleImportFile}
+                          />
+                        </div>
                       </details>
-                    ) : null}
+
+                      {!isInstalledPwa ? (
+                        <details className="ios-install-help">
+                          <summary>
+                            <i className="fas fa-mobile-screen-button" />
+                            iPhone App Install Tips
+                          </summary>
+                          <p>
+                            Recommended: Use Brave as your default browser to help block ads and popups.
+                          </p>
+                          <ol>
+                            <li>When you want to install this app, open this website in Safari on your iPhone.</li>
+                            <li>Tap the button with three dots on the bottom right.</li>
+                            <li>Tap 'Share' (square with the up arrow).</li>
+                            <li>Tap 'More'.</li>
+                            <li>Select Add to Home Screen.</li>
+                            <li>Tap Add to finish.</li>
+                          </ol>
+                        </details>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                </details>
               </>
             ) : null}
           </section>
