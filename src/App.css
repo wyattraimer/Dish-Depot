@@ -3478,15 +3478,22 @@ body[data-theme='dark'] .controls {
 }
 
 body[data-theme='dark'] .recipe-scope-select {
-  border-color: rgba(236, 137, 126, 0.55);
-  background: linear-gradient(180deg, rgba(56, 35, 33, 0.94), rgba(45, 30, 29, 0.94));
-  color: #f6e6e4;
-  box-shadow: 0 0 0 2px rgba(236, 137, 126, 0.12), 0 6px 14px rgba(0, 0, 0, 0.28);
+  border-color: rgba(245, 167, 160, 0.88);
+  background: linear-gradient(180deg, rgba(148, 52, 46, 0.96), rgba(124, 43, 39, 0.96));
+  color: #fff5f3;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 0 0 2px rgba(245, 167, 160, 0.2),
+    0 0 0 5px rgba(245, 167, 160, 0.1),
+    0 10px 20px rgba(0, 0, 0, 0.32);
 }
 
 body[data-theme='dark'] .recipe-scope-select:focus {
-  border-color: rgba(245, 167, 160, 0.78);
-  box-shadow: 0 0 0 3px rgba(236, 137, 126, 0.2), 0 10px 20px rgba(0, 0, 0, 0.32);
+  border-color: rgba(255, 204, 198, 0.98);
+  box-shadow:
+    0 0 0 3px rgba(255, 204, 198, 0.34),
+    0 0 0 7px rgba(255, 204, 198, 0.14),
+    0 12px 22px rgba(0, 0, 0, 0.36);
 }
 
 body[data-theme='dark'] .controls-advanced-panel {
