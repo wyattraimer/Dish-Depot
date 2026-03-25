@@ -1632,6 +1632,7 @@ body::before {
 
 .share-modal-overlay {
   z-index: 1301;
+  overscroll-behavior: none;
 }
 
 .profile-modal-overlay {
@@ -1783,7 +1784,7 @@ body::before {
 
 .share-lookup-row select {
   width: auto;
-  flex: 0 0 132px;
+  flex: 0 0 120px;
 }
 
 .share-lookup-row .btn {
@@ -2979,6 +2980,19 @@ body::before {
 
   .share-lookup-row {
     flex-direction: column;
+  }
+
+  .share-lookup-row input,
+  .share-lookup-row select,
+  .share-lookup-row .btn {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .share-lookup-row select {
+    flex: 1 1 auto;
+    min-height: 40px;
+    font-size: 0.88rem;
   }
 
   .profile-avatar-row {

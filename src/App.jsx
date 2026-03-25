@@ -2130,6 +2130,30 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const lockBackgroundScroll = isGroupModalOpen || isGroupInvitesModalOpen || isShareModalOpen
+    if (!lockBackgroundScroll) {
+      return undefined
+    }
+
+    const previousBodyOverflow = document.body.style.overflow
+    const previousBodyOverscroll = document.body.style.overscrollBehavior
+    const previousHtmlOverflow = document.documentElement.style.overflow
+    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior
+
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehavior = 'none'
+    document.documentElement.style.overflow = 'hidden'
+    document.documentElement.style.overscrollBehavior = 'none'
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.body.style.overscrollBehavior = previousBodyOverscroll
+      document.documentElement.style.overflow = previousHtmlOverflow
+      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll
+    }
+  }, [isGroupModalOpen, isGroupInvitesModalOpen, isShareModalOpen])
+
+  useEffect(() => {
     if (!isAvatarActionMenuOpen) {
       return undefined
     }
@@ -6564,6 +6588,9 @@ function App() {
       <FloatingControls
         canShowFloating={
           !isModalOpen &&
+          !isGroupModalOpen &&
+          !isGroupInvitesModalOpen &&
+          !isShareModalOpen &&
           !isImportPreviewOpen &&
           !isExportPreviewOpen &&
           !isShoppingListOpen &&
