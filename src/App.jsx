@@ -1187,6 +1187,7 @@ function App() {
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
   const toolsMenuRef = useRef(null)
+  const controlsAdvancedPanelRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
   const profileAvatarEditBtnRef = useRef(null)
   const profileAvatarMenuRef = useRef(null)
@@ -4610,6 +4611,23 @@ function App() {
     }
   }
 
+  function handleControlsAdvancedPanelClick(event) {
+    const panel = controlsAdvancedPanelRef.current
+    if (!panel || !(event.target instanceof Element)) {
+      return
+    }
+
+    if (event.target.closest('.controls-advanced-summary')) {
+      return
+    }
+
+    if (event.target.closest('button, input, select, textarea, a, summary, [role="menuitem"]')) {
+      return
+    }
+
+    panel.open = !panel.open
+  }
+
   return (
     <>
       {messages.length > 0 ? (
@@ -4833,7 +4851,11 @@ function App() {
                   </div>
                 </div>
 
-                <details className="controls-advanced-panel">
+                <details
+                  ref={controlsAdvancedPanelRef}
+                  className="controls-advanced-panel"
+                  onClick={handleControlsAdvancedPanelClick}
+                >
                   <summary className="controls-advanced-summary">
                     <i className="fas fa-sliders" />
                     More Options
