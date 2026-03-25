@@ -4859,8 +4859,6 @@ function App() {
                         <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
                         Compact Card View
                       </button>
-                    </div>
-                    <div className="controls-tools-row">
                       <details ref={toolsMenuRef} className="tools-menu">
                         <summary
                           className="btn btn-secondary btn-tools"
@@ -4908,7 +4906,8 @@ function App() {
                           />
                         </div>
                       </details>
-
+                    </div>
+                    <div className="controls-tools-row">
                       {!isInstalledPwa ? (
                         <details className="ios-install-help">
                           <summary>
