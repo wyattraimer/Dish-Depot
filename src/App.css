@@ -1150,7 +1150,7 @@ body::before {
 .recipe-actions {
   margin-top: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.45rem;
 }
 
