@@ -6648,7 +6648,7 @@ function App() {
           !focusedRecipe &&
           !isProfileModalOpen
         }
-        showAddRecipeFab={activeView === 'recipes'}
+        showAddRecipeFab={activeView === 'recipes' && recipeScope !== 'shared'}
         showInstallBtn={showInstallBtn}
         showSwUpdateBanner={showSwUpdateBanner}
         onInstallClick={handleInstallClick}
