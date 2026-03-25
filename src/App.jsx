@@ -1186,7 +1186,6 @@ function App() {
 
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
-  const toolsMenuRef = useRef(null)
   const controlsAdvancedPanelRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
   const profileAvatarEditBtnRef = useRef(null)
@@ -2206,31 +2205,6 @@ function App() {
       document.removeEventListener('touchstart', handleOutsideAvatarMenuClick)
     }
   }, [isAvatarActionMenuOpen])
-
-  useEffect(() => {
-    const handleOutsideToolsMenuClick = (event) => {
-      if (!(event.target instanceof Node)) {
-        return
-      }
-
-      const toolsMenu = toolsMenuRef.current
-      if (!toolsMenu?.hasAttribute('open')) {
-        return
-      }
-
-      if (toolsMenu.contains(event.target)) {
-        return
-      }
-
-      toolsMenu.removeAttribute('open')
-    }
-
-    document.addEventListener('mousedown', handleOutsideToolsMenuClick)
-
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideToolsMenuClick)
-    }
-  }, [])
 
   useEffect(() => {
     setShoppingChecklist((prev) => {
@@ -4877,7 +4851,7 @@ function App() {
                 >
                   <summary className="controls-advanced-summary">
                     <i className="fas fa-sliders" />
-                    More Options
+                    More
                   </summary>
                   <div className="controls-utility-row">
                     <div className="controls-advanced-actions" role="group" aria-label="Quick tools">
@@ -4902,53 +4876,34 @@ function App() {
                         <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
                         Compact Card View
                       </button>
-                      <details ref={toolsMenuRef} className="tools-menu">
-                        <summary
-                          className="btn btn-secondary btn-tools"
-                          aria-label="Open tools menu"
-                          aria-haspopup="menu"
-                          aria-controls="tools-menu-panel"
-                        >
-                          <i className="fas fa-screwdriver-wrench" />
-                          Tools
-                        </summary>
-                        <div id="tools-menu-panel" className="tools-menu-panel" role="menu" aria-label="Recipe tools">
-                          <button
-                            className="btn btn-secondary"
-                            type="button"
-                            role="menuitem"
-                            onClick={() => void uploadLocalRecipesToCloud()}
-                            disabled={!hasSupabaseConfig || isBulkUploading}
-                          >
-                            <i className="fas fa-cloud-arrow-up" />
-                            {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
-                          </button>
-                          <button className="btn btn-secondary" type="button" role="menuitem" onClick={exportRecipes}>
-                            <i className="fas fa-download" />
-                            Export
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            type="button"
-                            role="menuitem"
-                            onClick={() => importInputRef.current?.click()}
-                          >
-                            <i className="fas fa-upload" />
-                            Import
-                          </button>
-                          <button className="btn btn-danger" type="button" role="menuitem" onClick={deleteAllRecipes}>
-                            <i className="fas fa-trash-alt" />
-                            Delete All Recipes
-                          </button>
-                          <input
-                            ref={importInputRef}
-                            type="file"
-                            accept=".json"
-                            style={{ display: 'none' }}
-                            onChange={handleImportFile}
-                          />
-                        </div>
-                      </details>
+                      <button
+                        className="btn btn-secondary"
+                        type="button"
+                        onClick={() => void uploadLocalRecipesToCloud()}
+                        disabled={!hasSupabaseConfig || isBulkUploading}
+                      >
+                        <i className="fas fa-cloud-arrow-up" />
+                        {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
+                      </button>
+                      <button className="btn btn-secondary" type="button" onClick={exportRecipes}>
+                        <i className="fas fa-download" />
+                        Export
+                      </button>
+                      <button className="btn btn-secondary" type="button" onClick={() => importInputRef.current?.click()}>
+                        <i className="fas fa-upload" />
+                        Import
+                      </button>
+                      <button className="btn btn-danger" type="button" onClick={deleteAllRecipes}>
+                        <i className="fas fa-trash-alt" />
+                        Delete All Recipes
+                      </button>
+                      <input
+                        ref={importInputRef}
+                        type="file"
+                        accept=".json"
+                        style={{ display: 'none' }}
+                        onChange={handleImportFile}
+                      />
                     </div>
                     <div className="controls-tools-row">
                       {!isInstalledPwa ? (

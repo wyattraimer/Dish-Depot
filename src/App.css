@@ -617,55 +617,6 @@ body::before {
   min-width: 136px;
 }
 
-.tools-menu {
-  position: relative;
-}
-
-.tools-menu summary {
-  list-style: none;
-}
-
-.tools-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.tools-menu summary::marker {
-  content: '';
-}
-
-.btn-tools {
-  color: var(--ink-700);
-  font-weight: 600;
-  background: var(--control-surface-light);
-  border-color: rgba(90, 105, 122, 0.22);
-  box-shadow: 0 4px 10px rgba(31, 41, 51, 0.06);
-}
-
-.tools-menu-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 24;
-  min-width: 220px;
-  border-radius: 12px;
-  border: 1px solid var(--border-soft);
-  background: var(--control-surface-light);
-  box-shadow: 0 8px 14px rgba(31, 41, 51, 0.11);
-  padding: 0.55rem;
-  display: grid;
-  gap: 0.42rem;
-}
-
-.tools-menu[open] .btn-tools {
-  border-color: rgba(114, 165, 138, 0.58);
-  box-shadow: 0 10px 18px rgba(63, 79, 95, 0.13);
-}
-
-.tools-menu-panel .btn {
-  justify-content: flex-start;
-  width: 100%;
-}
-
 .ios-install-help {
   margin-top: 0.18rem;
   border: 1px solid var(--border-soft);
@@ -2723,25 +2674,6 @@ body::before {
     width: 100%;
   }
 
-  .tools-menu {
-    width: 100%;
-  }
-
-  .btn-tools {
-    width: 100%;
-  }
-
-  .tools-menu-panel {
-    left: 0;
-    right: 0;
-    min-width: 0;
-  }
-
-  .tools-menu[open] .tools-menu-panel {
-    position: static;
-    margin-top: 0.5rem;
-  }
-
   .search-box,
   .category-filter,
   .category-select {
@@ -3425,8 +3357,6 @@ body[data-theme='dark'] .profile-auth-form input::placeholder {
 
 body[data-theme='dark'] .controls .search-box input,
 body[data-theme='dark'] .controls .category-select,
-body[data-theme='dark'] .controls .btn-tools,
-body[data-theme='dark'] .controls .tools-menu-panel,
 body[data-theme='dark'] .controls .view-toggle-group,
 body[data-theme='dark'] .controls .ios-install-help,
 body[data-theme='dark'] .controls .auth-form input,
@@ -3565,8 +3495,6 @@ body[data-theme='dark'] .controls-advanced-summary {
 
 body[data-theme='dark'] .btn.btn-small.btn-secondary,
 body[data-theme='dark'] .btn.btn-secondary,
-body[data-theme='dark'] .tools-menu summary.btn.btn-secondary.btn-tools,
-body[data-theme='dark'] .tools-menu-panel,
 body[data-theme='dark'] .ios-install-help,
 body[data-theme='dark'] .controls-utility-row,
 body[data-theme='dark'] .theme-switch-track {
@@ -3574,9 +3502,7 @@ body[data-theme='dark'] .theme-switch-track {
 }
 
 body[data-theme='dark'] .btn.btn-small.btn-secondary,
-body[data-theme='dark'] .btn.btn-secondary,
-body[data-theme='dark'] .tools-menu summary.btn.btn-secondary.btn-tools,
-body[data-theme='dark'] .tools-menu-panel {
+body[data-theme='dark'] .btn.btn-secondary {
   background-color: #1a2736;
 }
 
