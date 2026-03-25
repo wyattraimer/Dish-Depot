@@ -1282,6 +1282,17 @@ function App() {
     () => unresolvedShoppingItems.filter((item) => !hiddenUnresolvedKeys.has(item.key)),
     [unresolvedShoppingItems, hiddenUnresolvedKeys],
   )
+  const accountIdentityLabel = useMemo(() => {
+    const displayName = profileDisplayName.trim()
+    if (displayName) {
+      return displayName
+    }
+    const username = profileUsername.trim()
+    if (username) {
+      return `@${username}`
+    }
+    return authUser?.email || 'Account'
+  }, [profileDisplayName, profileUsername, authUser?.email])
 
   useEffect(() => {
     try {
@@ -4748,13 +4759,21 @@ function App() {
                     ) : null}
 
                     {hasSupabaseConfig ? (
-                      <button className="auth-user-email auth-user-link" type="button" title="Open account" onClick={openProfileModal}>
+                      <button
+                        className="auth-user-email auth-user-link"
+                        type="button"
+                        title={`Open account (${accountIdentityLabel})`}
+                        onClick={openProfileModal}
+                      >
                         {authUser && profileAvatarUrl ? (
-                          <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
+                          <>
+                            <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
+                            {isOnline ? <span className="auth-user-label">{accountIdentityLabel}</span> : null}
+                          </>
                         ) : (
                           <>
                             <i className="fas fa-user" />
-                            {isOnline ? authUser?.email || 'Account' : null}
+                            {isOnline ? accountIdentityLabel : null}
                           </>
                         )}
                       </button>

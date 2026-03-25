@@ -526,7 +526,15 @@ body::before {
   text-align: left;
   display: inline-flex;
   align-items: center;
+  gap: 0.36rem;
   justify-content: center;
+}
+
+.auth-user-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .auth-user-avatar {
