@@ -4824,10 +4824,12 @@ function App() {
                   </div>
 
                   <div className="controls-main-actions">
-                    <button className="btn btn-primary btn-add-inline" type="button" onClick={() => openModal()}>
-                      <i className="fas fa-plus" />
-                      Add Recipe
-                    </button>
+                    {recipeScope !== 'shared' ? (
+                      <button className="btn btn-primary btn-add-inline" type="button" onClick={() => openModal()}>
+                        <i className="fas fa-plus" />
+                        Add Recipe
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
