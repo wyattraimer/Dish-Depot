@@ -1772,6 +1772,11 @@ body::before {
   gap: 0.55rem;
 }
 
+.group-danger-zone {
+  margin-top: 0.95rem;
+  padding-top: 0.35rem;
+}
+
 .share-lookup-row {
   display: flex;
   gap: 0.45rem;

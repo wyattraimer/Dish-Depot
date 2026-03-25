@@ -142,6 +142,18 @@ const GROUP_ROLE_ORDER = {
   admin: 4,
 }
 const GROUP_ROLE_OPTIONS = ['viewer', 'contributor', 'editor', 'admin']
+const GROUP_ROLE_LABELS = {
+  viewer: 'Viewer',
+  contributor: 'Contributor',
+  editor: 'Editor',
+  admin: 'Admin',
+}
+const GROUP_ROLE_DESCRIPTIONS = {
+  viewer: 'view only',
+  contributor: 'add recipes',
+  editor: 'edit + remove recipes',
+  admin: 'full group management',
+}
 
 function getAuthRedirectUrl() {
   const redirectUrl = new URL(import.meta.env.BASE_URL || '/', window.location.origin)
@@ -5949,7 +5961,7 @@ function App() {
                       <select value={groupInviteRole} onChange={(event) => setGroupInviteRole(event.target.value)} disabled={!canAdminSelectedGroup}>
                         {GROUP_ROLE_OPTIONS.map((role) => (
                           <option key={role} value={role}>
-                            {role}
+                            {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
                           </option>
                         ))}
                       </select>
@@ -6024,7 +6036,7 @@ function App() {
                             >
                               {GROUP_ROLE_OPTIONS.map((role) => (
                                 <option key={role} value={role}>
-                                  {role}
+                                  {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
                                 </option>
                               ))}
                             </select>
@@ -6046,7 +6058,7 @@ function App() {
                 </section>
 
                 {canAdminSelectedGroup ? (
-                  <div className="share-form-actions">
+                  <div className="share-form-actions group-danger-zone">
                     <button className="btn btn-danger" type="button" onClick={() => void deleteSelectedGroup()} disabled={groupBusy}>
                       <i className="fas fa-trash" />
                       Delete Group
