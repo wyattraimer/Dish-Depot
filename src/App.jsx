@@ -2950,6 +2950,11 @@ function App() {
       return
     }
 
+    if (member.userId === authUser.id && groupMembers.length === 1) {
+      showMessage('You are the only member. Delete the group instead of leaving it.', 'info')
+      return
+    }
+
     const { error } = await supabase.rpc('remove_group_member', {
       target_group_id: selectedGroupId,
       target_user_id: member.userId,
@@ -5999,14 +6004,16 @@ function App() {
                                 </option>
                               ))}
                             </select>
-                            <button
-                              className="btn btn-danger"
-                              type="button"
-                              onClick={() => void removeUserFromSelectedGroup(member)}
-                              disabled={groupBusy || (!canAdminSelectedGroup && member.userId !== authUser?.id)}
-                            >
-                              {member.userId === authUser?.id ? 'Leave' : 'Remove'}
-                            </button>
+                            {!(member.userId === authUser?.id && groupMembers.length === 1) ? (
+                              <button
+                                className="btn btn-danger"
+                                type="button"
+                                onClick={() => void removeUserFromSelectedGroup(member)}
+                                disabled={groupBusy || (!canAdminSelectedGroup && member.userId !== authUser?.id)}
+                              >
+                                {member.userId === authUser?.id ? 'Leave' : 'Remove'}
+                              </button>
+                            ) : null}
                           </div>
                         </div>
                       ))}
