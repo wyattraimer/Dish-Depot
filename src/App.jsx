@@ -5899,171 +5899,188 @@ function App() {
             </span>
             <h2>Groups</h2>
             <p className="share-modal-subtitle">Create and manage collaborative groups for shared recipes.</p>
+            <p className="share-helper-note">Sections below can be expanded or collapsed to keep things focused.</p>
 
-            <form className="share-form" onSubmit={handleCreateGroup}>
-              <div className="form-group">
-                <label htmlFor="groupNameInput">Create Group</label>
-                <div className="share-lookup-row">
-                  <input
-                    id="groupNameInput"
-                    type="text"
-                    value={groupNameDraft}
-                    onChange={(event) => setGroupNameDraft(event.target.value)}
-                    placeholder="The Johnson Family"
-                  />
-                  <button className="btn btn-secondary" type="submit" disabled={groupBusy}>
-                    {groupBusy ? 'Creating...' : 'Create'}
-                  </button>
+            <details className="modal-section" open>
+              <summary>Create Group</summary>
+              <form className="share-form" onSubmit={handleCreateGroup}>
+                <div className="form-group">
+                  <label htmlFor="groupNameInput">Group Name</label>
+                  <div className="share-lookup-row">
+                    <input
+                      id="groupNameInput"
+                      type="text"
+                      value={groupNameDraft}
+                      onChange={(event) => setGroupNameDraft(event.target.value)}
+                      placeholder="The Johnson Family"
+                    />
+                    <button className="btn btn-secondary" type="submit" disabled={groupBusy}>
+                      {groupBusy ? 'Creating...' : 'Create'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </form>
+              </form>
+            </details>
 
             {groups.length > 0 ? (
-              <div className="form-group">
-                <label htmlFor="groupSelectInModal">Selected Group</label>
-                <select
-                  id="groupSelectInModal"
-                  value={selectedGroupId}
-                  onChange={(event) => {
-                    const nextGroupId = event.target.value
-                    setSelectedGroupId(nextGroupId)
-                    setGroupMembers([])
-                    setGroupPendingInvites([])
-                    void loadSelectedGroupMembers(nextGroupId)
-                    void loadSelectedGroupPendingInvites(nextGroupId)
-                  }}
-                >
-                  {groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <details className="modal-section" open>
+                <summary>Selected Group</summary>
+                <div className="form-group">
+                  <label htmlFor="groupSelectInModal">Choose Group</label>
+                  <select
+                    id="groupSelectInModal"
+                    value={selectedGroupId}
+                    onChange={(event) => {
+                      const nextGroupId = event.target.value
+                      setSelectedGroupId(nextGroupId)
+                      setGroupMembers([])
+                      setGroupPendingInvites([])
+                      void loadSelectedGroupMembers(nextGroupId)
+                      void loadSelectedGroupPendingInvites(nextGroupId)
+                    }}
+                  >
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </details>
             ) : null}
 
             {isUuidLike(selectedGroupId) ? (
               <>
-                <form className="share-form" onSubmit={searchGroupInviteCandidates}>
-                  <div className="form-group">
-                    <label htmlFor="groupInviteLookup">Send Invite by Username</label>
-                    <p className="share-helper-note">Invited users will be able to accept or decline before joining.</p>
-                    <div className="share-lookup-row">
-                      <input
-                        id="groupInviteLookup"
-                        type="text"
-                        value={groupInviteLookup}
-                        onChange={(event) => setGroupInviteLookup(event.target.value.toLowerCase())}
-                        placeholder="chefmaria"
-                        autoComplete="off"
-                        disabled={!canAdminSelectedGroup}
-                      />
-                      <select value={groupInviteRole} onChange={(event) => setGroupInviteRole(event.target.value)} disabled={!canAdminSelectedGroup}>
-                        {GROUP_ROLE_OPTIONS.map((role) => (
-                          <option key={role} value={role}>
-                            {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
-                          </option>
-                        ))}
-                      </select>
+                <details className="modal-section" open>
+                  <summary>Invite Members</summary>
+                  <form className="share-form" onSubmit={searchGroupInviteCandidates}>
+                    <div className="form-group">
+                      <label htmlFor="groupInviteLookup">Send Invite by Username</label>
+                      <p className="share-helper-note">Invited users will be able to accept or decline before joining.</p>
+                      <div className="share-lookup-row">
+                        <input
+                          id="groupInviteLookup"
+                          type="text"
+                          value={groupInviteLookup}
+                          onChange={(event) => setGroupInviteLookup(event.target.value.toLowerCase())}
+                          placeholder="chefmaria"
+                          autoComplete="off"
+                          disabled={!canAdminSelectedGroup}
+                        />
+                        <select value={groupInviteRole} onChange={(event) => setGroupInviteRole(event.target.value)} disabled={!canAdminSelectedGroup}>
+                          {GROUP_ROLE_OPTIONS.map((role) => (
+                            <option key={role} value={role}>
+                              {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
+                            </option>
+                          ))}
+                        </select>
                         <button className="btn btn-secondary" type="submit" disabled={groupBusy || !canAdminSelectedGroup}>
                           {groupBusy ? 'Searching...' : 'Find User'}
                         </button>
-                    </div>
-                  </div>
-                </form>
-
-                {groupInviteResults.length > 0 ? (
-                  <div className="share-results" aria-label="Group invite results">
-                    {groupInviteResults.map((result) => (
-                      <div key={result.id} className="share-result-item">
-                        <div>
-                          <strong>{result.username ? `@${result.username}` : result.displayName || result.id}</strong>
-                          <small>{result.displayName || 'No display name set'}</small>
-                        </div>
-                        <button className="btn btn-secondary" type="button" onClick={() => void addUserToSelectedGroup(result)} disabled={!canAdminSelectedGroup || groupBusy}>
-                          Send Invite
-                        </button>
                       </div>
-                    ))}
-                  </div>
-                ) : null}
+                    </div>
+                  </form>
 
-                <section className="share-existing" aria-label="Pending invites for selected group">
-                  <h3>Pending Invites</h3>
-                  {groupInvitesLoading ? <p className="share-empty">Loading pending invites...</p> : null}
-                  {!groupInvitesLoading && groupPendingInvites.length === 0 ? <p className="share-empty">No pending invites.</p> : null}
-                  {!groupInvitesLoading && groupPendingInvites.length > 0 ? (
-                    <div className="share-existing-list">
-                      {groupPendingInvites.map((invite) => (
-                        <div key={invite.id} className="share-existing-item">
+                  {groupInviteResults.length > 0 ? (
+                    <div className="share-results" aria-label="Group invite results">
+                      {groupInviteResults.map((result) => (
+                        <div key={result.id} className="share-result-item">
                           <div>
-                            <strong>{invite.invitedDisplayName || (invite.invitedUsername ? `@${invite.invitedUsername}` : invite.invitedUserId)}</strong>
-                            <small>
-                              {invite.invitedUsername ? `@${invite.invitedUsername}` : 'No username set'} · {invite.role} · {formatInviteExpiry(invite.expiresAt)}
-                            </small>
+                            <strong>{result.username ? `@${result.username}` : result.displayName || result.id}</strong>
+                            <small>{result.displayName || 'No display name set'}</small>
                           </div>
-                          <div className="share-existing-actions">
-                            <button className="btn btn-secondary" type="button" onClick={() => void resendGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
-                              Resend
-                            </button>
-                            <button className="btn btn-danger" type="button" onClick={() => void cancelGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
-                              Cancel
-                            </button>
-                          </div>
+                          <button className="btn btn-secondary" type="button" onClick={() => void addUserToSelectedGroup(result)} disabled={!canAdminSelectedGroup || groupBusy}>
+                            Send Invite
+                          </button>
                         </div>
                       ))}
                     </div>
                   ) : null}
-                </section>
+                </details>
 
-                <section className="share-existing" aria-label="Group members">
-                  <h3>Members</h3>
-                  {groupMembersLoading ? <p className="share-empty">Loading members...</p> : null}
-                  {!groupMembersLoading && groupMembers.length === 0 ? <p className="share-empty">No members yet.</p> : null}
-                  {!groupMembersLoading && groupMembers.length > 0 ? (
-                    <div className="share-existing-list">
-                      {groupMembers.map((member) => (
-                        <div key={member.userId} className="share-existing-item">
-                          <div>
-                            <strong>{member.displayName || (member.username ? `@${member.username}` : member.userId)}</strong>
-                            <small>{member.username ? `@${member.username}` : 'No username set'}</small>
-                          </div>
-                          <div className="share-existing-actions">
-                            <select
-                              value={member.role}
-                              onChange={(event) => void updateGroupMemberRole(member, event.target.value)}
-                              disabled={!canAdminSelectedGroup || groupBusy || member.userId === authUser?.id}
-                            >
-                              {GROUP_ROLE_OPTIONS.map((role) => (
-                                <option key={role} value={role}>
-                                  {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
-                                </option>
-                              ))}
-                            </select>
-                            {!(member.userId === authUser?.id && groupMembers.length === 1) ? (
-                              <button
-                                className="btn btn-danger"
-                                type="button"
-                                onClick={() => void removeUserFromSelectedGroup(member)}
-                                disabled={groupBusy || (!canAdminSelectedGroup && member.userId !== authUser?.id)}
-                              >
-                                {member.userId === authUser?.id ? 'Leave' : 'Remove'}
+                <details className="modal-section" open>
+                  <summary>Pending Invites</summary>
+                  <section className="share-existing" aria-label="Pending invites for selected group">
+                    {groupInvitesLoading ? <p className="share-empty">Loading pending invites...</p> : null}
+                    {!groupInvitesLoading && groupPendingInvites.length === 0 ? <p className="share-empty">No pending invites.</p> : null}
+                    {!groupInvitesLoading && groupPendingInvites.length > 0 ? (
+                      <div className="share-existing-list">
+                        {groupPendingInvites.map((invite) => (
+                          <div key={invite.id} className="share-existing-item">
+                            <div>
+                              <strong>{invite.invitedDisplayName || (invite.invitedUsername ? `@${invite.invitedUsername}` : invite.invitedUserId)}</strong>
+                              <small>
+                                {invite.invitedUsername ? `@${invite.invitedUsername}` : 'No username set'} · {invite.role} · {formatInviteExpiry(invite.expiresAt)}
+                              </small>
+                            </div>
+                            <div className="share-existing-actions">
+                              <button className="btn btn-secondary" type="button" onClick={() => void resendGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
+                                Resend
                               </button>
-                            ) : null}
+                              <button className="btn btn-danger" type="button" onClick={() => void cancelGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
+                                Cancel
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </section>
+                        ))}
+                      </div>
+                    ) : null}
+                  </section>
+                </details>
+
+                <details className="modal-section" open>
+                  <summary>Members</summary>
+                  <section className="share-existing" aria-label="Group members">
+                    {groupMembersLoading ? <p className="share-empty">Loading members...</p> : null}
+                    {!groupMembersLoading && groupMembers.length === 0 ? <p className="share-empty">No members yet.</p> : null}
+                    {!groupMembersLoading && groupMembers.length > 0 ? (
+                      <div className="share-existing-list">
+                        {groupMembers.map((member) => (
+                          <div key={member.userId} className="share-existing-item">
+                            <div>
+                              <strong>{member.displayName || (member.username ? `@${member.username}` : member.userId)}</strong>
+                              <small>{member.username ? `@${member.username}` : 'No username set'}</small>
+                            </div>
+                            <div className="share-existing-actions">
+                              <select
+                                value={member.role}
+                                onChange={(event) => void updateGroupMemberRole(member, event.target.value)}
+                                disabled={!canAdminSelectedGroup || groupBusy || member.userId === authUser?.id}
+                              >
+                                {GROUP_ROLE_OPTIONS.map((role) => (
+                                  <option key={role} value={role}>
+                                    {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
+                                  </option>
+                                ))}
+                              </select>
+                              {!(member.userId === authUser?.id && groupMembers.length === 1) ? (
+                                <button
+                                  className="btn btn-danger"
+                                  type="button"
+                                  onClick={() => void removeUserFromSelectedGroup(member)}
+                                  disabled={groupBusy || (!canAdminSelectedGroup && member.userId !== authUser?.id)}
+                                >
+                                  {member.userId === authUser?.id ? 'Leave' : 'Remove'}
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </section>
+                </details>
 
                 {canAdminSelectedGroup ? (
-                  <div className="share-form-actions group-danger-zone">
-                    <button className="btn btn-danger" type="button" onClick={() => void deleteSelectedGroup()} disabled={groupBusy}>
-                      <i className="fas fa-trash" />
-                      Delete Group
-                    </button>
-                  </div>
+                  <details className="modal-section">
+                    <summary>Danger Zone</summary>
+                    <div className="share-form-actions group-danger-zone">
+                      <button className="btn btn-danger" type="button" onClick={() => void deleteSelectedGroup()} disabled={groupBusy}>
+                        <i className="fas fa-trash" />
+                        Delete Group
+                      </button>
+                    </div>
+                  </details>
                 ) : null}
               </>
             ) : null}
@@ -6127,58 +6144,62 @@ function App() {
             </p>
             <p className="share-helper-note">Search by username. Recipient must already have an account.</p>
 
-            <form className="share-form" onSubmit={searchShareCandidates}>
-              <div className="form-group">
-                <label htmlFor="shareRecipientLookup">Recipient Username</label>
-                <div className="share-lookup-row">
+            <details className="modal-section" open>
+              <summary>Find Recipient</summary>
+              <form className="share-form" onSubmit={searchShareCandidates}>
+                <div className="form-group">
+                  <label htmlFor="shareRecipientLookup">Recipient Username</label>
+                  <div className="share-lookup-row">
+                    <input
+                      id="shareRecipientLookup"
+                      type="text"
+                      required
+                      value={shareLookupText}
+                      onChange={(event) => setShareLookupText(event.target.value.toLowerCase())}
+                      placeholder="chefmaria"
+                      autoComplete="off"
+                    />
+                    <button className="btn btn-secondary" type="submit" disabled={shareBusy}>
+                      {shareBusy ? 'Searching...' : 'Find User'}
+                    </button>
+                  </div>
+                </div>
+
+                <label className="share-edit-toggle">
                   <input
-                    id="shareRecipientLookup"
-                    type="text"
-                    required
-                    value={shareLookupText}
-                    onChange={(event) => setShareLookupText(event.target.value.toLowerCase())}
-                    placeholder="chefmaria"
-                    autoComplete="off"
+                    type="checkbox"
+                    checked={shareCanEdit}
+                    onChange={(event) => setShareCanEdit(event.target.checked)}
                   />
-                  <button className="btn btn-secondary" type="submit" disabled={shareBusy}>
-                    {shareBusy ? 'Searching...' : 'Find User'}
-                  </button>
-                </div>
-              </div>
+                  Allow recipient to edit this recipe
+                </label>
 
-              <label className="share-edit-toggle">
-                <input
-                  type="checkbox"
-                  checked={shareCanEdit}
-                  onChange={(event) => setShareCanEdit(event.target.checked)}
-                />
-                Allow recipient to edit this recipe
-              </label>
-
-              {shareResults.length > 0 ? (
-                <div className="share-results" aria-label="Share search results">
-                  {shareResults.map((result) => (
-                    <div key={result.id} className="share-result-item">
-                      <div>
-                        <strong>@{result.username || 'user'}</strong>
-                        <small>{result.displayName || 'Dish Depot user'}</small>
+                {shareResults.length > 0 ? (
+                  <div className="share-results" aria-label="Share search results">
+                    {shareResults.map((result) => (
+                      <div key={result.id} className="share-result-item">
+                        <div>
+                          <strong>@{result.username || 'user'}</strong>
+                          <small>{result.displayName || 'Dish Depot user'}</small>
+                        </div>
+                        <button
+                          className="btn btn-primary btn-small"
+                          type="button"
+                          onClick={() => void shareRecipeWithUser(result)}
+                          disabled={shareBusy}
+                        >
+                          Share
+                        </button>
                       </div>
-                      <button
-                        className="btn btn-primary btn-small"
-                        type="button"
-                        onClick={() => void shareRecipeWithUser(result)}
-                        disabled={shareBusy}
-                      >
-                        Share
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+                    ))}
+                  </div>
+                ) : null}
+              </form>
+            </details>
 
+            <details className="modal-section" open>
+              <summary>Currently Shared With</summary>
               <section className="share-existing" aria-label="Current shares">
-                <h3>Currently Shared With</h3>
-
                 {shareRecipientsLoading ? <p className="share-empty">Loading shares...</p> : null}
 
                 {!shareRecipientsLoading && shareRecipients.length === 0 ? (
@@ -6217,13 +6238,13 @@ function App() {
                   </div>
                 ) : null}
               </section>
+            </details>
 
-              <div className="share-form-actions">
-                <button className="btn btn-secondary" type="button" onClick={closeShareModal}>
-                  Close
-                </button>
-              </div>
-            </form>
+            <div className="share-form-actions">
+              <button className="btn btn-secondary" type="button" onClick={closeShareModal}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

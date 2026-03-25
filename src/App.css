@@ -1758,6 +1758,25 @@ body::before {
   gap: 0.7rem;
 }
 
+.modal-section {
+  border: 1px solid rgba(90, 105, 122, 0.2);
+  border-radius: 12px;
+  background: var(--control-surface-light-muted);
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.55rem;
+}
+
+.modal-section summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.modal-section[open] summary {
+  margin-bottom: 0.55rem;
+}
+
 .share-edit-toggle {
   display: inline-flex;
   align-items: center;
