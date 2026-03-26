@@ -4895,6 +4895,40 @@ function App() {
 
                       {isToolsMenuOpen ? (
                         <div id="recipe-tools-menu" className="tools-menu-panel" aria-label="Recipe tools">
+                          <ToolbarMenuSection title="Utilities">
+                            <button
+                              className={`btn tools-menu-button ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
+                              type="button"
+                              aria-pressed={showPinnedOnly}
+                              onClick={() => setShowPinnedOnly((prev) => !prev)}
+                            >
+                              <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
+                              {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
+                            </button>
+                            <button
+                              className="btn btn-secondary tools-menu-button"
+                              type="button"
+                              onClick={() => {
+                                closeToolsMenu()
+                                randomizeRecipe()
+                              }}
+                            >
+                              <i className="fas fa-dice" />
+                              Random Recipe
+                            </button>
+                            <button
+                              className="btn btn-secondary tools-menu-button"
+                              type="button"
+                              onClick={() => {
+                                closeToolsMenu()
+                                openShoppingListBuilder()
+                              }}
+                            >
+                              <i className="fas fa-cart-shopping" />
+                              Shopping List
+                            </button>
+                          </ToolbarMenuSection>
+
                           <ToolbarMenuSection title="Manage Recipes">
                             <button
                               className="btn btn-secondary tools-menu-button"
@@ -4932,42 +4966,8 @@ function App() {
                             </button>
                           </ToolbarMenuSection>
 
-                          <ToolbarMenuSection title="Utilities">
-                            <button
-                              className={`btn tools-menu-button ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
-                              type="button"
-                              aria-pressed={showPinnedOnly}
-                              onClick={() => setShowPinnedOnly((prev) => !prev)}
-                            >
-                              <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
-                              {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
-                            </button>
-                            <button
-                              className="btn btn-secondary tools-menu-button"
-                              type="button"
-                              onClick={() => {
-                                closeToolsMenu()
-                                randomizeRecipe()
-                              }}
-                            >
-                              <i className="fas fa-dice" />
-                              Random Recipe
-                            </button>
-                            <button
-                              className="btn btn-secondary tools-menu-button"
-                              type="button"
-                              onClick={() => {
-                                closeToolsMenu()
-                                openShoppingListBuilder()
-                              }}
-                            >
-                              <i className="fas fa-cart-shopping" />
-                              Shopping List
-                            </button>
-                          </ToolbarMenuSection>
-
-                          <ToolbarMenuSection title="Display & Support">
-                            {!isInstalledPwa ? (
+                          {!isInstalledPwa ? (
+                            <ToolbarMenuSection title="Display & Support">
                               <details className="ios-install-help tools-install-help">
                                 <summary>
                                   <i className="fas fa-mobile-screen-button" />
@@ -4983,10 +4983,8 @@ function App() {
                                   <li>Tap Add to finish.</li>
                                 </ol>
                               </details>
-                            ) : (
-                              <p className="tools-menu-note">Installed app detected — iPhone install tips are hidden.</p>
-                            )}
-                          </ToolbarMenuSection>
+                            </ToolbarMenuSection>
+                          ) : null}
 
                           <ToolbarMenuSection title="Danger Zone" danger>
                             <button
