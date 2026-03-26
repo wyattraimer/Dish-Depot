@@ -4681,13 +4681,15 @@ function App() {
       ) : null}
 
       <header className="header">
-        <div className="container">
+        <div className="container header-container">
           <div className="header-content">
-            <h1 className="logo">
-              <img className="logo-mark" src={dishDepotLogo} alt="Dish Depot logo" />
-              Dish Depot
-            </h1>
-            <p className="tagline">Save. Organize. Cook.</p>
+            <div className="header-brand">
+              <img className="header-logo" src={dishDepotLogo} alt="Dish Depot logo" />
+              <div className="header-title-block">
+                <h1 className="header-title">Dish Depot</h1>
+                <p className="header-tagline">Save. Organize. Cook.</p>
+              </div>
+            </div>
           </div>
         </div>
       </header>
