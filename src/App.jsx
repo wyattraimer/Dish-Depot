@@ -26,6 +26,15 @@ const CATEGORY_OPTIONS = [
   'other',
 ]
 
+function ToolbarMenuSection({ title, danger = false, children }) {
+  return (
+    <section className={`tools-menu-section${danger ? ' tools-menu-section-danger' : ''}`} aria-label={title}>
+      <h3 className="tools-menu-heading">{title}</h3>
+      <div className="tools-menu-items">{children}</div>
+    </section>
+  )
+}
+
 const DEFAULT_RECIPES = [
   {
     id: 1001,
@@ -1081,6 +1090,7 @@ function App() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [showPinnedOnly, setShowPinnedOnly] = useState(false)
   const [isCompactCardView, setIsCompactCardView] = useState(() => localStorage.getItem(CARD_VIEW_COMPACT_KEY) === '1')
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false)
   const [activeView, setActiveView] = useState('recipes')
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -1186,7 +1196,7 @@ function App() {
 
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
-  const controlsAdvancedPanelRef = useRef(null)
+  const toolsMenuRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
   const profileAvatarEditBtnRef = useRef(null)
   const profileAvatarMenuRef = useRef(null)
@@ -2205,6 +2215,40 @@ function App() {
       document.removeEventListener('touchstart', handleOutsideAvatarMenuClick)
     }
   }, [isAvatarActionMenuOpen])
+
+  useEffect(() => {
+    if (!isToolsMenuOpen) {
+      return undefined
+    }
+
+    const handleOutsideToolsMenuClick = (event) => {
+      if (!(event.target instanceof Node)) {
+        return
+      }
+
+      if (toolsMenuRef.current?.contains(event.target)) {
+        return
+      }
+
+      setIsToolsMenuOpen(false)
+    }
+
+    const handleToolsMenuEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsToolsMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideToolsMenuClick)
+    document.addEventListener('touchstart', handleOutsideToolsMenuClick)
+    document.addEventListener('keydown', handleToolsMenuEscape)
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideToolsMenuClick)
+      document.removeEventListener('touchstart', handleOutsideToolsMenuClick)
+      document.removeEventListener('keydown', handleToolsMenuEscape)
+    }
+  }, [isToolsMenuOpen])
 
   useEffect(() => {
     setShoppingChecklist((prev) => {
@@ -4596,21 +4640,8 @@ function App() {
     }
   }
 
-  function handleControlsAdvancedPanelClick(event) {
-    const panel = controlsAdvancedPanelRef.current
-    if (!panel || !(event.target instanceof Element)) {
-      return
-    }
-
-    if (event.target.closest('.controls-advanced-summary')) {
-      return
-    }
-
-    if (event.target.closest('button, input, select, textarea, a, summary, [role="menuitem"]')) {
-      return
-    }
-
-    panel.open = !panel.open
+  function closeToolsMenu() {
+    setIsToolsMenuOpen(false)
   }
 
   return (
@@ -4681,19 +4712,21 @@ function App() {
       <main className="main">
         <div className="container">
           <section className="controls">
-            <div className="controls-nav-row">
-              <div className="view-toggle-group" role="tablist" aria-label="App view">
+            <div className="controls-row controls-row-primary">
+              <div className="view-toggle-group" role="group" aria-label="App view">
                 <button
-                  className={`btn btn-small ${activeView === 'recipes' ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`btn btn-small toolbar-tab ${activeView === 'recipes' ? 'btn-primary' : 'btn-secondary'}`}
                   type="button"
+                  aria-pressed={activeView === 'recipes'}
                   onClick={() => setActiveView('recipes')}
                 >
                   <i className="fas fa-th-large" />
                   Recipes
                 </button>
                 <button
-                  className={`btn btn-small ${activeView === 'planner' ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`btn btn-small toolbar-tab ${activeView === 'planner' ? 'btn-primary' : 'btn-secondary'}`}
                   type="button"
+                  aria-pressed={activeView === 'planner'}
                   onClick={() => setActiveView('planner')}
                 >
                   <i className="fas fa-calendar-alt" />
@@ -4701,74 +4734,86 @@ function App() {
                 </button>
               </div>
 
-              <div className="controls-nav-right">
-                <div className="controls-account-row">
-                    {hasSupabaseConfig && authUser ? (
-                      <span
-                        className={`auth-sync-pill ${isOnline ? 'auth-sync-pill-online' : 'auth-sync-pill-offline'}`}
-                        aria-label={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
-                      >
-                        <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
-                        <span className="auth-sync-label">{isOnline ? 'Sync On' : 'Sync Off'}</span>
-                      </span>
-                    ) : null}
+              <div className="controls-status-cluster">
+                {hasSupabaseConfig && authUser ? (
+                  <span
+                    className={`auth-sync-pill ${isOnline ? 'auth-sync-pill-online' : 'auth-sync-pill-offline'}`}
+                    aria-label={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
+                  >
+                    <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
+                    <span className="auth-sync-label">{isOnline ? 'Sync On' : 'Sync Off'}</span>
+                  </span>
+                ) : null}
 
-                    {hasSupabaseConfig && authUser ? (
-                      <button className="btn btn-secondary btn-small group-invites-pill" type="button" onClick={openGroupInvitesModal}>
-                        <i className="fas fa-envelope-open-text" />
-                        <span className="group-invites-label">Invites</span>
-                        {pendingGroupInvites.length > 0 ? <span className="group-invites-count">{pendingGroupInvites.length}</span> : null}
-                      </button>
-                    ) : null}
+                {hasSupabaseConfig && authUser ? (
+                  <button className="btn btn-secondary btn-small group-invites-pill toolbar-ghost-button" type="button" onClick={openGroupInvitesModal}>
+                    <i className="fas fa-envelope-open-text" />
+                    <span className="group-invites-label">Invites</span>
+                    {pendingGroupInvites.length > 0 ? <span className="group-invites-count">{pendingGroupInvites.length}</span> : null}
+                  </button>
+                ) : null}
 
-                    {hasSupabaseConfig ? (
-                      <button
-                        className="auth-user-email auth-user-link"
-                        type="button"
-                        title={`Open account (${accountIdentityLabel})`}
-                        onClick={openProfileModal}
-                      >
-                        {authUser && profileAvatarUrl ? (
-                          <>
-                            <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
-                            {isOnline ? <span className="auth-user-label">{accountIdentityLabel}</span> : null}
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-user" />
-                            {isOnline ? accountIdentityLabel : null}
-                          </>
-                        )}
-                      </button>
+                {hasSupabaseConfig ? (
+                  <button
+                    className="auth-user-email auth-user-link"
+                    type="button"
+                    title={`Open account (${accountIdentityLabel})`}
+                    onClick={openProfileModal}
+                  >
+                    {authUser && profileAvatarUrl ? (
+                      <>
+                        <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
+                        {isOnline ? <span className="auth-user-label">{accountIdentityLabel}</span> : null}
+                      </>
                     ) : (
-                      <span className="auth-config-note">Cloud sync disabled</span>
+                      <>
+                        <i className="fas fa-user" />
+                        {isOnline ? <span className="auth-user-label">{accountIdentityLabel}</span> : null}
+                      </>
                     )}
-                </div>
+                  </button>
+                ) : (
+                  <span className="auth-config-note">Cloud sync disabled</span>
+                )}
               </div>
             </div>
 
             {activeView === 'recipes' ? (
               <>
-                <div className="controls-search-row">
-                  <div className="search-box search-box-prominent">
-                    <input
-                      type="text"
-                      placeholder="Search recipes, ingredients, or notes..."
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                    />
-                    <i className="fas fa-search" />
+                <div className="controls-row controls-row-search">
+                  <div className="controls-search-wrap">
+                    <div className="search-box search-box-prominent toolbar-search-box">
+                      <label htmlFor="recipeSearchInput" className="visually-hidden">
+                        Search recipes, ingredients, or notes
+                      </label>
+                      <input
+                        id="recipeSearchInput"
+                        type="text"
+                        placeholder="Search recipes, ingredients, or notes..."
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                      />
+                      <i className="fas fa-search" />
+                    </div>
+                  </div>
+
+                  <div className="controls-primary-action">
+                    {recipeScope !== 'shared' ? (
+                      <button className="btn btn-primary btn-add-inline toolbar-primary-cta" type="button" onClick={() => openModal()}>
+                        <i className="fas fa-plus" />
+                        Add Recipe
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="controls-filter-row">
-                  <div className="controls-filter-group">
-                    <div className="category-filter">
-                      <select
-                        className="category-select"
-                        value={categoryFilter}
-                        onChange={(event) => setCategoryFilter(event.target.value)}
-                      >
+                <div className="controls-row controls-row-filters">
+                  <div className="controls-filter-stack">
+                    <div className="category-filter toolbar-select-field">
+                      <label htmlFor="categoryFilterSelect" className="visually-hidden">
+                        Filter by category
+                      </label>
+                      <select id="categoryFilterSelect" className="category-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
                         <option value="">All Categories</option>
                         {CATEGORY_OPTIONS.map((category) => (
                           <option key={category} value={category}>
@@ -4778,12 +4823,9 @@ function App() {
                       </select>
                       <i className="fas fa-filter" />
                     </div>
-                    <div className="results-count" aria-live="polite">
-                      {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
-                    </div>
 
                     {hasSupabaseConfig && authUser ? (
-                      <div className="scope-select-wrap" aria-label="Recipe scope">
+                      <div className="scope-select-wrap toolbar-select-field" aria-label="Recipe scope">
                         <label htmlFor="recipeScopeSelect" className="visually-hidden">
                           Recipe scope
                         </label>
@@ -4802,11 +4844,10 @@ function App() {
 
                     {recipeScope === 'group' ? (
                       <div className="group-scope-controls">
-                        <select
-                          className="category-select"
-                          value={selectedGroupId}
-                          onChange={(event) => setSelectedGroupId(event.target.value)}
-                        >
+                        <label htmlFor="groupScopeSelect" className="visually-hidden">
+                          Select active group
+                        </label>
+                        <select id="groupScopeSelect" className="category-select toolbar-group-select" value={selectedGroupId} onChange={(event) => setSelectedGroupId(event.target.value)}>
                           {groups.length === 0 ? <option value="">No groups yet</option> : null}
                           {groups.map((group) => (
                             <option key={group.id} value={group.id}>
@@ -4814,7 +4855,7 @@ function App() {
                             </option>
                           ))}
                         </select>
-                        <button className="btn btn-secondary btn-small" type="button" onClick={() => void openGroupModal()}>
+                        <button className="btn btn-secondary btn-small toolbar-ghost-button" type="button" onClick={() => void openGroupModal()}>
                           <i className="fas fa-users" />
                           Manage Groups
                         </button>
@@ -4822,100 +4863,155 @@ function App() {
                     ) : null}
                   </div>
 
-                  <div className="controls-main-actions">
-                    {recipeScope !== 'shared' ? (
-                      <button className="btn btn-primary btn-add-inline" type="button" onClick={() => openModal()}>
-                        <i className="fas fa-plus" />
-                        Add Recipe
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-
-                <details
-                  ref={controlsAdvancedPanelRef}
-                  className="controls-advanced-panel"
-                  onClick={handleControlsAdvancedPanelClick}
-                >
-                  <summary className="controls-advanced-summary">
-                    <i className="fas fa-sliders" />
-                    More
-                  </summary>
-                  <div className="controls-utility-row">
-                    <div className="controls-advanced-actions" role="group" aria-label="Quick tools">
-                      <button
-                        className={`btn ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
-                        type="button"
-                        aria-pressed={showPinnedOnly}
-                        onClick={() => setShowPinnedOnly((prev) => !prev)}
-                      >
-                        <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
-                        {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
-                      </button>
-                      <button className="btn btn-secondary" type="button" onClick={randomizeRecipe}>
-                        <i className="fas fa-dice" />
-                        Random Recipe
-                      </button>
-                      <button className="btn btn-secondary" type="button" onClick={openShoppingListBuilder}>
-                        <i className="fas fa-cart-shopping" />
-                        Shopping List
-                      </button>
-                      <button className="btn btn-secondary" type="button" onClick={() => setIsCompactCardView((prev) => !prev)}>
-                        <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
-                        Compact Card View
-                      </button>
-                      <button
-                        className="btn btn-secondary"
-                        type="button"
-                        onClick={() => void uploadLocalRecipesToCloud()}
-                        disabled={!hasSupabaseConfig || isBulkUploading}
-                      >
-                        <i className="fas fa-cloud-arrow-up" />
-                        {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
-                      </button>
-                      <button className="btn btn-secondary" type="button" onClick={exportRecipes}>
-                        <i className="fas fa-download" />
-                        Export
-                      </button>
-                      <button className="btn btn-secondary" type="button" onClick={() => importInputRef.current?.click()}>
-                        <i className="fas fa-upload" />
-                        Import
-                      </button>
-                      <button className="btn btn-danger" type="button" onClick={deleteAllRecipes}>
-                        <i className="fas fa-trash-alt" />
-                        Delete All Recipes
-                      </button>
-                      <input
-                        ref={importInputRef}
-                        type="file"
-                        accept=".json"
-                        style={{ display: 'none' }}
-                        onChange={handleImportFile}
-                      />
+                  <div className="controls-utility-cluster">
+                    <div className="results-count" aria-live="polite">
+                      {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
                     </div>
-                    <div className="controls-tools-row">
-                      {!isInstalledPwa ? (
-                        <details className="ios-install-help">
-                          <summary>
-                            <i className="fas fa-mobile-screen-button" />
-                            iPhone App Install Tips
-                          </summary>
-                          <p>
-                            Recommended: Use Brave as your default browser to help block ads and popups.
-                          </p>
-                          <ol>
-                            <li>When you want to install this app, open this website in Safari on your iPhone.</li>
-                            <li>Tap the button with three dots on the bottom right.</li>
-                            <li>Tap 'Share' (square with the up arrow).</li>
-                            <li>Tap 'More'.</li>
-                            <li>Select Add to Home Screen.</li>
-                            <li>Tap Add to finish.</li>
-                          </ol>
-                        </details>
+
+                    <button
+                      className={`btn btn-secondary btn-small toolbar-ghost-button toolbar-compact-button ${isCompactCardView ? 'toolbar-compact-button-active' : ''}`}
+                      type="button"
+                      aria-pressed={isCompactCardView}
+                      onClick={() => setIsCompactCardView((prev) => !prev)}
+                    >
+                      <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
+                      Compact View
+                    </button>
+
+                    <div ref={toolsMenuRef} className={`tools-menu${isToolsMenuOpen ? ' is-open' : ''}`}>
+                      <button
+                        className="btn btn-secondary btn-small toolbar-ghost-button toolbar-tools-button"
+                        type="button"
+                        aria-haspopup="menu"
+                        aria-expanded={isToolsMenuOpen}
+                        aria-controls="recipe-tools-menu"
+                        onClick={() => setIsToolsMenuOpen((prev) => !prev)}
+                      >
+                        <i className="fas fa-sliders" />
+                        Tools
+                      </button>
+
+                      {isToolsMenuOpen ? (
+                        <div id="recipe-tools-menu" className="tools-menu-panel" aria-label="Recipe tools">
+                          <ToolbarMenuSection title="Manage Recipes">
+                            <button
+                              className="btn btn-secondary tools-menu-button"
+                              type="button"
+                              onClick={() => {
+                                closeToolsMenu()
+                                void uploadLocalRecipesToCloud()
+                              }}
+                              disabled={!hasSupabaseConfig || isBulkUploading}
+                            >
+                              <i className="fas fa-cloud-arrow-up" />
+                              {isBulkUploading ? 'Uploading...' : 'Upload Local to Cloud'}
+                            </button>
+                            <button
+                              className="btn btn-secondary tools-menu-button"
+                              type="button"
+                              onClick={() => {
+                                closeToolsMenu()
+                                exportRecipes()
+                              }}
+                            >
+                              <i className="fas fa-download" />
+                              Export Recipes
+                            </button>
+                            <button
+                              className="btn btn-secondary tools-menu-button"
+                              type="button"
+                              onClick={() => {
+                                closeToolsMenu()
+                                importInputRef.current?.click()
+                              }}
+                            >
+                              <i className="fas fa-upload" />
+                              Import Recipes
+                            </button>
+                          </ToolbarMenuSection>
+
+                          <ToolbarMenuSection title="Utilities">
+                            <button
+                              className={`btn tools-menu-button ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
+                              type="button"
+                              aria-pressed={showPinnedOnly}
+                              onClick={() => setShowPinnedOnly((prev) => !prev)}
+                            >
+                              <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
+                              {showPinnedOnly ? 'Pinned Only' : 'All + Pinned'}
+                            </button>
+                            <button
+                              className="btn btn-secondary tools-menu-button"
+                              type="button"
+                              onClick={() => {
+                                closeToolsMenu()
+                                randomizeRecipe()
+                              }}
+                            >
+                              <i className="fas fa-dice" />
+                              Random Recipe
+                            </button>
+                            <button
+                              className="btn btn-secondary tools-menu-button"
+                              type="button"
+                              onClick={() => {
+                                closeToolsMenu()
+                                openShoppingListBuilder()
+                              }}
+                            >
+                              <i className="fas fa-cart-shopping" />
+                              Shopping List
+                            </button>
+                          </ToolbarMenuSection>
+
+                          <ToolbarMenuSection title="Display & Support">
+                            {!isInstalledPwa ? (
+                              <details className="ios-install-help tools-install-help">
+                                <summary>
+                                  <i className="fas fa-mobile-screen-button" />
+                                  iPhone App Install Tips
+                                </summary>
+                                <p>Recommended: Use Brave as your default browser to help block ads and popups.</p>
+                                <ol>
+                                  <li>When you want to install this app, open this website in Safari on your iPhone.</li>
+                                  <li>Tap the button with three dots on the bottom right.</li>
+                                  <li>Tap 'Share' (square with the up arrow).</li>
+                                  <li>Tap 'More'.</li>
+                                  <li>Select Add to Home Screen.</li>
+                                  <li>Tap Add to finish.</li>
+                                </ol>
+                              </details>
+                            ) : (
+                              <p className="tools-menu-note">Installed app detected — iPhone install tips are hidden.</p>
+                            )}
+                          </ToolbarMenuSection>
+
+                          <ToolbarMenuSection title="Danger Zone" danger>
+                            <button
+                              className="btn btn-danger tools-menu-button tools-menu-button-danger"
+                              type="button"
+                              onClick={() => {
+                                closeToolsMenu()
+                                deleteAllRecipes()
+                              }}
+                            >
+                              <i className="fas fa-trash-alt" />
+                              Delete All Recipes
+                            </button>
+                          </ToolbarMenuSection>
+                        </div>
                       ) : null}
                     </div>
+
+                    <input
+                      ref={importInputRef}
+                      type="file"
+                      accept=".json"
+                      style={{ display: 'none' }}
+                      onChange={handleImportFile}
+                    />
                   </div>
-                </details>
+                </div>
               </>
             ) : null}
           </section>
