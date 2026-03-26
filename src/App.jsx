@@ -6715,6 +6715,7 @@ function App() {
           !isImportPreviewOpen &&
           !isExportPreviewOpen &&
           !isShoppingListOpen &&
+          !isToolsMenuOpen &&
           !focusedRecipe &&
           !isProfileModalOpen
         }
