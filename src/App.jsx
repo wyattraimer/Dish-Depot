@@ -1091,6 +1091,7 @@ function App() {
   const [showPinnedOnly, setShowPinnedOnly] = useState(false)
   const [isCompactCardView, setIsCompactCardView] = useState(() => localStorage.getItem(CARD_VIEW_COMPACT_KEY) === '1')
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false)
+  const [isInlineAddRecipeVisible, setIsInlineAddRecipeVisible] = useState(true)
   const [activeView, setActiveView] = useState('recipes')
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -1196,6 +1197,7 @@ function App() {
 
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
+  const inlineAddRecipeButtonRef = useRef(null)
   const toolsMenuRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
   const profileAvatarEditBtnRef = useRef(null)
@@ -2249,6 +2251,35 @@ function App() {
       document.removeEventListener('keydown', handleToolsMenuEscape)
     }
   }, [isToolsMenuOpen])
+
+  useEffect(() => {
+    const button = inlineAddRecipeButtonRef.current
+
+    if (!button || activeView !== 'recipes' || recipeScope === 'shared') {
+      setIsInlineAddRecipeVisible(false)
+      return undefined
+    }
+
+    if (typeof IntersectionObserver !== 'function') {
+      setIsInlineAddRecipeVisible(true)
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInlineAddRecipeVisible(entry.isIntersecting)
+      },
+      {
+        threshold: 0.35,
+      },
+    )
+
+    observer.observe(button)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [activeView, recipeScope])
 
   useEffect(() => {
     setShoppingChecklist((prev) => {
@@ -4801,7 +4832,7 @@ function App() {
 
                   <div className="controls-primary-action">
                     {recipeScope !== 'shared' ? (
-                      <button className="btn btn-primary btn-add-inline toolbar-primary-cta" type="button" onClick={() => openModal()}>
+                      <button ref={inlineAddRecipeButtonRef} className="btn btn-primary btn-add-inline toolbar-primary-cta" type="button" onClick={() => openModal()}>
                         <i className="fas fa-plus" />
                         Add Recipe
                       </button>
@@ -6719,7 +6750,7 @@ function App() {
           !focusedRecipe &&
           !isProfileModalOpen
         }
-        showAddRecipeFab={activeView === 'recipes' && recipeScope !== 'shared'}
+        showAddRecipeFab={activeView === 'recipes' && recipeScope !== 'shared' && !isInlineAddRecipeVisible}
         showInstallBtn={showInstallBtn}
         showSwUpdateBanner={showSwUpdateBanner}
         onInstallClick={handleInstallClick}
