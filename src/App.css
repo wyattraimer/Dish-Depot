@@ -3859,11 +3859,14 @@ body[data-theme='dark'] .theme-switch input:checked + .theme-switch-track {
 
 .tools-menu-button {
   width: 100%;
+  min-width: 0;
   justify-content: flex-start;
   min-height: 44px;
   padding: 0.82rem 0.92rem;
   border-radius: 14px;
   box-shadow: none !important;
+  white-space: normal;
+  line-height: 1.3;
 }
 
 .tools-menu-button.btn-secondary {
@@ -4138,5 +4141,34 @@ body[data-theme='dark'] .tools-install-help ol {
     left: 0;
     right: 0;
     width: auto;
+    max-width: 100%;
+    padding: 0.45rem;
+    box-sizing: border-box;
+    overflow-x: clip;
+  }
+
+  .tools-menu-section,
+  .tools-menu-items,
+  .tools-menu-button,
+  .tools-install-help,
+  .tools-install-help summary,
+  .tools-install-help p,
+  .tools-install-help ol {
+    min-width: 0;
+  }
+
+  .tools-menu-button,
+  .tools-install-help summary {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .tools-install-help {
+    padding: 0.68rem 0.72rem;
+  }
+
+  .tools-install-help ol {
+    padding-left: 1rem;
+    list-style-position: outside;
   }
 }
