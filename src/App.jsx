@@ -143,7 +143,10 @@ const FALLBACK_API_BASE =
     ? 'https://recipes-zmky.onrender.com/api'
     : '/api'
 const API_BASE = (import.meta.env.VITE_API_BASE || FALLBACK_API_BASE).replace(/\/$/, '')
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 const EXTRACT_ENDPOINT = `${API_BASE}/recipes/extract`
+const PROFILE_SELECT_FIELDS = 'display_name,username,avatar_url'
 const GROUP_ROLE_ORDER = {
   viewer: 1,
   contributor: 2,
@@ -1305,6 +1308,50 @@ function App() {
     return authUser?.email || 'Account'
   }, [profileDisplayName, profileUsername, authUser?.email])
 
+  async function applyProfileState(profile) {
+    setProfileDisplayName(profile?.display_name || '')
+    setProfileUsername(profile?.username || '')
+    const avatarValue = profile?.avatar_url || ''
+    setProfileAvatarValue(avatarValue)
+    const avatarDisplayUrl = await resolveAvatarDisplayUrl(avatarValue)
+    setProfileAvatarUrl(avatarDisplayUrl)
+  }
+
+  async function fetchFreshProfileRow(userId) {
+    if (!hasSupabaseConfig || !supabase || !userId || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return null
+    }
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    const profileUrl = new URL(`${SUPABASE_URL}/rest/v1/profiles`)
+    profileUrl.searchParams.set('select', PROFILE_SELECT_FIELDS)
+    profileUrl.searchParams.set('id', `eq.${userId}`)
+    profileUrl.searchParams.set('_', String(Date.now()))
+
+    const response = await fetch(profileUrl.toString(), {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+        Accept: 'application/vnd.pgrst.object+json',
+      },
+    })
+
+    if (response.status === 404 || response.status === 406) {
+      return null
+    }
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || `Profile request failed with ${response.status}`)
+    }
+
+    return response.json()
+  }
+
   useEffect(() => {
     try {
       if (localStorage.getItem(WELCOME_DISMISSED_KEY) !== '1') {
@@ -1537,11 +1584,25 @@ function App() {
     let cancelled = false
 
     const loadProfile = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('display_name,username,avatar_url')
-        .eq('id', authUser.id)
-        .maybeSingle()
+      let data = null
+      let error = null
+
+      try {
+        data = await fetchFreshProfileRow(authUser.id)
+      } catch (freshError) {
+        error = freshError
+      }
+
+      if (!data) {
+        const profileResult = await supabase
+          .from('profiles')
+          .select(PROFILE_SELECT_FIELDS)
+          .eq('id', authUser.id)
+          .maybeSingle()
+
+        data = profileResult.data
+        error = profileResult.error || null
+      }
 
       if (cancelled) {
         return
@@ -1570,22 +1631,14 @@ function App() {
           return
         }
 
-        setProfileDisplayName(fallbackData?.display_name || '')
-        setProfileUsername(fallbackData?.username || '')
-        setProfileAvatarValue('')
-        setProfileAvatarUrl('')
+        await applyProfileState(fallbackData)
         return
       }
 
-      setProfileDisplayName(data?.display_name || '')
-      setProfileUsername(data?.username || '')
-      const avatarValue = data?.avatar_url || ''
-      setProfileAvatarValue(avatarValue)
-      const avatarDisplayUrl = await resolveAvatarDisplayUrl(avatarValue)
+      await applyProfileState(data)
       if (cancelled) {
         return
       }
-      setProfileAvatarUrl(avatarDisplayUrl)
     }
 
     void loadProfile()
@@ -3628,6 +3681,17 @@ function App() {
       if (error) {
         showMessage(`Could not update profile: ${error.message}`, 'error')
         return
+      }
+
+      const refreshedProfile = await fetchFreshProfileRow(authUser.id).catch(() => null)
+      if (refreshedProfile) {
+        await applyProfileState(refreshedProfile)
+      } else {
+        await applyProfileState({
+          display_name: profileDisplayName.trim() || '',
+          username,
+          avatar_url: profileAvatarValue.trim() || '',
+        })
       }
 
       showMessage('Profile updated.', 'success')

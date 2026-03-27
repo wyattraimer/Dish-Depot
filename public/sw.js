@@ -56,6 +56,8 @@ self.addEventListener('fetch', (event) => {
   const req = event.request
   const requestUrl = new URL(req.url)
   const isSameOrigin = requestUrl.origin === self.location.origin
+  const isSupabaseRequest = requestUrl.hostname.includes('supabase.co') || requestUrl.hostname.includes('supabase.in')
+  const hasAuthenticatedHeaders = req.headers.has('authorization') || req.headers.has('apikey')
   const apiPathPrefix = new URL('api/', self.registration.scope).pathname
   const onlineCheckPath = new URL('online-check.txt', self.registration.scope).pathname
 
@@ -119,6 +121,18 @@ self.addEventListener('fetch', (event) => {
   ) {
     event.respondWith(
       fetch(req, { cache: 'no-store' }).catch(() => new Response('Offline', { status: 503, statusText: 'Offline' })),
+    )
+    return
+  }
+
+  if (isSupabaseRequest || hasAuthenticatedHeaders) {
+    event.respondWith(
+      fetch(req, { cache: 'no-store' }).catch(() => {
+        if (req.destination === 'image') {
+          return new Response('', { status: 503, statusText: 'Offline' })
+        }
+        return new Response('Offline', { status: 503, statusText: 'Offline' })
+      }),
     )
     return
   }
