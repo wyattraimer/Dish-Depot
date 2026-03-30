@@ -1,11 +1,15 @@
 import express from 'express'
+import multer from 'multer'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { extractRecipeFromUrl } from './recipe-extractor.js'
+import { extractRecipeFromCardImage } from './recipe-card-extractor.js'
 
 const app = express()
 const PORT = Number(process.env.PORT || 8787)
+const parsedUploadLimit = Number(process.env.OCR_UPLOAD_MAX_BYTES)
+const OCR_UPLOAD_MAX_BYTES = Number.isFinite(parsedUploadLimit) && parsedUploadLimit > 0 ? parsedUploadLimit : 8 * 1024 * 1024
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const DIST_PATH = path.resolve(__dirname, '..', 'dist')
@@ -21,6 +25,33 @@ const allowedOrigins = new Set(
     .map((origin) => origin.trim())
     .filter(Boolean),
 )
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: OCR_UPLOAD_MAX_BYTES,
+  },
+  fileFilter: (_req, file, callback) => {
+    const allowedMimeTypes = new Set([
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/heif',
+      'image/heic',
+      'image/heif-sequence',
+      'image/heic-sequence',
+      'image/tiff',
+      'image/bmp',
+      'application/pdf',
+    ])
+
+    if (!allowedMimeTypes.has(file.mimetype)) {
+      callback(new Error('Recipe card scans currently support JPG, PNG, WebP, HEIC, TIFF, BMP, and PDF files.'))
+      return
+    }
+
+    callback(null, true)
+  },
+})
 
 function applyApiCors(req, res) {
   const origin = req.headers.origin
@@ -95,6 +126,69 @@ app.post('/api/recipes/extract', async (req, res) => {
       },
     })
   }
+})
+
+app.post('/api/recipes/extract-card', (req, res) => {
+  upload.single('file')(req, res, async (uploadError) => {
+    if (uploadError) {
+      const isSizeError = uploadError instanceof multer.MulterError && uploadError.code === 'LIMIT_FILE_SIZE'
+      res.status(isSizeError ? 413 : 400).json({
+        ok: false,
+        error: {
+          code: isSizeError ? 'FILE_TOO_LARGE' : 'INVALID_UPLOAD',
+          message: isSizeError
+            ? `Recipe card scans must be smaller than ${Math.round(OCR_UPLOAD_MAX_BYTES / (1024 * 1024))} MB.`
+            : uploadError.message || 'Could not process the uploaded recipe card image.',
+        },
+      })
+      return
+    }
+
+    if (!req.file?.buffer) {
+      res.status(400).json({
+        ok: false,
+        error: {
+          code: 'MISSING_FILE',
+          message: 'Upload a recipe card image first.',
+        },
+      })
+      return
+    }
+
+    try {
+      const extraction = await extractRecipeFromCardImage(req.file.buffer)
+      res.json({ ok: true, ...extraction })
+    } catch (error) {
+      console.error('[recipes.extract-card] request failed', {
+        filename: req.file.originalname,
+        mimeType: req.file.mimetype,
+        size: req.file.size,
+        code: error?.code || 'INTERNAL_ERROR',
+        message: error?.message || 'Unknown OCR extraction error',
+        stack: error?.stack || null,
+      })
+
+      const code = error?.code || 'INTERNAL_ERROR'
+      const status =
+        code === 'INVALID_IMAGE'
+          ? 400
+          : code === 'OCR_NOT_CONFIGURED'
+            ? 503
+          : code === 'NO_TEXT_FOUND'
+            ? 422
+            : code === 'OCR_FAILED'
+              ? 502
+              : 500
+
+      res.status(status).json({
+        ok: false,
+        error: {
+          code,
+          message: error?.message || 'Failed to extract recipe details from this recipe card image',
+        },
+      })
+    }
+  })
 })
 
 app.use('/api', (_req, res) => {

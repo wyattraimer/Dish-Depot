@@ -146,6 +146,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE || FALLBACK_API_BASE).replace(/\
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 const EXTRACT_ENDPOINT = `${API_BASE}/recipes/extract`
+const EXTRACT_CARD_ENDPOINT = `${API_BASE}/recipes/extract-card`
 const PROFILE_SELECT_FIELDS = 'display_name,username,avatar_url'
 const GROUP_ROLE_ORDER = {
   viewer: 1,
@@ -1179,6 +1180,7 @@ function App() {
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractWarnings, setExtractWarnings] = useState([])
   const [extractCandidate, setExtractCandidate] = useState(null)
+  const [cardScanFile, setCardScanFile] = useState(null)
   const [mealPlan, setMealPlan] = useState(() => {
     try {
       const savedPlan = localStorage.getItem(MEAL_PLAN_KEY)
@@ -1200,6 +1202,7 @@ function App() {
 
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
+  const cardScanInputRef = useRef(null)
   const inlineAddRecipeButtonRef = useRef(null)
   const toolsMenuRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
@@ -1350,6 +1353,22 @@ function App() {
     }
 
     return response.json()
+  }
+
+  function clearCardScanSelection() {
+    setCardScanFile(null)
+    if (cardScanInputRef.current) {
+      cardScanInputRef.current.value = ''
+    }
+  }
+
+  function setRecipeCreationMode(nextType) {
+    setCurrentRecipeType(nextType)
+    setExtractWarnings([])
+    setExtractCandidate(null)
+    if (nextType !== 'card') {
+      clearCardScanSelection()
+    }
   }
 
   useEffect(() => {
@@ -3809,6 +3828,7 @@ function App() {
   function openModal(recipe = null) {
     setExtractWarnings([])
     setExtractCandidate(null)
+    clearCardScanSelection()
 
     if (!recipe) {
       setCurrentEditingId(null)
@@ -3840,6 +3860,7 @@ function App() {
     setIsExtracting(false)
     setExtractWarnings([])
     setExtractCandidate(null)
+    clearCardScanSelection()
   }
 
   function openFocusedRecipe(recipe) {
@@ -4137,6 +4158,79 @@ function App() {
       } else {
         showMessage(failedMessage, 'error')
       }
+      setExtractWarnings([])
+      setExtractCandidate(null)
+    } finally {
+      setIsExtracting(false)
+    }
+  }
+
+  function handleCardScanFileChange(event) {
+    const nextFile = event.target.files?.[0] || null
+    setCardScanFile(nextFile)
+    setExtractWarnings([])
+    setExtractCandidate(null)
+  }
+
+  async function handleExtractFromCard() {
+    if (!cardScanFile) {
+      showMessage('Choose a recipe card image first.', 'error')
+      return
+    }
+
+    if (!requireOnline('Recipe card scanning')) {
+      return
+    }
+
+    try {
+      setIsExtracting(true)
+      setExtractWarnings([])
+      setExtractCandidate(null)
+
+      const body = new FormData()
+      body.append('file', cardScanFile)
+
+      const response = await fetch(EXTRACT_CARD_ENDPOINT, {
+        method: 'POST',
+        body,
+      })
+
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.ok) {
+        const message = payload?.error?.message || 'Could not read this recipe card'
+        throw new Error(message)
+      }
+
+      const warnings = payload.meta?.warnings || []
+
+      setExtractWarnings(warnings)
+      setIsApiReachable(true)
+      setExtractCandidate({
+        data: payload.data,
+        meta: payload.meta || null,
+        warnings,
+      })
+      showMessage('Recipe card scanned. Review and apply.', 'success')
+    } catch (error) {
+      const failedMessage = error?.message || 'Recipe card scanning failed'
+      const isNetworkFailure =
+        error?.name === 'AbortError' ||
+        failedMessage === 'Failed to fetch' ||
+        failedMessage.toLowerCase().includes('network')
+
+      if (isNetworkFailure) {
+        setIsApiReachable(false)
+        if (!navigator.onLine) {
+          networkStatusRef.current = false
+          setIsOnline(false)
+          showMessage('You are offline. Recipe card scanning is unavailable right now.', 'info')
+        } else {
+          showMessage('The recipe scanning service is currently unreachable. Please try again in a moment.', 'info')
+        }
+      } else {
+        showMessage(failedMessage, 'error')
+      }
+
       setExtractWarnings([])
       setExtractCandidate(null)
     } finally {
@@ -5582,15 +5676,23 @@ function App() {
                 <button
                   type="button"
                   className={`toggle-btn ${currentRecipeType === 'url' ? 'toggle-btn-active' : ''}`}
-                  onClick={() => setCurrentRecipeType('url')}
+                  onClick={() => setRecipeCreationMode('url')}
                 >
                   <i className="fas fa-link" />
                   Recipe from URL
                 </button>
                 <button
                   type="button"
+                  className={`toggle-btn ${currentRecipeType === 'card' ? 'toggle-btn-active' : ''}`}
+                  onClick={() => setRecipeCreationMode('card')}
+                >
+                  <i className="fas fa-camera" />
+                  Scan Recipe Card
+                </button>
+                <button
+                  type="button"
                   className={`toggle-btn ${currentRecipeType === 'custom' ? 'toggle-btn-active' : ''}`}
-                  onClick={() => setCurrentRecipeType('custom')}
+                  onClick={() => setRecipeCreationMode('custom')}
                 >
                   <i className="fas fa-pencil-alt" />
                   Your Recipe
@@ -5610,43 +5712,84 @@ function App() {
                 />
               </div>
 
-              {currentRecipeType === 'url' ? (
+              {currentRecipeType !== 'custom' ? (
                 <>
-                  <div className="form-group">
-                    <label htmlFor="recipeUrl">Recipe URL</label>
-                    <input
-                      id="recipeUrl"
-                      type="url"
-                      required
-                      value={form.url}
-                      onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
-                    />
-                  </div>
+                  {currentRecipeType === 'url' ? (
+                    <>
+                      <div className="form-group">
+                        <label htmlFor="recipeUrl">Recipe URL</label>
+                        <input
+                          id="recipeUrl"
+                          type="url"
+                          required
+                          value={form.url}
+                          onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
+                        />
+                      </div>
 
-                  <div className="extract-actions">
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      onClick={handleExtractFromUrl}
-                      disabled={isExtracting}
-                    >
-                      <i className={`fas ${isExtracting ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`} />
-                      {isExtracting
-                        ? 'Extracting...'
-                        : !isOnline
-                          ? 'Extraction Unavailable Offline'
-                          : !isApiReachable
-                            ? 'Extraction Service Unreachable'
-                            : 'Extract Details from URL'}
-                    </button>
-                    <p className="extract-notice">
-                      {!isOnline
-                        ? 'You are offline. URL extraction needs internet, but your saved recipes, planner, and cached pages still work.'
-                        : !isApiReachable
-                          ? 'The extraction service is currently unreachable. Your recipes are safe locally; try extraction again in a moment.'
-                          : 'First extract can take 30 - 50 seconds while the API wakes up. After that, extracts are usually much faster.'}
-                    </p>
-                  </div>
+                      <div className="extract-actions">
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          onClick={handleExtractFromUrl}
+                          disabled={isExtracting}
+                        >
+                          <i className={`fas ${isExtracting ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`} />
+                          {isExtracting
+                            ? 'Extracting...'
+                            : !isOnline
+                              ? 'Extraction Unavailable Offline'
+                              : !isApiReachable
+                                ? 'Extraction Service Unreachable'
+                                : 'Extract Details from URL'}
+                        </button>
+                        <p className="extract-notice">
+                          {!isOnline
+                            ? 'You are offline. URL extraction needs internet, but your saved recipes, planner, and cached pages still work.'
+                            : !isApiReachable
+                              ? 'The extraction service is currently unreachable. Your recipes are safe locally; try extraction again in a moment.'
+                              : 'First extract can take 30 - 50 seconds while the API wakes up. After that, extracts are usually much faster.'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="form-group">
+                        <label htmlFor="recipeCardScan">Recipe Card Image</label>
+                        <input
+                          ref={cardScanInputRef}
+                          id="recipeCardScan"
+                          className="card-scan-input"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/tiff,image/bmp,application/pdf"
+                          capture="environment"
+                          onChange={handleCardScanFileChange}
+                        />
+                        <p className="card-scan-helper">Use a bright photo with the full recipe card in frame for the best handwriting results.</p>
+                        {cardScanFile ? <div className="card-scan-file-chip"><i className="fas fa-file-image" /> {cardScanFile.name}</div> : null}
+                      </div>
+
+                      <div className="extract-actions">
+                        <button className="btn btn-secondary" type="button" onClick={handleExtractFromCard} disabled={isExtracting || !cardScanFile}>
+                          <i className={`fas ${isExtracting ? 'fa-spinner fa-spin' : 'fa-camera'}`} />
+                          {isExtracting
+                            ? 'Scanning...'
+                            : !isOnline
+                              ? 'Scanning Unavailable Offline'
+                              : !isApiReachable
+                                ? 'Scanner Service Unreachable'
+                                : 'Read Recipe Card'}
+                        </button>
+                        <p className="extract-notice">
+                          {!isOnline
+                            ? 'You are offline. Recipe card scanning needs internet right now.'
+                            : !isApiReachable
+                              ? 'The scanning service is currently unreachable. Please try again in a moment.'
+                              : 'Scan works best with high contrast handwriting and an evenly lit recipe card photo.'}
+                        </p>
+                      </div>
+                    </>
+                  )}
 
                   {extractCandidate ? (
                     <div className="extract-preview-card">
