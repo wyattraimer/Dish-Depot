@@ -55,11 +55,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request
   const requestUrl = new URL(req.url)
+  const isCacheableProtocol = requestUrl.protocol === 'http:' || requestUrl.protocol === 'https:'
   const isSameOrigin = requestUrl.origin === self.location.origin
   const isSupabaseRequest = requestUrl.hostname.includes('supabase.co') || requestUrl.hostname.includes('supabase.in')
   const hasAuthenticatedHeaders = req.headers.has('authorization') || req.headers.has('apikey')
   const apiPathPrefix = new URL('api/', self.registration.scope).pathname
   const onlineCheckPath = new URL('online-check.txt', self.registration.scope).pathname
+
+  if (!isCacheableProtocol) {
+    return
+  }
 
   if (req.mode === 'navigate') {
     event.respondWith(
