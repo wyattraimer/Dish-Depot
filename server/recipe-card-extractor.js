@@ -14,6 +14,25 @@ function extractionError(code, message) {
   return error
 }
 
+function classifyAzureOcrError(error) {
+  const statusCode = Number(error?.statusCode || error?.status || 0)
+  const rawMessage = String(error?.message || '')
+  const normalizedMessage = rawMessage.toLowerCase()
+
+  if (
+    statusCode === 429 ||
+    normalizedMessage.includes('quota') ||
+    normalizedMessage.includes('rate limit') ||
+    normalizedMessage.includes('too many requests') ||
+    normalizedMessage.includes('out of call volume quota') ||
+    normalizedMessage.includes('exceeded')
+  ) {
+    return extractionError('OCR_LIMIT_REACHED', 'Recipe card scanning is temporarily unavailable because the monthly scan limit has been reached. Please try again later.')
+  }
+
+  return extractionError('OCR_FAILED', rawMessage || 'Azure Document Intelligence could not process this recipe card.')
+}
+
 function getClient() {
   if (!OCR_ENDPOINT || !OCR_KEY) {
     throw extractionError('OCR_NOT_CONFIGURED', 'Recipe card scanning is not configured on the server yet.')
@@ -152,7 +171,7 @@ export async function extractRecipeFromCardImage(fileBuffer) {
     const poller = await client.beginAnalyzeDocument(OCR_MODEL, fileBuffer)
     result = await poller.pollUntilDone()
   } catch (error) {
-    throw extractionError('OCR_FAILED', error?.message || 'Azure Document Intelligence could not process this recipe card.')
+    throw classifyAzureOcrError(error)
   }
 
   const lines = normalizeOcrLines(result?.pages)

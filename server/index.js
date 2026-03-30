@@ -174,9 +174,11 @@ app.post('/api/recipes/extract-card', (req, res) => {
           ? 400
           : code === 'OCR_NOT_CONFIGURED'
             ? 503
-          : code === 'NO_TEXT_FOUND'
-            ? 422
-            : code === 'OCR_FAILED'
+            : code === 'OCR_LIMIT_REACHED'
+              ? 429
+           : code === 'NO_TEXT_FOUND'
+             ? 422
+             : code === 'OCR_FAILED'
               ? 502
               : 500
 
