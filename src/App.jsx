@@ -1448,6 +1448,19 @@ function App() {
   }, [isProfileModalOpen])
 
   useEffect(() => {
+    if (!isModalOpen) {
+      return undefined
+    }
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isModalOpen])
+
+  useEffect(() => {
     const onBeforeInstallPrompt = (event) => {
       event.preventDefault()
       setDeferredPrompt(event)
@@ -5665,14 +5678,21 @@ function App() {
 
       {isModalOpen ? (
         <div className="modal show" role="dialog" aria-modal="true" onClick={closeModal}>
-          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-content add-recipe-modal" onClick={(event) => event.stopPropagation()}>
             <span className="close" onClick={closeModal}>
               &times;
             </span>
             <h2>{currentEditingId ? 'Edit Recipe' : 'Add New Recipe'}</h2>
+            <p className="add-recipe-subtitle">
+              {currentRecipeType === 'url'
+                ? 'Paste a recipe link first, extract the details, then fine-tune anything before saving.'
+                : currentRecipeType === 'card'
+                  ? 'Upload a clear recipe card photo first, then review the scanned text before saving.'
+                  : 'Enter your recipe details manually and save when everything looks right.'}
+            </p>
 
             <div className="form-group recipe-type-toggle">
-              <label>Recipe Type</label>
+              <label>How do you want to start?</label>
               <div className="toggle-buttons">
                 <button
                   type="button"
@@ -5701,20 +5721,17 @@ function App() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="recipeName">Recipe Name</label>
-                <input
-                  id="recipeName"
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                />
-              </div>
-
+            <form className="add-recipe-form" onSubmit={handleSubmit}>
               {currentRecipeType !== 'custom' ? (
-                <>
+                <section className="add-recipe-panel add-recipe-source-panel">
+                  <div className="add-recipe-panel-header">
+                    <h3>{currentRecipeType === 'url' ? '1. Extract from a recipe link' : '1. Scan your recipe card'}</h3>
+                    <p>
+                      {currentRecipeType === 'url'
+                        ? 'Start with the source so Dish Depot can pull in as much of the recipe as possible for you.'
+                        : 'Start with the photo so Dish Depot can read the card before you edit anything manually.'}
+                    </p>
+                  </div>
                   {currentRecipeType === 'url' ? (
                     <>
                       <div className="form-group">
@@ -5749,7 +5766,7 @@ function App() {
                             ? 'You are offline. URL extraction needs internet, but your saved recipes, planner, and cached pages still work.'
                             : !isApiReachable
                               ? 'The extraction service is currently unreachable. Your recipes are safe locally; try extraction again in a moment.'
-                              : 'First extract can take 30 - 50 seconds while the API wakes up. After that, extracts are usually much faster.'}
+                          : 'First extract can take 30 - 50 seconds while the API wakes up. After that, extracts are usually much faster.'}
                         </p>
                       </div>
                     </>
@@ -5786,14 +5803,21 @@ function App() {
                             ? 'You are offline. Recipe card scanning needs internet right now.'
                             : !isApiReachable
                               ? 'The scanning service is currently unreachable. Please try again in a moment.'
-                              : 'Scan works best with high contrast handwriting and an evenly lit recipe card photo.'}
+                          : 'Scan works best with high contrast handwriting and an evenly lit recipe card photo.'}
                         </p>
                       </div>
                     </>
                   )}
+                </section>
+              ) : null}
 
-                  {extractCandidate ? (
-                    <div className="extract-preview-card">
+              {extractCandidate ? (
+                <section className="add-recipe-panel extract-preview-card">
+                  <div className="add-recipe-panel-header extract-preview-panel-header">
+                    <h3>2. Review the extracted recipe</h3>
+                    <p>Check the preview before you apply the fields into your recipe form.</p>
+                  </div>
+                  <div className="extract-preview-shell">
                       <div className="extract-preview-header">
                         <strong>{extractCandidate.data.name || 'Unnamed recipe'}</strong>
                         {extractCandidate.meta ? (
@@ -5831,8 +5855,35 @@ function App() {
                         </button>
                       </div>
                     </div>
-                  ) : null}
+                </section>
+              ) : currentRecipeType !== 'custom' ? (
+                <section className="add-recipe-panel extract-preview-card extract-preview-card-empty">
+                  <div className="add-recipe-panel-header extract-preview-panel-header">
+                    <h3>2. Review the extracted recipe</h3>
+                    <p>Your preview will appear here after you run the extractor or recipe card scan.</p>
+                  </div>
+                </section>
+              ) : null}
 
+              <section className="add-recipe-panel add-recipe-details-panel">
+                <div className="add-recipe-panel-header">
+                  <h3>{currentRecipeType === 'custom' ? '1. Add your recipe details' : '3. Finalize recipe details'}</h3>
+                  <p>Edit the fields below so the saved recipe looks exactly how you want.</p>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="recipeName">Recipe Name</label>
+                  <input
+                    id="recipeName"
+                    type="text"
+                    required
+                    value={form.name}
+                    onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                  />
+                </div>
+
+              {currentRecipeType !== 'custom' ? (
+                <>
                   <div className="form-group">
                     <label htmlFor="recipeIngredients">Ingredients (optional / extracted)</label>
                     <textarea
@@ -5900,79 +5951,89 @@ function App() {
                   </div>
                 </>
               )}
+              </section>
 
-              <div className="form-group">
-                <label htmlFor="recipeImage">Recipe Image URL (optional)</label>
-                <input
-                  id="recipeImage"
-                  type="url"
-                  placeholder="https://example.com/recipe-image.jpg"
-                  value={form.image}
-                  onChange={(event) => setForm((prev) => ({ ...prev, image: event.target.value }))}
-                />
-              </div>
-
-              {form.image ? (
-                <div className="recipe-image-editor">
-                  <div className="extract-image-preview">
-                    <img src={form.image} alt="Recipe preview" />
-                  </div>
-                  <button
-                    className="btn btn-secondary btn-small"
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, image: '' }))}
-                  >
-                    <i className="fas fa-image" />
-                    Remove Image
-                  </button>
+              <section className="add-recipe-panel add-recipe-extra-panel">
+                <div className="add-recipe-panel-header">
+                  <h3>{currentRecipeType === 'custom' ? '2. Add finishing touches' : '4. Add finishing touches'}</h3>
+                  <p>Add an optional image, then choose categories, notes, and visibility settings.</p>
                 </div>
-              ) : null}
 
-              <div className="form-group">
-                <label>Categories (select at least one)</label>
-                <div className="category-checkboxes">
-                  {CATEGORY_OPTIONS.map((category) => (
-                    <div key={category} className="checkbox-item">
-                      <input
-                        id={`cat-${category}`}
-                        type="checkbox"
-                        checked={form.categories.includes(category)}
-                        onChange={() => toggleCategory(category)}
-                      />
-                      <label htmlFor={`cat-${category}`}>{formatCategory(category)}</label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="recipeNotes">Notes (optional)</label>
-                <textarea
-                  id="recipeNotes"
-                  rows="3"
-                  value={form.notes}
-                  onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-                />
-              </div>
-
-              {hasSupabaseConfig ? (
                 <div className="form-group">
-                  <label htmlFor="recipeVisibility">Visibility</label>
-                  <select
-                    id="recipeVisibility"
-                    value={form.visibility || 'private'}
-                    onChange={(event) => setForm((prev) => ({ ...prev, visibility: event.target.value }))}
-                  >
-                    <option value="private">Private</option>
-                    <option value="shared">Shared</option>
-                    <option value="public">Public</option>
-                  </select>
+                  <label htmlFor="recipeImage">Recipe Image URL (optional)</label>
+                  <input
+                    id="recipeImage"
+                    type="url"
+                    placeholder="https://example.com/recipe-image.jpg"
+                    value={form.image}
+                    onChange={(event) => setForm((prev) => ({ ...prev, image: event.target.value }))}
+                  />
                 </div>
-              ) : null}
 
-              <button className="btn btn-primary" type="submit">
-                {currentEditingId ? 'Update Recipe' : 'Add Recipe'}
-              </button>
+                {form.image ? (
+                  <div className="recipe-image-editor">
+                    <div className="extract-image-preview">
+                      <img src={form.image} alt="Recipe preview" />
+                    </div>
+                    <button
+                      className="btn btn-secondary btn-small"
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, image: '' }))}
+                    >
+                      <i className="fas fa-image" />
+                      Remove Image
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className="form-group">
+                  <label>Categories (select at least one)</label>
+                  <div className="category-checkboxes">
+                    {CATEGORY_OPTIONS.map((category) => (
+                      <div key={category} className="checkbox-item">
+                        <input
+                          id={`cat-${category}`}
+                          type="checkbox"
+                          checked={form.categories.includes(category)}
+                          onChange={() => toggleCategory(category)}
+                        />
+                        <label htmlFor={`cat-${category}`}>{formatCategory(category)}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="recipeNotes">Notes (optional)</label>
+                  <textarea
+                    id="recipeNotes"
+                    rows="3"
+                    value={form.notes}
+                    onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+                  />
+                </div>
+
+                {hasSupabaseConfig ? (
+                  <div className="form-group">
+                    <label htmlFor="recipeVisibility">Visibility</label>
+                    <select
+                      id="recipeVisibility"
+                      value={form.visibility || 'private'}
+                      onChange={(event) => setForm((prev) => ({ ...prev, visibility: event.target.value }))}
+                    >
+                      <option value="private">Private</option>
+                      <option value="shared">Shared</option>
+                      <option value="public">Public</option>
+                    </select>
+                  </div>
+                ) : null}
+              </section>
+
+              <div className="add-recipe-submit-row">
+                <button className="btn btn-primary" type="submit">
+                  {currentEditingId ? 'Update Recipe' : 'Add Recipe'}
+                </button>
+                </div>
             </form>
           </div>
         </div>
