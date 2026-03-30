@@ -1332,7 +1332,6 @@ function App() {
     const profileUrl = new URL(`${SUPABASE_URL}/rest/v1/profiles`)
     profileUrl.searchParams.set('select', PROFILE_SELECT_FIELDS)
     profileUrl.searchParams.set('id', `eq.${userId}`)
-    profileUrl.searchParams.set('_', String(Date.now()))
 
     const response = await fetch(profileUrl.toString(), {
       method: 'GET',
@@ -1341,6 +1340,8 @@ function App() {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
         Accept: 'application/vnd.pgrst.object+json',
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        Pragma: 'no-cache',
       },
     })
 
