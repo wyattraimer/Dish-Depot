@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import dishDepotLogo from './assets/dishdepot-no-background-674x674.png'
 import dishDepotLogoBadge from './assets/dishdepot-674x674.png'
@@ -1372,6 +1372,89 @@ function App() {
     }
   }
 
+  const loadGroups = useCallback(async () => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      setGroups([])
+      setGroupMemberships([])
+      setGroupRecipes([])
+      setSelectedGroupId('')
+      return
+    }
+
+    const { data: membershipRows, error: membershipError } = await supabase.rpc('get_my_group_memberships')
+
+    if (membershipError) {
+      showMessage(`Could not load groups: ${membershipError.message}`, 'info')
+      return
+    }
+
+    const memberships = Array.isArray(membershipRows)
+      ? membershipRows.map((row) => ({
+          groupId: row.group_id,
+          role: row.role || 'viewer',
+        }))
+      : []
+
+    setGroupMemberships(memberships)
+
+    const groupIds = memberships.map((row) => row.groupId).filter((id) => isUuidLike(id))
+    if (groupIds.length === 0) {
+      setGroups([])
+      setSelectedGroupId('')
+      setGroupRecipes([])
+      return
+    }
+
+    const { data: groupRows, error: groupError } = await supabase
+      .from('groups')
+      .select('id,name,created_by,created_at')
+      .in('id', groupIds)
+      .order('name', { ascending: true })
+
+    if (groupError) {
+      showMessage(`Could not load groups: ${groupError.message}`, 'info')
+      return
+    }
+
+    const mappedGroups = Array.isArray(groupRows) ? groupRows : []
+    setGroups(mappedGroups)
+    setSelectedGroupId((prev) => {
+      if (prev && mappedGroups.some((group) => group.id === prev)) {
+        return prev
+      }
+      return mappedGroups[0]?.id || ''
+    })
+  }, [authUser?.id])
+
+  const loadGroupRecipes = useCallback(async (groupId = selectedGroupId, groupRole = selectedGroupRole) => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
+      setGroupRecipes([])
+      return
+    }
+
+    const { data: recipeRows, error: recipeError } = await supabase.rpc('get_group_recipes', {
+      target_group_id: groupId,
+    })
+
+    if (recipeError) {
+      showMessage(`Could not load group recipes: ${recipeError.message}`, 'info')
+      setGroupRecipes([])
+      return
+    }
+
+    const canEditGroupRecipes = hasGroupRoleOrHigher(groupRole, 'editor')
+    const mapped = migrateRecipes(
+      (Array.isArray(recipeRows) ? recipeRows : []).map((row) => ({
+        ...mapSupabaseRecipeToApp(row),
+        groupAddedBy: row.added_by || null,
+        groupAddedAt: row.added_at || null,
+        sharedReadOnly: !(canEditGroupRecipes || row.owner_id === authUser.id),
+      })),
+    )
+
+    setGroupRecipes(mapped)
+  }, [authUser?.id, selectedGroupId, selectedGroupRole])
+
   useEffect(() => {
     try {
       if (localStorage.getItem(WELCOME_DISMISSED_KEY) !== '1') {
@@ -1589,9 +1672,12 @@ function App() {
       }
 
       const accepted = Array.isArray(data) ? data[0] : data
+      await loadGroups()
+
       if (accepted?.group_id) {
         setSelectedGroupId(accepted.group_id)
         setRecipeScope('group')
+        await loadGroupRecipes(accepted.group_id, accepted.role || 'viewer')
       }
 
       showMessage(`Joined ${accepted?.group_name || 'group'} successfully.`, 'success')
@@ -1603,7 +1689,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, pendingGroupInviteToken])
+  }, [authUser?.id, pendingGroupInviteToken, loadGroupRecipes, loadGroups])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
@@ -1810,77 +1896,8 @@ function App() {
   }, [authUser?.id, isOnline, recipeScope])
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
-      setGroups([])
-      setGroupMemberships([])
-      setGroupRecipes([])
-      setSelectedGroupId('')
-      return
-    }
-
-    let cancelled = false
-
-    const loadGroups = async () => {
-      const { data: membershipRows, error: membershipError } = await supabase.rpc('get_my_group_memberships')
-
-      if (cancelled) {
-        return
-      }
-
-      if (membershipError) {
-        showMessage(`Could not load groups: ${membershipError.message}`, 'info')
-        return
-      }
-
-      const memberships = Array.isArray(membershipRows)
-        ? membershipRows.map((row) => ({
-            groupId: row.group_id,
-            role: row.role || 'viewer',
-          }))
-        : []
-
-      setGroupMemberships(memberships)
-
-      const groupIds = memberships.map((row) => row.groupId).filter((id) => isUuidLike(id))
-      if (groupIds.length === 0) {
-        setGroups([])
-        setSelectedGroupId('')
-        setGroupRecipes([])
-        return
-      }
-
-      const { data: groupRows, error: groupError } = await supabase
-        .from('groups')
-        .select('id,name,created_by,created_at')
-        .in('id', groupIds)
-        .order('name', { ascending: true })
-
-      if (cancelled) {
-        return
-      }
-
-      if (groupError) {
-        showMessage(`Could not load groups: ${groupError.message}`, 'info')
-        return
-      }
-
-      const mappedGroups = Array.isArray(groupRows) ? groupRows : []
-      setGroups(mappedGroups)
-
-      setSelectedGroupId((prev) => {
-        if (prev && mappedGroups.some((group) => group.id === prev)) {
-          return prev
-        }
-        return mappedGroups[0]?.id || ''
-      })
-    }
-
-    void loadGroups()
-
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id])
+    void loadGroups().catch(() => undefined)
+  }, [loadGroups])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
@@ -1937,73 +1954,50 @@ function App() {
   }, [authUser?.id])
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(selectedGroupId)) {
-      setGroupRecipes([])
-      return
+    void loadGroupRecipes(selectedGroupId, selectedGroupRole).catch(() => undefined)
+  }, [loadGroupRecipes, selectedGroupId, selectedGroupRole])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      return undefined
     }
 
-    let cancelled = false
-
-    const loadGroupRecipes = async () => {
-      const { data: relationRows, error: relationError } = await supabase
-        .from('group_recipes')
-        .select('recipe_id,added_by')
-        .eq('group_id', selectedGroupId)
-
-      if (cancelled) {
-        return
+    const refreshGroupState = () => {
+      void loadGroups()
+      if (isUuidLike(selectedGroupId)) {
+        void loadGroupRecipes(selectedGroupId, selectedGroupRole)
       }
-
-      if (relationError) {
-        showMessage(`Could not load group recipes: ${relationError.message}`, 'info')
-        setGroupRecipes([])
-        return
-      }
-
-      const rows = Array.isArray(relationRows) ? relationRows : []
-      const recipeIds = rows.map((row) => row.recipe_id).filter((id) => isUuidLike(id))
-      const addedByMap = new Map(rows.map((row) => [row.recipe_id, row.added_by]))
-
-      if (recipeIds.length === 0) {
-        setGroupRecipes([])
-        return
-      }
-
-      const { data: recipeRows, error: recipeError } = await supabase
-        .from('recipes')
-        .select('id,owner_id,name,url,image,notes,ingredients,directions,categories,pinned,type,visibility,share_slug,updated_at,deleted_at')
-        .in('id', recipeIds)
-        .is('deleted_at', null)
-        .order('updated_at', { ascending: false })
-
-      if (cancelled) {
-        return
-      }
-
-      if (recipeError) {
-        showMessage(`Could not load group recipes: ${recipeError.message}`, 'info')
-        setGroupRecipes([])
-        return
-      }
-
-      const canEditGroupRecipes = hasGroupRoleOrHigher(selectedGroupRole, 'editor')
-      const mapped = migrateRecipes(
-        (recipeRows || []).map((row) => ({
-          ...mapSupabaseRecipeToApp(row),
-          groupAddedBy: addedByMap.get(row.id) || null,
-          sharedReadOnly: !(canEditGroupRecipes || row.owner_id === authUser.id),
-        })),
-      )
-
-      setGroupRecipes(mapped)
     }
 
-    void loadGroupRecipes()
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        refreshGroupState()
+      }
+    }
+
+    window.addEventListener('focus', onVisibilityOrFocus)
+    document.addEventListener('visibilitychange', onVisibilityOrFocus)
+
+    const channel = supabase.channel(`group-recipes-${authUser.id}-${selectedGroupId || 'none'}`)
+
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_members', filter: `user_id=eq.${authUser.id}` }, () => {
+      refreshGroupState()
+    })
+
+    if (isUuidLike(selectedGroupId)) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_recipes', filter: `group_id=eq.${selectedGroupId}` }, () => {
+        void loadGroupRecipes(selectedGroupId, selectedGroupRole)
+      })
+    }
+
+    channel.subscribe()
 
     return () => {
-      cancelled = true
+      window.removeEventListener('focus', onVisibilityOrFocus)
+      document.removeEventListener('visibilitychange', onVisibilityOrFocus)
+      void supabase.removeChannel(channel)
     }
-  }, [authUser?.id, selectedGroupId, selectedGroupRole])
+  }, [authUser?.id, loadGroupRecipes, loadGroups, selectedGroupId, selectedGroupRole, recipeScope])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
@@ -2710,6 +2704,7 @@ function App() {
           {
             ...recipe,
             groupAddedBy: authUser.id,
+            groupAddedAt: new Date().toISOString(),
             sharedReadOnly: !(canEditGroupRecipes || recipe.ownerId === authUser.id),
           },
         ])[0]
