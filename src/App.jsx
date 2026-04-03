@@ -1183,6 +1183,7 @@ function App() {
   const [extractWarnings, setExtractWarnings] = useState([])
   const [extractCandidate, setExtractCandidate] = useState(null)
   const [cardScanFile, setCardScanFile] = useState(null)
+  const [cardScanPreviewUrl, setCardScanPreviewUrl] = useState('')
   const [mealPlan, setMealPlan] = useState(() => {
     try {
       const savedPlan = localStorage.getItem(MEAL_PLAN_KEY)
@@ -1324,6 +1325,86 @@ function App() {
     }
     return authUser?.email || 'Account'
   }, [profileDisplayName, profileUsername, authUser?.email])
+
+  const extractReviewSummary = useMemo(() => {
+    if (!extractCandidate) {
+      return null
+    }
+
+    const ingredientsCount = Array.isArray(extractCandidate.data?.ingredients) ? extractCandidate.data.ingredients.length : 0
+    const directionsCount = Array.isArray(extractCandidate.data?.directions) ? extractCandidate.data.directions.length : 0
+    const warningCount = extractWarnings.length
+    const missingSections = []
+
+    if (!extractCandidate.data?.name) {
+      missingSections.push('title')
+    }
+    if (ingredientsCount === 0) {
+      missingSections.push('ingredients')
+    }
+    if (directionsCount === 0) {
+      missingSections.push('directions')
+    }
+
+    const status = warningCount > 0 || missingSections.length > 0 ? 'review' : 'strong'
+    const headline =
+      status === 'strong'
+        ? 'Ready to apply'
+        : missingSections.length > 0
+          ? 'Review missing sections before applying'
+          : 'Review highlighted details before applying'
+
+    const detail =
+      status === 'strong'
+        ? 'Dish Depot captured the main recipe sections. You can still tweak anything after applying.'
+        : missingSections.length > 0
+          ? `Check ${missingSections.join(', ')} carefully before applying the scan results.`
+          : 'The scan found usable recipe details, but a few lines still need a quick human review.'
+
+    return {
+      status,
+      headline,
+      detail,
+      warningCount,
+      ingredientsCount,
+      directionsCount,
+    }
+  }, [extractCandidate, extractWarnings])
+
+  const groupSourceContext = useMemo(() => {
+    if (recipeScope !== 'group' || !selectedGroup) {
+      return null
+    }
+    return {
+      label: `In ${selectedGroup.name}`,
+      recipeScope: 'group',
+    }
+  }, [recipeScope, selectedGroup])
+
+  function getRecipeOriginBadges(recipe) {
+    const badges = []
+
+    if (recipeScope === 'shared') {
+      badges.push({ tone: 'shared', icon: 'fa-share-nodes', label: 'Shared with me' })
+      badges.push({ tone: recipe.sharedReadOnly ? 'readonly' : 'editable', icon: recipe.sharedReadOnly ? 'fa-eye' : 'fa-pen-to-square', label: recipe.sharedReadOnly ? 'View only' : 'Can edit' })
+      return badges
+    }
+
+    if (recipeScope === 'group') {
+      badges.push({ tone: 'group', icon: 'fa-users', label: groupSourceContext?.label || 'Group recipe' })
+      badges.push({ tone: recipe.sharedReadOnly ? 'readonly' : 'editable', icon: recipe.sharedReadOnly ? 'fa-eye' : 'fa-pen-to-square', label: recipe.sharedReadOnly ? 'View only' : 'Can edit' })
+      if (recipe.groupAddedBy) {
+        badges.push({ tone: 'meta', icon: recipe.groupAddedBy === authUser?.id ? 'fa-user-check' : 'fa-user-plus', label: recipe.groupAddedBy === authUser?.id ? 'Added by you' : 'Added by group member' })
+      }
+      return badges
+    }
+
+    if (recipe.ownerId && authUser?.id && recipe.ownerId === authUser.id) {
+      badges.push({ tone: 'mine', icon: 'fa-utensils', label: 'My recipe' })
+    }
+
+    return badges
+  }
 
   async function applyProfileState(profile) {
     setProfileDisplayName(profile?.display_name || '')
@@ -2416,6 +2497,20 @@ function App() {
       observer.disconnect()
     }
   }, [activeView, recipeScope])
+
+  useEffect(() => {
+    if (!cardScanFile) {
+      setCardScanPreviewUrl('')
+      return undefined
+    }
+
+    const objectUrl = URL.createObjectURL(cardScanFile)
+    setCardScanPreviewUrl(objectUrl)
+
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [cardScanFile])
 
   useEffect(() => {
     return () => {
@@ -5311,6 +5406,16 @@ function App() {
                     >
                       <div className="recipe-header">
                         <h3 className="recipe-title">{recipe.name}</h3>
+                        {getRecipeOriginBadges(recipe).length > 0 ? (
+                          <div className="recipe-origin-badges">
+                            {getRecipeOriginBadges(recipe).map((badge) => (
+                              <span key={`${recipe.id}-${badge.label}`} className={`recipe-origin-badge recipe-origin-badge-${badge.tone}`}>
+                                <i className={`fas ${badge.icon}`} />
+                                {badge.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                         <div className="recipe-categories">
                           {categories.map((cat, categoryIndex) => {
                             const info = CATEGORIES[cat] || CATEGORIES.other
@@ -5602,6 +5707,16 @@ function App() {
 
             <header className="focused-recipe-header">
               <h2>{focusedRecipe.name}</h2>
+              {getRecipeOriginBadges(focusedRecipe).length > 0 ? (
+                <div className="recipe-origin-badges recipe-origin-badges-focused">
+                  {getRecipeOriginBadges(focusedRecipe).map((badge) => (
+                    <span key={`focused-${focusedRecipe.id}-${badge.label}`} className={`recipe-origin-badge recipe-origin-badge-${badge.tone}`}>
+                      <i className={`fas ${badge.icon}`} />
+                      {badge.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <div className="recipe-categories">
                 {(focusedRecipe.categories || (focusedRecipe.category ? [focusedRecipe.category] : [])).map((cat, categoryIndex) => {
                   const info = CATEGORIES[cat] || CATEGORIES.other
@@ -5849,7 +5964,28 @@ function App() {
                           onChange={handleCardScanFileChange}
                         />
                         <p className="card-scan-helper">Use a bright photo with the full recipe card in frame for the best handwriting results.</p>
-                        {cardScanFile ? <div className="card-scan-file-chip"><i className="fas fa-file-image" /> {cardScanFile.name}</div> : null}
+                        {cardScanFile ? (
+                          <div className="card-scan-preview-card">
+                            {cardScanPreviewUrl && cardScanFile.type.startsWith('image/') ? (
+                              <div className="card-scan-preview-image-wrap">
+                                <img className="card-scan-preview-image" src={cardScanPreviewUrl} alt="Recipe card preview" />
+                              </div>
+                            ) : cardScanFile.type === 'application/pdf' ? (
+                              <div className="card-scan-preview-file-state">
+                                <i className="fas fa-file-pdf" />
+                                <span>PDF selected — Dish Depot will still scan it after upload, but inline preview is not available.</span>
+                              </div>
+                            ) : null}
+                            <div className="card-scan-preview-meta">
+                              <div className="card-scan-file-chip"><i className="fas fa-file-image" /> {cardScanFile.name}</div>
+                              <div className="card-scan-tips-grid">
+                                <span><i className="fas fa-sun" /> Bright light</span>
+                                <span><i className="fas fa-expand" /> Fill the frame</span>
+                                <span><i className="fas fa-eye" /> Review handwriting carefully</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="extract-actions">
@@ -5882,6 +6018,19 @@ function App() {
                     <h3>2. Review the extracted recipe</h3>
                     <p>Check the preview before you apply the fields into your recipe form.</p>
                   </div>
+                  {extractReviewSummary ? (
+                    <div className={`extract-review-banner extract-review-banner-${extractReviewSummary.status}`}>
+                      <div className="extract-review-banner-text">
+                        <strong>{extractReviewSummary.headline}</strong>
+                        <p>{extractReviewSummary.detail}</p>
+                      </div>
+                      <div className="extract-review-banner-stats" aria-label="Scan review summary">
+                        <span>{extractReviewSummary.ingredientsCount} ingredients</span>
+                        <span>{extractReviewSummary.directionsCount} directions</span>
+                        <span>{extractReviewSummary.warningCount} warnings</span>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="extract-preview-shell">
                       <div className="extract-preview-header">
                         <strong>{extractCandidate.data.name || 'Unnamed recipe'}</strong>
