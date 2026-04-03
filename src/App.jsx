@@ -1703,7 +1703,10 @@ function App() {
   }
 
   function updateRecipeFormField(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => ({
+      ...prev,
+      [field]: value ?? '',
+    }))
   }
 
   function applyRecipeFieldCleanup(field, options = {}) {
@@ -6350,7 +6353,7 @@ function App() {
                           id="recipeUrl"
                           type="url"
                           required
-                          value={form.url}
+                          value={form.url ?? ''}
                           onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
                         />
                       </div>
@@ -6529,7 +6532,7 @@ function App() {
                     id="recipeName"
                     type="text"
                     required
-                    value={form.name}
+                    value={form.name ?? ''}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                   />
                 </div>
@@ -6553,7 +6556,7 @@ function App() {
                       id="recipeIngredients"
                       rows="4"
                       placeholder="Extracted ingredients will appear here"
-                      value={form.ingredients}
+                      value={form.ingredients ?? ''}
                       onChange={(event) => updateRecipeFormField('ingredients', event.target.value)}
                     />
                   </div>
@@ -6575,7 +6578,7 @@ function App() {
                       id="recipeDirections"
                       rows="4"
                       placeholder="Extracted directions will appear here"
-                      value={form.directions}
+                      value={form.directions ?? ''}
                       onChange={(event) => updateRecipeFormField('directions', event.target.value)}
                     />
                   </div>
@@ -6599,7 +6602,7 @@ function App() {
                       id="recipeIngredients"
                       rows="4"
                       placeholder="Enter ingredients, one per line"
-                      value={form.ingredients}
+                      value={form.ingredients ?? ''}
                       onChange={(event) => updateRecipeFormField('ingredients', event.target.value)}
                     />
                   </div>
@@ -6621,7 +6624,7 @@ function App() {
                       id="recipeDirections"
                       rows="4"
                       placeholder="Enter directions, one step per line"
-                      value={form.directions}
+                      value={form.directions ?? ''}
                       onChange={(event) => updateRecipeFormField('directions', event.target.value)}
                     />
                   </div>
@@ -6641,7 +6644,7 @@ function App() {
                     id="recipeImage"
                     type="url"
                     placeholder="https://example.com/recipe-image.jpg"
-                    value={form.image}
+                    value={form.image ?? ''}
                     onChange={(event) => setForm((prev) => ({ ...prev, image: event.target.value }))}
                   />
                 </div>
@@ -6697,7 +6700,7 @@ function App() {
                   <textarea
                     id="recipeNotes"
                     rows="3"
-                    value={form.notes}
+                    value={form.notes ?? ''}
                     onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
                   />
                 </div>
