@@ -2424,8 +2424,69 @@ body[data-theme='dark'] .header-tagline {
   color: var(--ink-700);
 }
 
+.shopping-list-toolbar {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.shopping-list-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.shopping-list-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(90, 105, 122, 0.16);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.shopping-list-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.shopping-group-sections {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.shopping-group-section {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.shopping-group-heading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: fit-content;
+  min-height: 30px;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(114, 165, 138, 0.12);
+  border: 1px solid rgba(114, 165, 138, 0.2);
+  color: #3d7658;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
 .shopping-list-unresolved-item {
   border-style: dashed;
+}
+
+.shopping-list-modal .import-preview-actions {
+  align-items: center;
 }
 
 .shopping-manual-tools {
@@ -4749,6 +4810,18 @@ body[data-theme='dark'] .group-activity-time {
   color: #9fb2c5;
 }
 
+body[data-theme='dark'] .shopping-list-meta-pill {
+  background: rgba(20, 31, 43, 0.88);
+  border-color: rgba(164, 180, 200, 0.18);
+  color: #dce6f2;
+}
+
+body[data-theme='dark'] .shopping-group-heading {
+  background: rgba(28, 53, 48, 0.9);
+  border-color: rgba(114, 165, 138, 0.24);
+  color: #d9eee2;
+}
+
 body[data-theme='dark'] .extract-warning-box {
   background: rgba(69, 56, 18, 0.4);
   border-color: rgba(228, 180, 77, 0.3);
@@ -4774,6 +4847,15 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
 }
 
 @media (max-width: 1023px) {
+  .shopping-list-toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shopping-list-toolbar-actions .btn {
+    width: 100%;
+  }
+
   .field-tools-row {
     display: grid;
     gap: 0.4rem;
@@ -4928,6 +5010,18 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
 }
 
 @media (max-width: 640px) {
+  .shopping-list-meta-pills,
+  .shopping-list-toolbar-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .shopping-list-meta-pill,
+  .shopping-group-heading {
+    width: 100%;
+    justify-content: center;
+  }
+
   .group-activity-item {
     grid-template-columns: auto minmax(0, 1fr);
   }
