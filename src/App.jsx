@@ -3,6 +3,7 @@ import './App.css'
 import dishDepotLogo from './assets/dishdepot-no-background-674x674.png'
 import dishDepotLogoBadge from './assets/dishdepot-674x674.png'
 import { hasSupabaseConfig, supabase } from './lib/supabaseClient'
+import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 
 const AddRecipeModal = lazy(() => import('./components/AddRecipeModal'))
 const FocusedRecipeModal = lazy(() => import('./components/FocusedRecipeModal'))
@@ -6144,69 +6145,73 @@ function App() {
       </main>
 
       {focusedRecipe ? (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <FocusedRecipeModal
-            focusedRecipe={focusedRecipe}
-            closeFocusedRecipe={closeFocusedRecipe}
-            getRecipeOriginBadges={getRecipeOriginBadges}
-            categoriesMap={CATEGORIES}
-            canShareRecipe={canShareRecipe}
-            hasSupabaseConfig={hasSupabaseConfig}
-            authUser={authUser}
-            openShareModal={openShareModal}
-            isUuidLike={isUuidLike}
-            selectedGroupId={selectedGroupId}
-            addRecipeToSelectedGroup={addRecipeToSelectedGroup}
-            canContributeToSelectedGroup={canContributeToSelectedGroup}
-            selectedGroup={selectedGroup}
-            recipeScope={recipeScope}
-            removeRecipeFromSelectedGroup={removeRecipeFromSelectedGroup}
-            canRemoveRecipeFromSelectedGroup={canRemoveRecipeFromSelectedGroup}
-            visitRecipe={visitRecipe}
-            copyRecipeUrl={copyRecipeUrl}
-            printRecipesAsPdf={printRecipesAsPdf}
-            canManageRecipe={canManageRecipe}
-            togglePinnedRecipe={togglePinnedRecipe}
-            openModal={openModal}
-            handleDeleteRecipe={handleDeleteRecipe}
-          />
-        </Suspense>
+        <AppErrorBoundary scope="modal" onReset={closeFocusedRecipe}>
+          <Suspense fallback={<ModalLoadingFallback />}>
+            <FocusedRecipeModal
+              focusedRecipe={focusedRecipe}
+              closeFocusedRecipe={closeFocusedRecipe}
+              getRecipeOriginBadges={getRecipeOriginBadges}
+              categoriesMap={CATEGORIES}
+              canShareRecipe={canShareRecipe}
+              hasSupabaseConfig={hasSupabaseConfig}
+              authUser={authUser}
+              openShareModal={openShareModal}
+              isUuidLike={isUuidLike}
+              selectedGroupId={selectedGroupId}
+              addRecipeToSelectedGroup={addRecipeToSelectedGroup}
+              canContributeToSelectedGroup={canContributeToSelectedGroup}
+              selectedGroup={selectedGroup}
+              recipeScope={recipeScope}
+              removeRecipeFromSelectedGroup={removeRecipeFromSelectedGroup}
+              canRemoveRecipeFromSelectedGroup={canRemoveRecipeFromSelectedGroup}
+              visitRecipe={visitRecipe}
+              copyRecipeUrl={copyRecipeUrl}
+              printRecipesAsPdf={printRecipesAsPdf}
+              canManageRecipe={canManageRecipe}
+              togglePinnedRecipe={togglePinnedRecipe}
+              openModal={openModal}
+              handleDeleteRecipe={handleDeleteRecipe}
+            />
+          </Suspense>
+        </AppErrorBoundary>
       ) : null}
 
       {isModalOpen ? (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <AddRecipeModal
-            currentEditingId={currentEditingId}
-            currentRecipeType={currentRecipeType}
-            setRecipeCreationMode={setRecipeCreationMode}
-            handleSubmit={handleSubmit}
-            form={form}
-            setForm={setForm}
-            handleExtractFromUrl={handleExtractFromUrl}
-            isExtracting={isExtracting}
-            isOnline={isOnline}
-            isApiReachable={isApiReachable}
-            cardScanInputRef={cardScanInputRef}
-            isPreparingCardScan={isPreparingCardScan}
-            handleCardScanFileChange={handleCardScanFileChange}
-            cardScanFile={cardScanFile}
-            cardScanPreviewUrl={cardScanPreviewUrl}
-            cardScanPreparationNote={cardScanPreparationNote}
-            handleExtractFromCard={handleExtractFromCard}
-            extractCandidate={extractCandidate}
-            extractReviewSummary={extractReviewSummary}
-            extractWarnings={extractWarnings}
-            applyExtractCandidate={applyExtractCandidate}
-            discardExtractCandidate={discardExtractCandidate}
-            updateRecipeFormField={updateRecipeFormField}
-            applyRecipeFieldCleanup={applyRecipeFieldCleanup}
-            categoryOptions={CATEGORY_OPTIONS}
-            formatCategory={formatCategory}
-            toggleCategory={toggleCategory}
-            hasSupabaseConfig={hasSupabaseConfig}
-            closeModal={closeModal}
-          />
-        </Suspense>
+        <AppErrorBoundary scope="modal" onReset={closeModal}>
+          <Suspense fallback={<ModalLoadingFallback />}>
+            <AddRecipeModal
+              currentEditingId={currentEditingId}
+              currentRecipeType={currentRecipeType}
+              setRecipeCreationMode={setRecipeCreationMode}
+              handleSubmit={handleSubmit}
+              form={form}
+              setForm={setForm}
+              handleExtractFromUrl={handleExtractFromUrl}
+              isExtracting={isExtracting}
+              isOnline={isOnline}
+              isApiReachable={isApiReachable}
+              cardScanInputRef={cardScanInputRef}
+              isPreparingCardScan={isPreparingCardScan}
+              handleCardScanFileChange={handleCardScanFileChange}
+              cardScanFile={cardScanFile}
+              cardScanPreviewUrl={cardScanPreviewUrl}
+              cardScanPreparationNote={cardScanPreparationNote}
+              handleExtractFromCard={handleExtractFromCard}
+              extractCandidate={extractCandidate}
+              extractReviewSummary={extractReviewSummary}
+              extractWarnings={extractWarnings}
+              applyExtractCandidate={applyExtractCandidate}
+              discardExtractCandidate={discardExtractCandidate}
+              updateRecipeFormField={updateRecipeFormField}
+              applyRecipeFieldCleanup={applyRecipeFieldCleanup}
+              categoryOptions={CATEGORY_OPTIONS}
+              formatCategory={formatCategory}
+              toggleCategory={toggleCategory}
+              hasSupabaseConfig={hasSupabaseConfig}
+              closeModal={closeModal}
+            />
+          </Suspense>
+        </AppErrorBoundary>
       ) : null}
 
       {isProfileModalOpen ? (

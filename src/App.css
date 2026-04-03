@@ -1470,6 +1470,65 @@ body[data-theme='dark'] .header-tagline {
   text-align: center;
 }
 
+.modal-error-content {
+  display: grid;
+  place-items: center;
+}
+
+.app-error-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, rgba(246, 239, 230, 0.92), rgba(255, 255, 255, 0.98));
+}
+
+.app-error-card {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  text-align: center;
+  border-radius: 24px;
+  border: 1px solid rgba(90, 105, 122, 0.16);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 24px 56px rgba(16, 24, 32, 0.16);
+  padding: 1.4rem 1.25rem;
+}
+
+.app-error-card-modal {
+  width: min(420px, 100%);
+}
+
+.app-error-card i {
+  font-size: 2rem;
+  color: #c74d3f;
+}
+
+.app-error-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.app-error-card h1,
+.app-error-card h2 {
+  color: var(--ink-900);
+}
+
+.app-error-card p {
+  margin: 0;
+  color: var(--ink-600);
+  line-height: 1.55;
+}
+
+.app-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
 .add-recipe-modal {
   max-width: 700px;
 }
