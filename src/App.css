@@ -4033,6 +4033,35 @@ body[data-theme='dark'] .theme-switch input:checked + .theme-switch-track {
   gap: 0.55rem;
 }
 
+.group-refresh-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-height: 40px;
+  padding: 0.45rem 0.72rem;
+  border-radius: 13px;
+  border: 1px solid rgba(114, 165, 138, 0.18);
+  background: rgba(114, 165, 138, 0.1);
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.group-refresh-indicator i {
+  color: #4f8768;
+}
+
+.group-refresh-indicator-active {
+  border-color: rgba(209, 72, 62, 0.24);
+  background: rgba(255, 247, 244, 0.96);
+  color: #b64437;
+}
+
+.group-refresh-indicator-active i {
+  color: #c74d3f;
+}
+
 .toolbar-ghost-button,
 .auth-user-email,
 .group-invites-pill {
@@ -4257,6 +4286,26 @@ body[data-theme='dark'] .toolbar-compact-button-active {
   color: #fff3f0;
 }
 
+body[data-theme='dark'] .group-refresh-indicator {
+  background: rgba(28, 53, 48, 0.9);
+  border-color: rgba(114, 165, 138, 0.24);
+  color: #d9eee2;
+}
+
+body[data-theme='dark'] .group-refresh-indicator i {
+  color: #8fd0aa;
+}
+
+body[data-theme='dark'] .group-refresh-indicator-active {
+  background: rgba(88, 34, 30, 0.94);
+  border-color: rgba(245, 167, 160, 0.3);
+  color: #fff1ef;
+}
+
+body[data-theme='dark'] .group-refresh-indicator-active i {
+  color: #f2a39a;
+}
+
 body[data-theme='dark'] .auth-sync-pill {
   background: rgba(29, 58, 51, 0.94);
 }
@@ -4467,6 +4516,11 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
   .group-scope-controls {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .group-refresh-indicator {
+    width: 100%;
+    justify-content: center;
   }
 
   .tools-menu {

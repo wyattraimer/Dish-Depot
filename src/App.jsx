@@ -1153,6 +1153,8 @@ function App() {
   const [groupPendingInvites, setGroupPendingInvites] = useState([])
   const [pendingGroupInvites, setPendingGroupInvites] = useState([])
   const [groupInvitesLoading, setGroupInvitesLoading] = useState(false)
+  const [isGroupRecipesRefreshing, setIsGroupRecipesRefreshing] = useState(false)
+  const [groupRefreshNotice, setGroupRefreshNotice] = useState('')
   const [isGroupInvitesModalOpen, setIsGroupInvitesModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareTargetRecipe, setShareTargetRecipe] = useState(null)
@@ -1211,6 +1213,8 @@ function App() {
   const networkStatusRef = useRef(navigator.onLine)
   const cloudSyncUserRef = useRef('')
   const cloudMealPlanUserRef = useRef('')
+  const latestGroupRecipeIdsRef = useRef(new Set())
+  const groupRefreshNoticeTimeoutRef = useRef(0)
 
   const selectedGroup = useMemo(() => groups.find((group) => group.id === selectedGroupId) || null, [groups, selectedGroupId])
 
@@ -1221,6 +1225,16 @@ function App() {
 
   const canContributeToSelectedGroup = hasGroupRoleOrHigher(selectedGroupRole, 'contributor')
   const canAdminSelectedGroup = hasGroupRoleOrHigher(selectedGroupRole, 'admin')
+
+  const groupStatusText = useMemo(() => {
+    if (recipeScope !== 'group' || !isUuidLike(selectedGroupId)) {
+      return ''
+    }
+    if (isGroupRecipesRefreshing) {
+      return 'Refreshing group recipes…'
+    }
+    return groupRefreshNotice || 'Live updates on'
+  }, [groupRefreshNotice, isGroupRecipesRefreshing, recipeScope, selectedGroupId])
 
   const scopedRecipes = useMemo(() => {
     if (recipeScope === 'shared') {
@@ -1372,6 +1386,20 @@ function App() {
     }
   }
 
+  function updateGroupRefreshNotice(text) {
+    setGroupRefreshNotice(text)
+    if (groupRefreshNoticeTimeoutRef.current) {
+      window.clearTimeout(groupRefreshNoticeTimeoutRef.current)
+    }
+    if (!text || text === 'Live updates on') {
+      return
+    }
+    groupRefreshNoticeTimeoutRef.current = window.setTimeout(() => {
+      setGroupRefreshNotice('Live updates on')
+      groupRefreshNoticeTimeoutRef.current = 0
+    }, 5000)
+  }
+
   const loadGroups = useCallback(async () => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
       setGroups([])
@@ -1426,25 +1454,39 @@ function App() {
     })
   }, [authUser?.id])
 
-  const loadGroupRecipes = useCallback(async (groupId = selectedGroupId, groupRole = selectedGroupRole) => {
+  const loadGroupRecipes = useCallback(async (groupId = selectedGroupId, groupRole = selectedGroupRole, options = {}) => {
+    const { reason = 'manual', quiet = false } = options
+
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
       setGroupRecipes([])
+      latestGroupRecipeIdsRef.current = new Set()
       return
     }
+
+    setIsGroupRecipesRefreshing(true)
 
     const { data: recipeRows, error: recipeError } = await supabase.rpc('get_group_recipes', {
       target_group_id: groupId,
     })
 
+    setIsGroupRecipesRefreshing(false)
+
     if (recipeError) {
-      showMessage(`Could not load group recipes: ${recipeError.message}`, 'info')
+      if (!quiet) {
+        showMessage(`Could not load group recipes: ${recipeError.message}`, 'info')
+      }
       setGroupRecipes([])
       return
     }
 
+    const nextRows = Array.isArray(recipeRows) ? recipeRows : []
+    const nextRecipeIds = new Set(nextRows.map((row) => row.id).filter((id) => isUuidLike(id)))
+    const previousRecipeIds = latestGroupRecipeIdsRef.current
+    const newlyVisibleCount = [...nextRecipeIds].filter((id) => !previousRecipeIds.has(id)).length
+
     const canEditGroupRecipes = hasGroupRoleOrHigher(groupRole, 'editor')
     const mapped = migrateRecipes(
-      (Array.isArray(recipeRows) ? recipeRows : []).map((row) => ({
+      nextRows.map((row) => ({
         ...mapSupabaseRecipeToApp(row),
         groupAddedBy: row.added_by || null,
         groupAddedAt: row.added_at || null,
@@ -1452,7 +1494,21 @@ function App() {
       })),
     )
 
+    latestGroupRecipeIdsRef.current = nextRecipeIds
     setGroupRecipes(mapped)
+
+    if (reason === 'realtime' && newlyVisibleCount > 0) {
+      updateGroupRefreshNotice(newlyVisibleCount === 1 ? '1 new recipe just arrived' : `${newlyVisibleCount} new recipes just arrived`)
+      showMessage(newlyVisibleCount === 1 ? 'A new recipe was added to this group.' : `${newlyVisibleCount} new recipes were added to this group.`, 'success')
+      return
+    }
+
+    if (reason === 'focus' || reason === 'member-change') {
+      updateGroupRefreshNotice('Group recipes refreshed')
+      return
+    }
+
+    updateGroupRefreshNotice('Live updates on')
   }, [authUser?.id, selectedGroupId, selectedGroupRole])
 
   useEffect(() => {
@@ -1677,7 +1733,7 @@ function App() {
       if (accepted?.group_id) {
         setSelectedGroupId(accepted.group_id)
         setRecipeScope('group')
-        await loadGroupRecipes(accepted.group_id, accepted.role || 'viewer')
+        await loadGroupRecipes(accepted.group_id, accepted.role || 'viewer', { reason: 'member-change' })
       }
 
       showMessage(`Joined ${accepted?.group_name || 'group'} successfully.`, 'success')
@@ -1954,7 +2010,7 @@ function App() {
   }, [authUser?.id])
 
   useEffect(() => {
-    void loadGroupRecipes(selectedGroupId, selectedGroupRole).catch(() => undefined)
+    void loadGroupRecipes(selectedGroupId, selectedGroupRole, { quiet: true }).catch(() => undefined)
   }, [loadGroupRecipes, selectedGroupId, selectedGroupRole])
 
   useEffect(() => {
@@ -1965,7 +2021,7 @@ function App() {
     const refreshGroupState = () => {
       void loadGroups()
       if (isUuidLike(selectedGroupId)) {
-        void loadGroupRecipes(selectedGroupId, selectedGroupRole)
+        void loadGroupRecipes(selectedGroupId, selectedGroupRole, { reason: 'focus', quiet: true })
       }
     }
 
@@ -1986,7 +2042,7 @@ function App() {
 
     if (isUuidLike(selectedGroupId)) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_recipes', filter: `group_id=eq.${selectedGroupId}` }, () => {
-        void loadGroupRecipes(selectedGroupId, selectedGroupRole)
+        void loadGroupRecipes(selectedGroupId, selectedGroupRole, { reason: 'realtime', quiet: true })
       })
     }
 
@@ -2360,6 +2416,14 @@ function App() {
       observer.disconnect()
     }
   }, [activeView, recipeScope])
+
+  useEffect(() => {
+    return () => {
+      if (groupRefreshNoticeTimeoutRef.current) {
+        window.clearTimeout(groupRefreshNoticeTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     setShoppingChecklist((prev) => {
@@ -5059,6 +5123,12 @@ function App() {
                           <i className="fas fa-users" />
                           Manage Groups
                         </button>
+                        {groupStatusText ? (
+                          <div className={`group-refresh-indicator${isGroupRecipesRefreshing ? ' group-refresh-indicator-active' : ''}`} role="status" aria-live="polite">
+                            <i className={`fas ${isGroupRecipesRefreshing ? 'fa-rotate fa-spin' : 'fa-signal'}`} />
+                            <span>{groupStatusText}</span>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
