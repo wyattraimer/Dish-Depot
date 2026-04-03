@@ -2207,61 +2207,6 @@ function App() {
   }, [loadGroupRecipes, selectedGroupId, selectedGroupRole])
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
-      return undefined
-    }
-
-    const refreshGroupState = () => {
-      void loadGroups()
-      if (isUuidLike(selectedGroupId)) {
-        void loadGroupRecipes(selectedGroupId, selectedGroupRole, { reason: 'focus', quiet: true })
-        if (isGroupModalOpen) {
-          void loadSelectedGroupActivity(selectedGroupId)
-        }
-      }
-    }
-
-    const onVisibilityOrFocus = () => {
-      if (document.visibilityState === 'visible') {
-        refreshGroupState()
-      }
-    }
-
-    window.addEventListener('focus', onVisibilityOrFocus)
-    document.addEventListener('visibilitychange', onVisibilityOrFocus)
-
-    const channel = supabase.channel(`group-recipes-${authUser.id}-${selectedGroupId || 'none'}`)
-
-    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_members', filter: `user_id=eq.${authUser.id}` }, () => {
-      refreshGroupState()
-    })
-
-    if (isUuidLike(selectedGroupId)) {
-      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_recipes', filter: `group_id=eq.${selectedGroupId}` }, () => {
-        void loadGroupRecipes(selectedGroupId, selectedGroupRole, { reason: 'realtime', quiet: true })
-        if (isGroupModalOpen) {
-          void loadSelectedGroupActivity(selectedGroupId)
-        }
-      })
-
-      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_invites', filter: `group_id=eq.${selectedGroupId}` }, () => {
-        if (isGroupModalOpen) {
-          void loadSelectedGroupPendingInvites(selectedGroupId)
-          void loadSelectedGroupActivity(selectedGroupId)
-        }
-      })
-    }
-
-    channel.subscribe()
-
-    return () => {
-      window.removeEventListener('focus', onVisibilityOrFocus)
-      document.removeEventListener('visibilitychange', onVisibilityOrFocus)
-      void supabase.removeChannel(channel)
-    }
-  }, [authUser?.id, isGroupModalOpen, loadGroupRecipes, loadGroups, loadSelectedGroupActivity, loadSelectedGroupPendingInvites, recipeScope, selectedGroupId, selectedGroupRole])
-
-  useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
       return
     }
@@ -3151,6 +3096,61 @@ function App() {
       setGroupActivityLoading(false)
     }
   }, [authUser?.id, selectedGroupId])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id) {
+      return undefined
+    }
+
+    const refreshGroupState = () => {
+      void loadGroups()
+      if (isUuidLike(selectedGroupId)) {
+        void loadGroupRecipes(selectedGroupId, selectedGroupRole, { reason: 'focus', quiet: true })
+        if (isGroupModalOpen) {
+          void loadSelectedGroupActivity(selectedGroupId)
+        }
+      }
+    }
+
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        refreshGroupState()
+      }
+    }
+
+    window.addEventListener('focus', onVisibilityOrFocus)
+    document.addEventListener('visibilitychange', onVisibilityOrFocus)
+
+    const channel = supabase.channel(`group-recipes-${authUser.id}-${selectedGroupId || 'none'}`)
+
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_members', filter: `user_id=eq.${authUser.id}` }, () => {
+      refreshGroupState()
+    })
+
+    if (isUuidLike(selectedGroupId)) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_recipes', filter: `group_id=eq.${selectedGroupId}` }, () => {
+        void loadGroupRecipes(selectedGroupId, selectedGroupRole, { reason: 'realtime', quiet: true })
+        if (isGroupModalOpen) {
+          void loadSelectedGroupActivity(selectedGroupId)
+        }
+      })
+
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_invites', filter: `group_id=eq.${selectedGroupId}` }, () => {
+        if (isGroupModalOpen) {
+          void loadSelectedGroupPendingInvites(selectedGroupId)
+          void loadSelectedGroupActivity(selectedGroupId)
+        }
+      })
+    }
+
+    channel.subscribe()
+
+    return () => {
+      window.removeEventListener('focus', onVisibilityOrFocus)
+      document.removeEventListener('visibilitychange', onVisibilityOrFocus)
+      void supabase.removeChannel(channel)
+    }
+  }, [authUser?.id, isGroupModalOpen, loadGroupRecipes, loadGroups, loadSelectedGroupActivity, loadSelectedGroupPendingInvites, recipeScope, selectedGroupId, selectedGroupRole])
 
   async function openGroupModal() {
     setIsGroupModalOpen(true)
