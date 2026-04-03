@@ -2658,19 +2658,6 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!isShoppingListOpen) {
-      return
-    }
-
-    try {
-      localStorage.setItem(SHOPPING_LIST_DRAFT_KEY, JSON.stringify(buildShoppingDraftSnapshot(shoppingCandidates)))
-      setHasSavedShoppingDraft(true)
-    } catch {
-      setHasSavedShoppingDraft(false)
-    }
-  }, [buildShoppingDraftSnapshot, isShoppingListOpen, shoppingCandidates])
-
-  useEffect(() => {
     setShoppingChecklist((prev) => {
       const validKeys = new Set([
         ...combinedShoppingItems.map((item) => item.key),
@@ -5126,6 +5113,19 @@ function App() {
       return false
     }
   }
+
+  useEffect(() => {
+    if (!isShoppingListOpen) {
+      return
+    }
+
+    try {
+      localStorage.setItem(SHOPPING_LIST_DRAFT_KEY, JSON.stringify(buildShoppingDraftSnapshot(shoppingCandidates)))
+      setHasSavedShoppingDraft(true)
+    } catch {
+      setHasSavedShoppingDraft(false)
+    }
+  }, [buildShoppingDraftSnapshot, isShoppingListOpen, shoppingCandidates])
 
   function filterImportedRecipes(newRecipes) {
     const existingIds = new Set(recipes.map((recipe) => recipe.id))
