@@ -6017,7 +6017,7 @@ function App() {
 
                       <div className="extract-actions">
                         <button className="btn btn-secondary" type="button" onClick={handleExtractFromCard} disabled={isExtracting || !cardScanFile}>
-                          <i className={`fas ${isExtracting ? 'fa-spinner fa-spin' : 'fa-camera'}`} />
+                          <i className={`fas ${isExtracting ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`} />
                           {isExtracting
                             ? 'Scanning...'
                             : !isOnline
