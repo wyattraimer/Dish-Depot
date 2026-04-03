@@ -1260,8 +1260,7 @@ function App() {
 
   const swRegistrationRef = useRef(null)
   const importInputRef = useRef(null)
-  const cardScanCameraInputRef = useRef(null)
-  const cardScanLibraryInputRef = useRef(null)
+  const cardScanInputRef = useRef(null)
   const inlineAddRecipeButtonRef = useRef(null)
   const toolsMenuRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
@@ -1611,11 +1610,8 @@ function App() {
   function clearCardScanSelection() {
     setCardScanFile(null)
     setCardScanPreparationNote('')
-    if (cardScanCameraInputRef.current) {
-      cardScanCameraInputRef.current.value = ''
-    }
-    if (cardScanLibraryInputRef.current) {
-      cardScanLibraryInputRef.current.value = ''
+    if (cardScanInputRef.current) {
+      cardScanInputRef.current.value = ''
     }
   }
 
@@ -6395,34 +6391,16 @@ function App() {
                           <button
                             className="btn btn-secondary"
                             type="button"
-                            onClick={() => cardScanCameraInputRef.current?.click()}
-                            disabled={isPreparingCardScan || isExtracting}
-                          >
-                            <i className="fas fa-camera" />
-                            Take Photo
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            type="button"
-                            onClick={() => cardScanLibraryInputRef.current?.click()}
+                            onClick={() => cardScanInputRef.current?.click()}
                             disabled={isPreparingCardScan || isExtracting}
                           >
                             <i className="fas fa-image" />
-                            Select Photo
+                            Choose or Take Photo
                           </button>
                         </div>
                         <input
-                          ref={cardScanCameraInputRef}
+                          ref={cardScanInputRef}
                           id="recipeCardScan"
-                          className="card-scan-input"
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/tiff,image/bmp"
-                          capture="environment"
-                          onChange={handleCardScanFileChange}
-                          disabled={isPreparingCardScan || isExtracting}
-                        />
-                        <input
-                          ref={cardScanLibraryInputRef}
                           className="card-scan-input"
                           type="file"
                           accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/tiff,image/bmp,application/pdf"
