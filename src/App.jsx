@@ -4831,7 +4831,7 @@ function App() {
       .map((recipe) => ({
         previewId: `shop-${recipe.id}`,
         recipe,
-        selected: true,
+        selected: false,
       }))
 
     if (candidates.length === 0) {
@@ -5091,7 +5091,7 @@ function App() {
         .map((recipe) => ({
           previewId: `shop-${recipe.id}`,
           recipe,
-          selected: selectedIds.size === 0 ? true : selectedIds.has(recipe.id),
+          selected: selectedIds.size === 0 ? false : selectedIds.has(recipe.id),
         }))
 
       if (candidates.length === 0) {
@@ -7426,8 +7426,7 @@ function App() {
             </span>
             <h2>Shopping List Builder</h2>
             <p className="import-preview-subtitle">
-              Select recipes and get safe combined totals by parsed quantity and unit. Ambiguous entries appear in
-              the Needs Review section.
+              Start by selecting recipes, then Dish Depot will organize the list into grocery-style sections.
             </p>
 
             <div className="shopping-list-toolbar">
@@ -7448,133 +7447,82 @@ function App() {
               </div>
             </div>
 
-            <div className="import-preview-actions">
-              <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllShoppingCandidates(true)}>
-                Select All Recipes
-              </button>
-              <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllShoppingCandidates(false)}>
-                Clear All Recipes
-              </button>
-              <button className="btn btn-secondary btn-small" type="button" onClick={clearShoppingChecklist}>
-                Uncheck All Ingredients
-              </button>
-              <button className="btn btn-secondary btn-small" type="button" onClick={exportShoppingListText}>
-                Export List
-              </button>
-            </div>
+            <div className="shopping-builder-controls">
+              <div className="import-preview-actions shopping-list-action-row">
+                <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllShoppingCandidates(true)}>
+                  Select All
+                </button>
+                <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllShoppingCandidates(false)}>
+                  Clear Recipes
+                </button>
+                <button className="btn btn-secondary btn-small" type="button" onClick={clearShoppingChecklist}>
+                  Uncheck Items
+                </button>
+                <button className="btn btn-secondary btn-small" type="button" onClick={exportShoppingListText}>
+                  Export List
+                </button>
+              </div>
 
-            <div className="shopping-unit-toggle" role="group" aria-label="Preferred units">
-              <button
-                type="button"
-                className={`btn btn-small ${shoppingUnitSystem === 'us' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setShoppingUnitSystem('us')}
-              >
-                US Units
-              </button>
-              <button
-                type="button"
-                className={`btn btn-small ${shoppingUnitSystem === 'metric' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setShoppingUnitSystem('metric')}
-              >
-                Metric Units
-              </button>
+              <div className="shopping-unit-toggle" role="group" aria-label="Preferred units">
+                <button
+                  type="button"
+                  className={`btn btn-small ${shoppingUnitSystem === 'us' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setShoppingUnitSystem('us')}
+                >
+                  US Units
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-small ${shoppingUnitSystem === 'metric' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setShoppingUnitSystem('metric')}
+                >
+                  Metric Units
+                </button>
+              </div>
             </div>
 
             <div className="shopping-list-layout">
-              <section className="shopping-list-recipes">
-                <h3>Recipes</h3>
-                <div className="shopping-list-recipe-items">
-                  {shoppingCandidates.map((candidate) => (
-                    <label key={candidate.previewId} className="shopping-list-recipe-item">
-                      <input
-                        type="checkbox"
-                        checked={candidate.selected}
-                        onChange={() => toggleShoppingCandidate(candidate.previewId)}
-                      />
-                      <span>
-                        {candidate.recipe.name}
-                        <small>{(candidate.recipe.ingredients || []).length} ingredients</small>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </section>
-
-              <section className="shopping-list-ingredients">
-                <h3>Combined Totals ({combinedShoppingItems.length})</h3>
-                {combinedShoppingItems.length > 0 ? (
-                  <div className="shopping-group-sections">
-                    {groupedCombinedShoppingItems.map((group) => (
-                      <section key={group.section} className="shopping-group-section">
-                        <div className="shopping-group-heading">{group.section}</div>
-                        <div className="shopping-list-ingredient-items">
-                          {group.items.map((item) => (
-                            <label key={item.key} className="shopping-list-ingredient-item">
-                              <input
-                                type="checkbox"
-                                checked={Boolean(shoppingChecklist[item.key])}
-                                onChange={() => toggleShoppingItemChecked(item.key)}
-                              />
-                              <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
-                                {item.amountLabel}
-                                {item.sourceCount > 1 ? ` (${item.sourceCount} lines)` : ''}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </section>
+              <details className="shopping-panel" open>
+                <summary>1. Choose Recipes</summary>
+                <section className="shopping-list-recipes">
+                  <p className="shopping-panel-note">Pick only the recipes you want to shop for right now.</p>
+                  <div className="shopping-list-recipe-items">
+                    {shoppingCandidates.map((candidate) => (
+                      <label key={candidate.previewId} className="shopping-list-recipe-item">
+                        <input
+                          type="checkbox"
+                          checked={candidate.selected}
+                          onChange={() => toggleShoppingCandidate(candidate.previewId)}
+                        />
+                        <span>
+                          {candidate.recipe.name}
+                          <small>{(candidate.recipe.ingredients || []).length} ingredients</small>
+                        </span>
+                      </label>
                     ))}
                   </div>
-                ) : (
-                  <p className="shopping-list-empty">Select at least one recipe with parseable ingredients.</p>
-                )}
+                </section>
+              </details>
 
-                {visibleUnresolvedItems.length > 0 ? (
-                  <>
-                    <h3 className="shopping-list-subtitle">Needs Review ({visibleUnresolvedItems.length})</h3>
-                    <p className="shopping-merge-legend">
-                      <span>
-                        <strong>Left checkbox:</strong> Cross item off checklist.
-                      </span>
-                      <span>
-                        <strong>Right checkbox:</strong> You can select multiple items and click "Merge Selected" to combine them into a single checklist entry. This is useful for manually merging similar items that couldn't be automatically combined.
-                      </span>
-                    </p>
-                    <div className="shopping-manual-tools">
-                      <input
-                        type="text"
-                        className="shopping-manual-input"
-                        placeholder="Add you own label for merged items"
-                        value={shoppingManualText}
-                        onChange={(event) => setShoppingManualText(event.target.value)}
-                      />
-                      <button className="btn btn-secondary btn-small" type="button" onClick={createManualMergeGroup}>
-                        Merge Selected
-                      </button>
-                    </div>
+              <details className="shopping-panel" open={selectedShoppingCount > 0}>
+                <summary>2. Combined Totals ({combinedShoppingItems.length})</summary>
+                <section className="shopping-list-ingredients">
+                  {combinedShoppingItems.length > 0 ? (
                     <div className="shopping-group-sections">
-                      {groupedVisibleUnresolvedItems.map((group) => (
+                      {groupedCombinedShoppingItems.map((group) => (
                         <section key={group.section} className="shopping-group-section">
                           <div className="shopping-group-heading">{group.section}</div>
                           <div className="shopping-list-ingredient-items">
                             {group.items.map((item) => (
-                              <label key={item.key} className="shopping-list-ingredient-item shopping-list-unresolved-item">
+                              <label key={item.key} className="shopping-list-ingredient-item">
                                 <input
                                   type="checkbox"
                                   checked={Boolean(shoppingChecklist[item.key])}
                                   onChange={() => toggleShoppingItemChecked(item.key)}
-                                  title="Checklist done"
-                                />
-                                <input
-                                  type="checkbox"
-                                  className="shopping-merge-check"
-                                  checked={Boolean(shoppingMergeSelection[item.key])}
-                                  onChange={() => toggleShoppingMergeSelection(item.key)}
-                                  title="Select for manual merge"
                                 />
                                 <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
-                                  {item.text}
-                                  {item.count > 1 ? ` (${item.count} recipes)` : ''}
+                                  {item.amountLabel}
+                                  {item.sourceCount > 1 ? ` (${item.sourceCount} lines)` : ''}
                                 </span>
                               </label>
                             ))}
@@ -7582,79 +7530,130 @@ function App() {
                         </section>
                       ))}
                     </div>
-                  </>
-                ) : null}
+                  ) : (
+                    <p className="shopping-list-empty">Select recipes first to build your combined grocery list.</p>
+                  )}
+                </section>
+              </details>
 
-                {shoppingManualGroups.length > 0 ? (
-                  <>
-                    <h3 className="shopping-list-subtitle">Manual Merge Items ({shoppingManualGroups.length})</h3>
-                    <div className="shopping-group-sections">
-                      {groupedManualShoppingItems.map((section) => (
-                        <section key={section.section} className="shopping-group-section">
-                          <div className="shopping-group-heading">{section.section}</div>
-                          <div className="shopping-list-ingredient-items">
-                            {section.items.map((group) => (
-                              <div key={group.key} className="shopping-list-ingredient-item shopping-list-manual-item">
+              {visibleUnresolvedItems.length > 0 ? (
+                <details className="shopping-panel">
+                  <summary>3. Needs Review ({visibleUnresolvedItems.length})</summary>
+                  <p className="shopping-panel-note">These ingredients could not be safely combined. You can check them off as-is or merge them manually.</p>
+                  <div className="shopping-manual-tools">
+                    <input
+                      type="text"
+                      className="shopping-manual-input"
+                      placeholder="Label for merged items"
+                      value={shoppingManualText}
+                      onChange={(event) => setShoppingManualText(event.target.value)}
+                    />
+                    <button className="btn btn-secondary btn-small" type="button" onClick={createManualMergeGroup}>
+                      Merge Selected
+                    </button>
+                  </div>
+                  <div className="shopping-group-sections">
+                    {groupedVisibleUnresolvedItems.map((group) => (
+                      <section key={group.section} className="shopping-group-section">
+                        <div className="shopping-group-heading">{group.section}</div>
+                        <div className="shopping-list-ingredient-items">
+                          {group.items.map((item) => (
+                            <label key={item.key} className="shopping-list-ingredient-item shopping-list-unresolved-item">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(shoppingChecklist[item.key])}
+                                onChange={() => toggleShoppingItemChecked(item.key)}
+                                title="Checklist done"
+                              />
+                              <input
+                                type="checkbox"
+                                className="shopping-merge-check"
+                                checked={Boolean(shoppingMergeSelection[item.key])}
+                                onChange={() => toggleShoppingMergeSelection(item.key)}
+                                title="Select for manual merge"
+                              />
+                              <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
+                                {item.text}
+                                {item.count > 1 ? ` (${item.count} recipes)` : ''}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+
+              {shoppingManualGroups.length > 0 ? (
+                <details className="shopping-panel">
+                  <summary>4. Manual Merge Items ({shoppingManualGroups.length})</summary>
+                  <div className="shopping-group-sections">
+                    {groupedManualShoppingItems.map((section) => (
+                      <section key={section.section} className="shopping-group-section">
+                        <div className="shopping-group-heading">{section.section}</div>
+                        <div className="shopping-list-ingredient-items">
+                          {section.items.map((group) => (
+                            <div key={group.key} className="shopping-list-ingredient-item shopping-list-manual-item">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(shoppingChecklist[group.key])}
+                                onChange={() => toggleShoppingItemChecked(group.key)}
+                              />
+                              {shoppingManualEditingKey === group.key ? (
                                 <input
-                                  type="checkbox"
-                                  checked={Boolean(shoppingChecklist[group.key])}
-                                  onChange={() => toggleShoppingItemChecked(group.key)}
+                                  type="text"
+                                  className={`shopping-manual-item-input ${shoppingChecklist[group.key] ? 'shopping-list-item-checked' : ''}`}
+                                  value={shoppingManualEditDraft}
+                                  onChange={(event) => setShoppingManualEditDraft(event.target.value)}
                                 />
-                                {shoppingManualEditingKey === group.key ? (
-                                  <input
-                                    type="text"
-                                    className={`shopping-manual-item-input ${shoppingChecklist[group.key] ? 'shopping-list-item-checked' : ''}`}
-                                    value={shoppingManualEditDraft}
-                                    onChange={(event) => setShoppingManualEditDraft(event.target.value)}
-                                  />
-                                ) : (
-                                  <span className={`shopping-manual-item-text ${shoppingChecklist[group.key] ? 'shopping-list-item-checked' : ''}`}>
-                                    {group.text}
-                                  </span>
-                                )}
-                                <span className="shopping-manual-item-count">
-                                  {group.count > 1 ? `${group.count} lines` : '1 line'}
+                              ) : (
+                                <span className={`shopping-manual-item-text ${shoppingChecklist[group.key] ? 'shopping-list-item-checked' : ''}`}>
+                                  {group.text}
                                 </span>
-                                <div className="shopping-manual-actions">
-                                  {shoppingManualEditingKey === group.key ? (
-                                    <>
-                                      <button
-                                        className="btn btn-small btn-primary"
-                                        type="button"
-                                        onClick={() => saveEditingManualMergeGroup(group.key)}
-                                      >
-                                        Save
-                                      </button>
-                                      <button className="btn btn-small btn-secondary" type="button" onClick={cancelEditingManualMergeGroup}>
-                                        Cancel
-                                      </button>
-                                    </>
-                                  ) : (
+                              )}
+                              <span className="shopping-manual-item-count">
+                                {group.count > 1 ? `${group.count} lines` : '1 line'}
+                              </span>
+                              <div className="shopping-manual-actions">
+                                {shoppingManualEditingKey === group.key ? (
+                                  <>
                                     <button
-                                      className="btn btn-small btn-secondary"
+                                      className="btn btn-small btn-primary"
                                       type="button"
-                                      onClick={() => startEditingManualMergeGroup(group)}
+                                      onClick={() => saveEditingManualMergeGroup(group.key)}
                                     >
-                                      Edit
+                                      Save
                                     </button>
-                                  )}
+                                    <button className="btn btn-small btn-secondary" type="button" onClick={cancelEditingManualMergeGroup}>
+                                      Cancel
+                                    </button>
+                                  </>
+                                ) : (
                                   <button
                                     className="btn btn-small btn-secondary"
                                     type="button"
-                                    onClick={() => splitManualMergeGroup(group.key)}
+                                    onClick={() => startEditingManualMergeGroup(group)}
                                   >
-                                    Split
+                                    Edit
                                   </button>
-                                </div>
+                                )}
+                                <button
+                                  className="btn btn-small btn-secondary"
+                                  type="button"
+                                  onClick={() => splitManualMergeGroup(group.key)}
+                                >
+                                  Split
+                                </button>
                               </div>
-                            ))}
-                          </div>
-                        </section>
-                      ))}
-                    </div>
-                  </>
-                ) : null}
-              </section>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </div>
 
             <div className="import-preview-footer">

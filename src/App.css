@@ -2455,6 +2455,54 @@ body[data-theme='dark'] .header-tagline {
   gap: 0.45rem;
 }
 
+.shopping-builder-controls {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+}
+
+.shopping-panel {
+  border: 1px solid rgba(90, 105, 122, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.65rem 0.72rem;
+}
+
+.shopping-panel summary {
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.shopping-panel[open] summary {
+  margin-bottom: 0.65rem;
+}
+
+.shopping-panel-note {
+  margin: -0.1rem 0 0.55rem;
+  color: var(--ink-500);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.shopping-list-layout {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.shopping-list-recipes,
+.shopping-list-ingredients {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.shopping-list-recipe-items,
+.shopping-list-ingredient-items {
+  display: grid;
+  gap: 0.45rem;
+}
+
 .shopping-group-sections {
   display: grid;
   gap: 0.75rem;
@@ -2487,6 +2535,7 @@ body[data-theme='dark'] .header-tagline {
 
 .shopping-list-modal .import-preview-actions {
   align-items: center;
+  margin-bottom: 0.7rem;
 }
 
 .shopping-manual-tools {
@@ -4816,6 +4865,19 @@ body[data-theme='dark'] .shopping-list-meta-pill {
   color: #dce6f2;
 }
 
+body[data-theme='dark'] .shopping-panel {
+  background: rgba(20, 31, 43, 0.88);
+  border-color: rgba(164, 180, 200, 0.18);
+}
+
+body[data-theme='dark'] .shopping-panel summary {
+  color: #eef4fb;
+}
+
+body[data-theme='dark'] .shopping-panel-note {
+  color: #9fb2c5;
+}
+
 body[data-theme='dark'] .shopping-group-heading {
   background: rgba(28, 53, 48, 0.9);
   border-color: rgba(114, 165, 138, 0.24);
@@ -5010,6 +5072,18 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
 }
 
 @media (max-width: 640px) {
+  .shopping-builder-controls {
+    gap: 0.6rem;
+  }
+
+  .shopping-panel {
+    padding: 0.6rem 0.64rem;
+  }
+
+  .shopping-panel summary {
+    font-size: 0.88rem;
+  }
+
   .shopping-list-meta-pills,
   .shopping-list-toolbar-actions {
     display: grid;
