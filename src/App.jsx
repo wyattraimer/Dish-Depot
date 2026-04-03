@@ -1150,6 +1150,8 @@ function App() {
   const [groupInviteRole, setGroupInviteRole] = useState('viewer')
   const [groupMembers, setGroupMembers] = useState([])
   const [groupMembersLoading, setGroupMembersLoading] = useState(false)
+  const [groupActivity, setGroupActivity] = useState([])
+  const [groupActivityLoading, setGroupActivityLoading] = useState(false)
   const [groupPendingInvites, setGroupPendingInvites] = useState([])
   const [pendingGroupInvites, setPendingGroupInvites] = useState([])
   const [groupInvitesLoading, setGroupInvitesLoading] = useState(false)
@@ -1236,6 +1238,89 @@ function App() {
     }
     return groupRefreshNotice || 'Live updates on'
   }, [groupRefreshNotice, isGroupRecipesRefreshing, recipeScope, selectedGroupId])
+
+  function getActivityDisplayName({ username = '', displayName = '', userId = '' }) {
+    if (displayName) {
+      return displayName
+    }
+    if (username) {
+      return `@${username}`
+    }
+    return userId ? 'A group member' : 'Someone'
+  }
+
+  function formatRelativeTime(timestamp) {
+    if (!timestamp) {
+      return 'Just now'
+    }
+
+    const occurredAt = new Date(timestamp)
+    if (Number.isNaN(occurredAt.getTime())) {
+      return 'Just now'
+    }
+
+    const diffMs = occurredAt.getTime() - Date.now()
+    const diffMinutes = Math.round(diffMs / (1000 * 60))
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+
+    if (Math.abs(diffMinutes) < 60) {
+      return rtf.format(diffMinutes, 'minute')
+    }
+
+    const diffHours = Math.round(diffMinutes / 60)
+    if (Math.abs(diffHours) < 24) {
+      return rtf.format(diffHours, 'hour')
+    }
+
+    const diffDays = Math.round(diffHours / 24)
+    return rtf.format(diffDays, 'day')
+  }
+
+  function describeGroupActivityItem(item) {
+    const actorName = getActivityDisplayName({
+      username: item.actorUsername,
+      displayName: item.actorDisplayName,
+      userId: item.actorUserId,
+    })
+    const subjectName = getActivityDisplayName({
+      username: item.subjectUsername,
+      displayName: item.subjectDisplayName,
+      userId: item.subjectUserId,
+    })
+
+    switch (item.activityType) {
+      case 'recipe_added':
+        return {
+          icon: 'fa-utensils',
+          title: `${actorName} added ${item.recipeName || 'a recipe'}`,
+          detail: 'Recipe added to this group',
+        }
+      case 'member_joined':
+        return {
+          icon: 'fa-user-plus',
+          title: `${subjectName} joined the group`,
+          detail: item.role ? `${GROUP_ROLE_LABELS[item.role] || item.role} access` : 'Member joined',
+        }
+      case 'invite_sent':
+        return {
+          icon: 'fa-paper-plane',
+          title: `${actorName} invited ${subjectName}`,
+          detail: item.role ? `${GROUP_ROLE_LABELS[item.role] || item.role} invite sent` : 'Invite sent',
+        }
+      case 'invite_accepted':
+        return {
+          icon: 'fa-circle-check',
+          title: `${subjectName} accepted an invite`,
+          detail: item.role ? `${GROUP_ROLE_LABELS[item.role] || item.role} access confirmed` : 'Invite accepted',
+        }
+      default:
+        return {
+          icon: 'fa-clock-rotate-left',
+          title: 'Group activity updated',
+          detail: 'Recent group activity',
+        }
+    }
+  }
 
   const scopedRecipes = useMemo(() => {
     if (recipeScope === 'shared') {
@@ -2130,6 +2215,9 @@ function App() {
       void loadGroups()
       if (isUuidLike(selectedGroupId)) {
         void loadGroupRecipes(selectedGroupId, selectedGroupRole, { reason: 'focus', quiet: true })
+        if (isGroupModalOpen) {
+          void loadSelectedGroupActivity(selectedGroupId)
+        }
       }
     }
 
@@ -2151,6 +2239,16 @@ function App() {
     if (isUuidLike(selectedGroupId)) {
       channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_recipes', filter: `group_id=eq.${selectedGroupId}` }, () => {
         void loadGroupRecipes(selectedGroupId, selectedGroupRole, { reason: 'realtime', quiet: true })
+        if (isGroupModalOpen) {
+          void loadSelectedGroupActivity(selectedGroupId)
+        }
+      })
+
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'group_invites', filter: `group_id=eq.${selectedGroupId}` }, () => {
+        if (isGroupModalOpen) {
+          void loadSelectedGroupPendingInvites(selectedGroupId)
+          void loadSelectedGroupActivity(selectedGroupId)
+        }
       })
     }
 
@@ -2161,7 +2259,7 @@ function App() {
       document.removeEventListener('visibilitychange', onVisibilityOrFocus)
       void supabase.removeChannel(channel)
     }
-  }, [authUser?.id, loadGroupRecipes, loadGroups, selectedGroupId, selectedGroupRole, recipeScope])
+  }, [authUser?.id, isGroupModalOpen, loadGroupRecipes, loadGroups, loadSelectedGroupActivity, loadSelectedGroupPendingInvites, recipeScope, selectedGroupId, selectedGroupRole])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isOnline) {
@@ -2897,6 +2995,10 @@ function App() {
         return [normalizedRecipe, ...prev]
       })
     }
+
+    if (isGroupModalOpen) {
+      void loadSelectedGroupActivity(selectedGroupId)
+    }
   }
 
   async function removeRecipeFromSelectedGroup(recipe) {
@@ -2927,10 +3029,13 @@ function App() {
     }
 
     setGroupRecipes((prev) => prev.filter((item) => item.id !== recipe.id))
+    if (isGroupModalOpen) {
+      void loadSelectedGroupActivity(selectedGroupId)
+    }
     showMessage(`Removed recipe from ${selectedGroup?.name || 'group'}.`, 'success')
   }
 
-  async function loadSelectedGroupMembers(groupId = selectedGroupId) {
+  const loadSelectedGroupMembers = useCallback(async (groupId = selectedGroupId) => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
       setGroupMembers([])
       return
@@ -2964,9 +3069,9 @@ function App() {
     } finally {
       setGroupMembersLoading(false)
     }
-  }
+  }, [authUser?.id, selectedGroupId])
 
-  async function loadSelectedGroupPendingInvites(groupId = selectedGroupId) {
+  const loadSelectedGroupPendingInvites = useCallback(async (groupId = selectedGroupId) => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
       setGroupPendingInvites([])
       return
@@ -3002,7 +3107,50 @@ function App() {
     } finally {
       setGroupInvitesLoading(false)
     }
-  }
+  }, [authUser?.id, selectedGroupId])
+
+  const loadSelectedGroupActivity = useCallback(async (groupId = selectedGroupId) => {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
+      setGroupActivity([])
+      return
+    }
+
+    setGroupActivityLoading(true)
+
+    try {
+      const { data, error } = await supabase.rpc('get_group_activity', {
+        target_group_id: groupId,
+        limit_count: 20,
+      })
+
+      if (error) {
+        showMessage(`Could not load group activity: ${error.message}`, 'info')
+        setGroupActivity([])
+        return
+      }
+
+      const activity = Array.isArray(data)
+        ? data.map((row, index) => ({
+            id: `${row.activity_type || 'activity'}-${row.occurred_at || index}-${row.recipe_id || row.subject_user_id || row.actor_user_id || index}`,
+            activityType: row.activity_type || 'activity',
+            occurredAt: row.occurred_at || '',
+            actorUserId: row.actor_user_id || '',
+            actorUsername: row.actor_username || '',
+            actorDisplayName: row.actor_display_name || '',
+            subjectUserId: row.subject_user_id || '',
+            subjectUsername: row.subject_username || '',
+            subjectDisplayName: row.subject_display_name || '',
+            recipeId: row.recipe_id || '',
+            recipeName: row.recipe_name || '',
+            role: row.role || '',
+          }))
+        : []
+
+      setGroupActivity(activity)
+    } finally {
+      setGroupActivityLoading(false)
+    }
+  }, [authUser?.id, selectedGroupId])
 
   async function openGroupModal() {
     setIsGroupModalOpen(true)
@@ -3010,6 +3158,7 @@ function App() {
     setGroupInviteResults([])
     await loadSelectedGroupMembers()
     await loadSelectedGroupPendingInvites()
+    await loadSelectedGroupActivity()
   }
 
   function closeGroupModal() {
@@ -3163,6 +3312,7 @@ function App() {
       setGroupInviteLookup('')
       setGroupInviteResults((prev) => prev.filter((row) => row.id !== recipient.id))
       await loadSelectedGroupPendingInvites(selectedGroupId)
+      await loadSelectedGroupActivity(selectedGroupId)
       showMessage('Invite sent. The user can choose to join from their invite list.', 'success')
     } finally {
       setGroupBusy(false)
@@ -3197,6 +3347,7 @@ function App() {
       }
 
       await loadSelectedGroupPendingInvites(selectedGroupId)
+      await loadSelectedGroupActivity(selectedGroupId)
       showMessage('Invite refreshed and resent.', 'success')
     } finally {
       setGroupBusy(false)
@@ -3224,6 +3375,7 @@ function App() {
       }
 
       setGroupPendingInvites((prev) => prev.filter((item) => item.id !== invite.id))
+      await loadSelectedGroupActivity(selectedGroupId)
       showMessage('Invite canceled.', 'success')
     } finally {
       setGroupBusy(false)
@@ -3298,6 +3450,7 @@ function App() {
       if (member.userId === authUser.id) {
         setGroupMemberships((prev) => prev.map((item) => (item.groupId === selectedGroupId ? { ...item, role: nextRole } : item)))
       }
+      await loadSelectedGroupActivity(selectedGroupId)
       showMessage('Member role updated.', 'success')
     } finally {
       setGroupBusy(false)
@@ -3344,6 +3497,9 @@ function App() {
     }
 
     showMessage('Member removed from group.', 'success')
+    if (isGroupModalOpen) {
+      await loadSelectedGroupActivity(selectedGroupId)
+    }
   }
 
   function openGroupInvitesModal() {
@@ -6601,8 +6757,10 @@ function App() {
                       setSelectedGroupId(nextGroupId)
                       setGroupMembers([])
                       setGroupPendingInvites([])
+                      setGroupActivity([])
                       void loadSelectedGroupMembers(nextGroupId)
                       void loadSelectedGroupPendingInvites(nextGroupId)
+                      void loadSelectedGroupActivity(nextGroupId)
                     }}
                   >
                     {groups.map((group) => (
@@ -6732,6 +6890,37 @@ function App() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    ) : null}
+                  </section>
+                </details>
+
+                <details className="modal-section" open>
+                  <summary>Recent Activity</summary>
+                  <section className="group-activity-list" aria-label="Recent group activity">
+                    {groupActivityLoading ? <p className="share-empty">Loading activity...</p> : null}
+                    {!groupActivityLoading && groupActivity.length === 0 ? (
+                      <p className="share-empty">No activity yet. Add recipes or invite members to build this group history.</p>
+                    ) : null}
+                    {!groupActivityLoading && groupActivity.length > 0 ? (
+                      <div className="group-activity-items">
+                        {groupActivity.map((activity) => {
+                          const activityPresentation = describeGroupActivityItem(activity)
+                          return (
+                            <article key={activity.id} className="group-activity-item">
+                              <div className="group-activity-icon" aria-hidden="true">
+                                <i className={`fas ${activityPresentation.icon}`} />
+                              </div>
+                              <div className="group-activity-content">
+                                <strong>{activityPresentation.title}</strong>
+                                <small>{activityPresentation.detail}</small>
+                              </div>
+                              <time className="group-activity-time" dateTime={activity.occurredAt || undefined}>
+                                {formatRelativeTime(activity.occurredAt)}
+                              </time>
+                            </article>
+                          )
+                        })}
                       </div>
                     ) : null}
                   </section>

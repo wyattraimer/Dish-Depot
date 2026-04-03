@@ -2326,6 +2326,63 @@ body[data-theme='dark'] .header-tagline {
   gap: 0.4rem;
 }
 
+.group-activity-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.group-activity-items {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.group-activity-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.6rem;
+  border: 1px solid rgba(90, 105, 122, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.6rem 0.68rem;
+}
+
+.group-activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(114, 165, 138, 0.12);
+  color: #4f8768;
+  margin-top: 0.05rem;
+}
+
+.group-activity-content {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+}
+
+.group-activity-content strong {
+  font-size: 0.84rem;
+  color: var(--ink-900);
+  line-height: 1.4;
+}
+
+.group-activity-content small {
+  font-size: 0.75rem;
+  color: var(--ink-500);
+  line-height: 1.4;
+}
+
+.group-activity-time {
+  font-size: 0.74rem;
+  color: var(--ink-500);
+  white-space: nowrap;
+  margin-top: 0.08rem;
+}
+
 .shopping-list-recipe-item,
 .shopping-list-ingredient-item {
   display: flex;
@@ -4673,6 +4730,25 @@ body[data-theme='dark'] .checkbox-item label {
   color: #eef4fb;
 }
 
+body[data-theme='dark'] .group-activity-item {
+  background: rgba(20, 31, 43, 0.88);
+  border-color: rgba(164, 180, 200, 0.18);
+}
+
+body[data-theme='dark'] .group-activity-icon {
+  background: rgba(28, 53, 48, 0.9);
+  color: #8fd0aa;
+}
+
+body[data-theme='dark'] .group-activity-content strong {
+  color: #eef4fb;
+}
+
+body[data-theme='dark'] .group-activity-content small,
+body[data-theme='dark'] .group-activity-time {
+  color: #9fb2c5;
+}
+
 body[data-theme='dark'] .extract-warning-box {
   background: rgba(69, 56, 18, 0.4);
   border-color: rgba(228, 180, 77, 0.3);
@@ -4852,6 +4928,15 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
 }
 
 @media (max-width: 640px) {
+  .group-activity-item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .group-activity-time {
+    grid-column: 2;
+    margin-top: -0.02rem;
+  }
+
   .category-checkboxes {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.55rem;
