@@ -1467,6 +1467,33 @@ function App() {
     }
   }
 
+  function cleanMultilineField(value, options = {}) {
+    const { splitCommas = false, numberSteps = false } = options
+
+    const baseLines = String(value || '')
+      .split('\n')
+      .flatMap((line) => (splitCommas ? line.split(',') : [line]))
+      .map((line) => line.replace(/^\s*(?:[-*•]+|\d+[.)-]?)\s*/, '').trim())
+      .filter(Boolean)
+
+    if (numberSteps) {
+      return baseLines.map((line, index) => `${index + 1}. ${line}`).join('\n')
+    }
+
+    return baseLines.join('\n')
+  }
+
+  function updateRecipeFormField(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function applyRecipeFieldCleanup(field, options = {}) {
+    setForm((prev) => ({
+      ...prev,
+      [field]: cleanMultilineField(prev[field], options),
+    }))
+  }
+
   function updateGroupRefreshNotice(text) {
     setGroupRefreshNotice(text)
     if (groupRefreshNoticeTimeoutRef.current) {
@@ -6100,33 +6127,45 @@ function App() {
                 <>
                   <div className="form-group">
                     <label htmlFor="recipeIngredients">Ingredients (optional / extracted)</label>
+                    <div className="field-tools-row">
+                      <span className="field-helper-text">One ingredient per line works best.</span>
+                      <div className="field-tools-actions">
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => applyRecipeFieldCleanup('ingredients')}>
+                          Clean Lines
+                        </button>
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => applyRecipeFieldCleanup('ingredients', { splitCommas: true })}>
+                          Split Commas
+                        </button>
+                      </div>
+                    </div>
                     <textarea
                       id="recipeIngredients"
                       rows="4"
                       placeholder="Extracted ingredients will appear here"
                       value={form.ingredients}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          ingredients: event.target.value,
-                        }))
-                      }
+                      onChange={(event) => updateRecipeFormField('ingredients', event.target.value)}
                     />
                   </div>
 
                   <div className="form-group">
                     <label htmlFor="recipeDirections">Directions (optional / extracted)</label>
+                    <div className="field-tools-row">
+                      <span className="field-helper-text">Review each step and renumber after major edits.</span>
+                      <div className="field-tools-actions">
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => applyRecipeFieldCleanup('directions')}>
+                          Clean Steps
+                        </button>
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => applyRecipeFieldCleanup('directions', { numberSteps: true })}>
+                          Number Steps
+                        </button>
+                      </div>
+                    </div>
                     <textarea
                       id="recipeDirections"
                       rows="4"
                       placeholder="Extracted directions will appear here"
                       value={form.directions}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          directions: event.target.value,
-                        }))
-                      }
+                      onChange={(event) => updateRecipeFormField('directions', event.target.value)}
                     />
                   </div>
                 </>
@@ -6134,33 +6173,45 @@ function App() {
                 <>
                   <div className="form-group">
                     <label htmlFor="recipeIngredients">Ingredients</label>
+                    <div className="field-tools-row">
+                      <span className="field-helper-text">Paste a list or type one ingredient per line.</span>
+                      <div className="field-tools-actions">
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => applyRecipeFieldCleanup('ingredients')}>
+                          Clean Lines
+                        </button>
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => applyRecipeFieldCleanup('ingredients', { splitCommas: true })}>
+                          Split Commas
+                        </button>
+                      </div>
+                    </div>
                     <textarea
                       id="recipeIngredients"
                       rows="4"
                       placeholder="Enter ingredients, one per line"
                       value={form.ingredients}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          ingredients: event.target.value,
-                        }))
-                      }
+                      onChange={(event) => updateRecipeFormField('ingredients', event.target.value)}
                     />
                   </div>
 
                   <div className="form-group">
                     <label htmlFor="recipeDirections">Directions</label>
+                    <div className="field-tools-row">
+                      <span className="field-helper-text">Keep one step per line for easier reading later.</span>
+                      <div className="field-tools-actions">
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => applyRecipeFieldCleanup('directions')}>
+                          Clean Steps
+                        </button>
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => applyRecipeFieldCleanup('directions', { numberSteps: true })}>
+                          Number Steps
+                        </button>
+                      </div>
+                    </div>
                     <textarea
                       id="recipeDirections"
                       rows="4"
                       placeholder="Enter directions, one step per line"
                       value={form.directions}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          directions: event.target.value,
-                        }))
-                      }
+                      onChange={(event) => updateRecipeFormField('directions', event.target.value)}
                     />
                   </div>
                 </>
@@ -6202,6 +6253,19 @@ function App() {
 
                 <div className="form-group">
                   <label>Categories (select at least one)</label>
+                  <div className="field-tools-row field-tools-row-categories">
+                    <span className="field-helper-text">
+                      {form.categories.length === 0 ? 'Choose at least one category.' : `${form.categories.length} categor${form.categories.length === 1 ? 'y' : 'ies'} selected`}
+                    </span>
+                    <div className="field-tools-actions">
+                      <button className="btn btn-secondary btn-small" type="button" onClick={() => updateRecipeFormField('categories', CATEGORY_OPTIONS)}>
+                        Select All
+                      </button>
+                      <button className="btn btn-secondary btn-small" type="button" onClick={() => updateRecipeFormField('categories', [])}>
+                        Clear
+                      </button>
+                    </div>
+                  </div>
                   <div className="category-checkboxes">
                     {CATEGORY_OPTIONS.map((category) => (
                       <div key={category} className="checkbox-item">
