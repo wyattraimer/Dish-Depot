@@ -1463,6 +1463,13 @@ body[data-theme='dark'] .header-tagline {
   font-size: 1.4rem;
 }
 
+.modal-loading-copy {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 0.96rem;
+  text-align: center;
+}
+
 .add-recipe-modal {
   max-width: 700px;
 }
