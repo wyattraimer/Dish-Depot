@@ -1295,6 +1295,12 @@ function App() {
           title: `${actorName} added ${item.recipeName || 'a recipe'}`,
           detail: 'Recipe added to this group',
         }
+      case 'recipe_removed':
+        return {
+          icon: 'fa-trash-can',
+          title: `${actorName} removed ${item.recipeName || 'a recipe'}`,
+          detail: 'Recipe removed from this group',
+        }
       case 'member_joined':
         return {
           icon: 'fa-user-plus',
@@ -5209,7 +5215,9 @@ function App() {
             <ul className="welcome-modal-list">
               <li>Save recipe links or add custom recipes with your own ingredients and steps.</li>
               <li>Pin favorites, search quickly, and keep everything organized by category.</li>
+              <li>Create Groups to share saved recipes with family, friends or event groups.</li>
               <li>Build a weekly meal plan and generate a shopping list from selected recipes.</li>
+              <li>To <b>install</b> this app on your <b>iPhone</b>, click the 'Tools' button for more information.</li>
             </ul>
             <div className="welcome-modal-actions">
               <button className="btn btn-primary" type="button" onClick={closeWelcomeModal}>
