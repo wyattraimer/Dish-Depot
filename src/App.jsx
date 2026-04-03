@@ -904,6 +904,8 @@ function isRunningStandalonePwa() {
 
 const AVATAR_SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 30
 const SHOPPING_LIST_DRAFT_KEY = 'dishdepot-shopping-list-draft-v1'
+const CARD_SCAN_MAX_DIMENSION = 1800
+const CARD_SCAN_MIN_COMPRESSION_BYTES = 2.5 * 1024 * 1024
 
 const SHOPPING_SECTION_RULES = [
   { name: 'Produce', pattern: /(apple|banana|berry|berries|broccoli|carrot|celery|cilantro|cucumber|garlic|ginger|greens|jalapeño|jalapeno|kale|lemon|lettuce|lime|mushroom|onion|orange|parsley|pepper|potato|romaine|spinach|tomato|zucchini|avocado|cabbage)/i },
@@ -1235,6 +1237,8 @@ function App() {
   const [extractCandidate, setExtractCandidate] = useState(null)
   const [cardScanFile, setCardScanFile] = useState(null)
   const [cardScanPreviewUrl, setCardScanPreviewUrl] = useState('')
+  const [isPreparingCardScan, setIsPreparingCardScan] = useState(false)
+  const [cardScanPreparationNote, setCardScanPreparationNote] = useState('')
   const [mealPlan, setMealPlan] = useState(() => {
     try {
       const savedPlan = localStorage.getItem(MEAL_PLAN_KEY)
@@ -1605,8 +1609,71 @@ function App() {
 
   function clearCardScanSelection() {
     setCardScanFile(null)
+    setCardScanPreparationNote('')
     if (cardScanInputRef.current) {
       cardScanInputRef.current.value = ''
+    }
+  }
+
+  async function optimizeCardScanFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      return { file, note: file?.type === 'application/pdf' ? 'PDF kept as-is for Azure scanning.' : '' }
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const nextImage = new Image()
+        nextImage.onload = () => resolve(nextImage)
+        nextImage.onerror = () => reject(new Error('Could not read that image. Try a different photo.'))
+        nextImage.src = objectUrl
+      })
+
+      const sourceWidth = image.naturalWidth || image.width
+      const sourceHeight = image.naturalHeight || image.height
+      const maxDimension = Math.max(sourceWidth, sourceHeight)
+      const scale = maxDimension > CARD_SCAN_MAX_DIMENSION ? CARD_SCAN_MAX_DIMENSION / maxDimension : 1
+      const needsOptimization = scale < 1 || file.size > CARD_SCAN_MIN_COMPRESSION_BYTES
+
+      if (!needsOptimization) {
+        return { file, note: `Image looks ready for scanning (${sourceWidth}×${sourceHeight}).` }
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(sourceWidth * scale))
+      canvas.height = Math.max(1, Math.round(sourceHeight * scale))
+      const ctx = canvas.getContext('2d')
+
+      if (!ctx) {
+        return { file, note: `Original image kept (${sourceWidth}×${sourceHeight}).` }
+      }
+
+      ctx.filter = 'grayscale(100%) contrast(115%) brightness(108%)'
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+      const optimizedBlob = await new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob)
+            return
+          }
+          reject(new Error('Could not optimize that image. Try a different file.'))
+        }, 'image/jpeg', 0.92)
+      })
+
+      const baseName = file.name.replace(/\.[^.]+$/, '') || 'recipe-card-scan'
+      const optimizedFile = new File([optimizedBlob], `${baseName}.jpg`, {
+        type: 'image/jpeg',
+        lastModified: Date.now(),
+      })
+
+      return {
+        file: optimizedFile,
+        note: `Image optimized for scanning (${canvas.width}×${canvas.height}).`,
+      }
+    } finally {
+      URL.revokeObjectURL(objectUrl)
     }
   }
 
@@ -4583,11 +4650,27 @@ function App() {
     }
   }
 
-  function handleCardScanFileChange(event) {
+  async function handleCardScanFileChange(event) {
     const nextFile = event.target.files?.[0] || null
-    setCardScanFile(nextFile)
     setExtractWarnings([])
     setExtractCandidate(null)
+
+    if (!nextFile) {
+      clearCardScanSelection()
+      return
+    }
+
+    try {
+      setIsPreparingCardScan(true)
+      const prepared = await optimizeCardScanFile(nextFile)
+      setCardScanFile(prepared.file)
+      setCardScanPreparationNote(prepared.note)
+    } catch (error) {
+      clearCardScanSelection()
+      showMessage(error?.message || 'Could not prepare that recipe card image.', 'error')
+    } finally {
+      setIsPreparingCardScan(false)
+    }
   }
 
   async function handleExtractFromCard() {
@@ -6309,8 +6392,13 @@ function App() {
                           accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/tiff,image/bmp,application/pdf"
                           capture="environment"
                           onChange={handleCardScanFileChange}
+                          disabled={isPreparingCardScan || isExtracting}
                         />
-                        <p className="card-scan-helper">Use a bright photo with the full recipe card in frame for the best handwriting results.</p>
+                        <p className="card-scan-helper">
+                          {isPreparingCardScan
+                            ? 'Optimizing your image for scanning...'
+                            : 'Use a bright photo with the full recipe card in frame for the best handwriting results.'}
+                        </p>
                         {cardScanFile ? (
                           <div className="card-scan-preview-card">
                             {cardScanPreviewUrl && cardScanFile.type.startsWith('image/') ? (
@@ -6325,6 +6413,7 @@ function App() {
                             ) : null}
                             <div className="card-scan-preview-meta">
                               <div className="card-scan-file-chip"><i className="fas fa-file-image" /> {cardScanFile.name}</div>
+                              {cardScanPreparationNote ? <p className="card-scan-prep-note">{cardScanPreparationNote}</p> : null}
                               <div className="card-scan-tips-grid">
                                 <span><i className="fas fa-sun" /> Bright light</span>
                                 <span><i className="fas fa-expand" /> Fill the frame</span>
@@ -6336,10 +6425,12 @@ function App() {
                       </div>
 
                       <div className="extract-actions">
-                        <button className="btn btn-secondary" type="button" onClick={handleExtractFromCard} disabled={isExtracting || !cardScanFile}>
+                        <button className="btn btn-secondary" type="button" onClick={handleExtractFromCard} disabled={isPreparingCardScan || isExtracting || !cardScanFile}>
                           <i className={`fas ${isExtracting ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`} />
-                          {isExtracting
-                            ? 'Scanning...'
+                          {isPreparingCardScan
+                            ? 'Preparing...'
+                            : isExtracting
+                              ? 'Scanning...'
                             : !isOnline
                               ? 'Scanning Unavailable Offline'
                               : !isApiReachable

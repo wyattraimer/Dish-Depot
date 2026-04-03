@@ -79,6 +79,36 @@ function isLikelyDirection(line) {
   return /^(?:\d+[.):-]?\s*)?(mix|stir|combine|bake|cook|preheat|add|beat|whisk|fold|pour|heat|bring|simmer|serve|let|grease|place|sprinkle|chop|slice|boil|saute|brown|blend)\b/i.test(line)
 }
 
+function isLikelyIngredient(line) {
+  return /^(?:\d+\s*\/\s*\d+|\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|a|an)\b.*(?:cup|cups|tbsp|tablespoon|tablespoons|tsp|teaspoon|teaspoons|oz|ounce|ounces|lb|lbs|pound|pounds|gram|grams|g|kg|ml|l|pinch|clove|cloves|can|cans|package|packages|slice|slices)?/i.test(line)
+}
+
+function splitIntoRecipeSections(lines) {
+  const ingredients = []
+  const directions = []
+
+  lines.forEach((line) => {
+    if (isLikelyDirection(line)) {
+      directions.push(line)
+      return
+    }
+
+    if (directions.length > 0) {
+      directions.push(line)
+      return
+    }
+
+    if (isLikelyIngredient(line) || ingredients.length === 0) {
+      ingredients.push(line)
+      return
+    }
+
+    directions.push(line)
+  })
+
+  return { ingredients, directions }
+}
+
 function cleanSectionLines(lines) {
   return lines
     .map((line) => line.replace(/^[\u2022\-–—•]+\s*/, '').trim())
@@ -132,8 +162,16 @@ function inferRecipeSections(lines) {
       directions = cleanSectionLines(contentLines.slice(inferredDirectionsIndex))
       warnings.push('Sections were inferred from the handwriting layout. Please review before saving.')
     } else {
-      notes = contentLines.join('\n')
-      warnings.push('Could not confidently separate ingredients and directions. The OCR text was added to notes for review.')
+      const fallbackSections = splitIntoRecipeSections(contentLines)
+      ingredients = cleanSectionLines(fallbackSections.ingredients)
+      directions = cleanSectionLines(fallbackSections.directions)
+
+      if (ingredients.length > 0 && directions.length > 0) {
+        warnings.push('Sections were estimated from ingredient-style lines and action verbs. Please review before saving.')
+      } else {
+        notes = contentLines.join('\n')
+        warnings.push('Could not confidently separate ingredients and directions. The OCR text was added to notes for review.')
+      }
     }
   }
 
