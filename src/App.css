@@ -2080,7 +2080,26 @@ body[data-theme='dark'] .header-tagline {
 }
 
 .card-scan-input {
-  padding: 0.65rem 0.7rem;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.card-scan-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.65rem;
+}
+
+.card-scan-action-row .btn {
+  min-height: 46px;
 }
 
 .card-scan-helper {
