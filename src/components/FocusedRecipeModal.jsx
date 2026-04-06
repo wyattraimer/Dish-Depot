@@ -103,7 +103,7 @@ export default function FocusedRecipeModal({
               Share
             </button>
           ) : null}
-          {hasSupabaseConfig && authUser && isUuidLike(selectedGroupId) ? (
+          {recipeScope !== 'group' && hasSupabaseConfig && authUser && isUuidLike(selectedGroupId) ? (
             <button
               className="btn btn-secondary"
               type="button"
@@ -158,19 +158,21 @@ export default function FocusedRecipeModal({
                 <i className="fas fa-edit" />
                 Edit Recipe
               </button>
-              <button
-                className="btn btn-danger"
-                type="button"
-                onClick={async () => {
-                  const deleted = await handleDeleteRecipe(focusedRecipe.id)
-                  if (deleted) {
-                    closeFocusedRecipe()
-                  }
-                }}
-              >
-                <i className="fas fa-trash" />
-                Delete
-              </button>
+              {recipeScope !== 'group' ? (
+                <button
+                  className="btn btn-danger"
+                  type="button"
+                  onClick={async () => {
+                    const deleted = await handleDeleteRecipe(focusedRecipe.id)
+                    if (deleted) {
+                      closeFocusedRecipe()
+                    }
+                  }}
+                >
+                  <i className="fas fa-trash" />
+                  Delete
+                </button>
+              ) : null}
             </>
           ) : null}
         </div>

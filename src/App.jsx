@@ -6051,7 +6051,7 @@ function App() {
                               <span className="visually-hidden">Share</span>
                             </button>
                           ) : null}
-                          {hasSupabaseConfig && authUser && isUuidLike(selectedGroupId) ? (
+                          {recipeScope !== 'group' && hasSupabaseConfig && authUser && isUuidLike(selectedGroupId) ? (
                             <button
                               className="btn btn-small btn-secondary"
                               type="button"
@@ -6111,19 +6111,21 @@ function App() {
                                 <i className="fas fa-edit" />
                                 <span className="visually-hidden">Edit</span>
                               </button>
-                              <button
-                                className="btn btn-small btn-danger"
-                                type="button"
-                                aria-label="Delete recipe"
-                                title="Delete recipe"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  void handleDeleteRecipe(recipe.id)
-                                }}
-                              >
-                                <i className="fas fa-trash" />
-                                <span className="visually-hidden">Delete</span>
-                              </button>
+                              {recipeScope !== 'group' ? (
+                                <button
+                                  className="btn btn-small btn-danger"
+                                  type="button"
+                                  aria-label="Delete recipe"
+                                  title="Delete recipe"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    void handleDeleteRecipe(recipe.id)
+                                  }}
+                                >
+                                  <i className="fas fa-trash" />
+                                  <span className="visually-hidden">Delete</span>
+                                </button>
+                              ) : null}
                             </>
                           ) : (
                             <span className="shared-readonly-pill">
