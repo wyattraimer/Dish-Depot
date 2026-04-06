@@ -23,6 +23,7 @@ dist-ssr
 coverage
 
 # Editor directories and files
+screenshots/
 .vscode/*
 !.vscode/extensions.json
 .idea

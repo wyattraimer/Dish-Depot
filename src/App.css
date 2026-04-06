@@ -1079,6 +1079,56 @@ body[data-theme='dark'] .header-tagline {
   color: var(--ink-600);
 }
 
+.recipe-provenance-list {
+  display: grid;
+  gap: 0.42rem;
+  margin: -0.2rem 0 0.7rem;
+}
+
+.recipe-provenance-list-focused {
+  margin: 0;
+}
+
+.recipe-provenance-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.6rem;
+}
+
+.recipe-provenance-item-focused {
+  padding: 0.68rem 0.78rem;
+  border-radius: 14px;
+  border: 1px solid rgba(90, 105, 122, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.recipe-provenance-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+.identity-block-compact {
+  gap: 0.5rem;
+}
+
+.identity-block-compact .identity-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 0.74rem;
+}
+
+.identity-block-compact .identity-copy strong {
+  font-size: 0.8rem;
+}
+
+.identity-block-compact .identity-copy small {
+  font-size: 0.72rem;
+}
+
 .recipe-categories {
   display: flex;
   flex-wrap: wrap;
@@ -4552,6 +4602,15 @@ body[data-theme='dark'] .recipe-section,
 body[data-theme='dark'] .import-summary-chip,
 body[data-theme='dark'] .import-preview-categories span {
   background: rgba(34, 46, 62, 0.65);
+}
+
+body[data-theme='dark'] .recipe-provenance-item-focused {
+  background: rgba(27, 39, 53, 0.78);
+  border-color: rgba(164, 180, 200, 0.2);
+}
+
+body[data-theme='dark'] .recipe-provenance-label {
+  color: #9eb0c4;
 }
 
 body[data-theme='dark'] .focused-recipe-panel,

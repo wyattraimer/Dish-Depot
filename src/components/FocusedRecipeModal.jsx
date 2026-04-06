@@ -2,6 +2,7 @@ export default function FocusedRecipeModal({
   focusedRecipe,
   closeFocusedRecipe,
   getRecipeOriginBadges,
+  getRecipeProvenanceEntries,
   categoriesMap,
   canShareRecipe,
   hasSupabaseConfig,
@@ -23,6 +24,25 @@ export default function FocusedRecipeModal({
   openModal,
   handleDeleteRecipe,
 }) {
+  const buildIdentityInitials = (...parts) => {
+    const source = parts
+      .filter(Boolean)
+      .join(' ')
+      .replace(/[@_-]+/g, ' ')
+      .trim()
+
+    if (!source) {
+      return 'DD'
+    }
+
+    const words = source.split(/\s+/).filter(Boolean)
+    const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase() || '').join('')
+    return initials || source.slice(0, 2).toUpperCase()
+  }
+
+  const recipeOriginBadges = getRecipeOriginBadges(focusedRecipe)
+  const recipeProvenanceEntries = getRecipeProvenanceEntries(focusedRecipe)
+
   return (
     <div className="focused-recipe-overlay" role="dialog" aria-modal="true" onClick={closeFocusedRecipe}>
       <article className="focused-recipe-panel" onClick={(event) => event.stopPropagation()}>
@@ -33,13 +53,31 @@ export default function FocusedRecipeModal({
 
         <header className="focused-recipe-header">
           <h2>{focusedRecipe.name}</h2>
-          {getRecipeOriginBadges(focusedRecipe).length > 0 ? (
+          {recipeOriginBadges.length > 0 ? (
             <div className="recipe-origin-badges recipe-origin-badges-focused">
-              {getRecipeOriginBadges(focusedRecipe).map((badge) => (
+              {recipeOriginBadges.map((badge) => (
                 <span key={`focused-${focusedRecipe.id}-${badge.label}`} className={`recipe-origin-badge recipe-origin-badge-${badge.tone}`}>
                   <i className={`fas ${badge.icon}`} />
                   {badge.label}
                 </span>
+              ))}
+            </div>
+          ) : null}
+          {recipeProvenanceEntries.length > 0 ? (
+            <div className="recipe-provenance-list recipe-provenance-list-focused">
+              {recipeProvenanceEntries.map((entry) => (
+                <div key={`focused-${focusedRecipe.id}-${entry.key}`} className="recipe-provenance-item recipe-provenance-item-focused">
+                  <span className="recipe-provenance-label">{entry.label}</span>
+                  <div className="identity-block">
+                    <span className={`identity-avatar identity-avatar-${entry.tone}`} aria-hidden="true">
+                      {entry.avatarUrl ? <img className="identity-avatar-image" src={entry.avatarUrl} alt="" /> : buildIdentityInitials(entry.displayName, entry.username, entry.fallback)}
+                    </span>
+                    <div className="identity-copy">
+                      <strong>{entry.displayName || (entry.username ? `@${entry.username}` : entry.fallback)}</strong>
+                      {entry.meta || entry.username ? <small>{[entry.displayName && entry.username ? `@${entry.username}` : !entry.displayName && entry.username ? 'Dish Depot member' : '', entry.meta].filter(Boolean).join(' · ')}</small> : null}
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           ) : null}

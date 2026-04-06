@@ -973,17 +973,22 @@ function extractAvatarStoragePath(value) {
   }
 
   if (!/^https?:\/\//i.test(trimmed)) {
-    return trimmed
+    const normalized = decodeURIComponent(trimmed).replace(/^\/+/, '')
+    if (normalized.startsWith('avatars/')) {
+      return normalized.slice('avatars/'.length)
+    }
+    return normalized
   }
 
   try {
     const parsed = new URL(trimmed)
     const marker = '/avatars/'
-    const markerIndex = parsed.pathname.indexOf(marker)
+    const decodedPathname = decodeURIComponent(parsed.pathname)
+    const markerIndex = decodedPathname.indexOf(marker)
     if (markerIndex === -1) {
       return ''
     }
-    return decodeURIComponent(parsed.pathname.slice(markerIndex + marker.length))
+    return decodedPathname.slice(markerIndex + marker.length)
   } catch {
     return ''
   }
@@ -1317,6 +1322,7 @@ function IdentityBlock({
   meta = '',
   tone = 'default',
   avatarUrl = '',
+  compact = false,
 }) {
   const hasDisplayName = Boolean(displayName)
   const hasUsername = Boolean(username)
@@ -1336,7 +1342,7 @@ function IdentityBlock({
   }
 
   return (
-    <div className="identity-block">
+    <div className={`identity-block${compact ? ' identity-block-compact' : ''}`}>
       <IdentityAvatar displayName={displayName} username={username} fallback={fallback} tone={tone} avatarUrl={avatarUrl} />
       <div className="identity-copy">
         <strong>{primary}</strong>
@@ -1937,6 +1943,44 @@ function App() {
     }
 
     return badges
+  }
+
+  function getRecipeProvenanceEntries(recipe) {
+    const entries = []
+
+    if (recipeScope === 'shared' && recipe.ownerId) {
+      entries.push({
+        key: `owner-${recipe.ownerId}`,
+        label: recipe.ownerId === authUser?.id ? 'Owned by you' : 'Recipe owner',
+        meta: recipe.ownerId === authUser?.id ? 'Shared from your library' : 'Shared from their library',
+        tone: recipe.ownerId === authUser?.id ? 'self' : 'default',
+        ...getIdentityProps({ userId: recipe.ownerId, fallback: 'Unknown owner' }),
+      })
+    }
+
+    if (recipeScope === 'group') {
+      if (recipe.groupAddedBy) {
+        entries.push({
+          key: `added-${recipe.groupAddedBy}`,
+          label: recipe.groupAddedBy === authUser?.id ? 'Added by you' : 'Added to this group by',
+          meta: selectedGroup?.name ? `Shared in ${selectedGroup.name}` : 'Shared in this group',
+          tone: recipe.groupAddedBy === authUser?.id ? 'self' : 'member',
+          ...getIdentityProps({ userId: recipe.groupAddedBy, fallback: 'Group contributor' }),
+        })
+      }
+
+      if (recipe.ownerId && recipe.ownerId !== recipe.groupAddedBy) {
+        entries.push({
+          key: `owner-${recipe.ownerId}`,
+          label: recipe.ownerId === authUser?.id ? 'Owned by you' : 'Recipe owner',
+          meta: 'Original recipe owner',
+          tone: recipe.ownerId === authUser?.id ? 'self' : 'default',
+          ...getIdentityProps({ userId: recipe.ownerId, fallback: 'Unknown owner' }),
+        })
+      }
+    }
+
+    return entries
   }
 
   async function applyProfileState(profile) {
@@ -6207,6 +6251,8 @@ function App() {
                   const hasDirections = Array.isArray(recipe.directions) && recipe.directions.length > 0
                   const hasDetailedRecipe = hasIngredients || hasDirections
                   const canManage = canManageRecipe(recipe)
+                  const recipeOriginBadges = getRecipeOriginBadges(recipe)
+                  const recipeProvenanceEntries = getRecipeProvenanceEntries(recipe)
 
                   return (
                     <article
@@ -6225,13 +6271,31 @@ function App() {
                     >
                       <div className="recipe-header">
                         <h3 className="recipe-title">{recipe.name}</h3>
-                        {getRecipeOriginBadges(recipe).length > 0 ? (
+                        {recipeOriginBadges.length > 0 ? (
                           <div className="recipe-origin-badges">
-                            {getRecipeOriginBadges(recipe).map((badge) => (
+                            {recipeOriginBadges.map((badge) => (
                               <span key={`${recipe.id}-${badge.label}`} className={`recipe-origin-badge recipe-origin-badge-${badge.tone}`}>
                                 <i className={`fas ${badge.icon}`} />
                                 {badge.label}
                               </span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {recipeProvenanceEntries.length > 0 ? (
+                          <div className="recipe-provenance-list">
+                            {recipeProvenanceEntries.map((entry) => (
+                              <div key={`${recipe.id}-${entry.key}`} className="recipe-provenance-item">
+                                <span className="recipe-provenance-label">{entry.label}</span>
+                                <IdentityBlock
+                                  displayName={entry.displayName}
+                                  username={entry.username}
+                                  avatarUrl={entry.avatarUrl}
+                                  fallback={entry.fallback}
+                                  meta={entry.meta}
+                                  tone={entry.tone}
+                                  compact
+                                />
+                              </div>
                             ))}
                           </div>
                         ) : null}
@@ -6584,6 +6648,7 @@ function App() {
               focusedRecipe={focusedRecipe}
               closeFocusedRecipe={closeFocusedRecipe}
               getRecipeOriginBadges={getRecipeOriginBadges}
+              getRecipeProvenanceEntries={getRecipeProvenanceEntries}
               categoriesMap={CATEGORIES}
               canShareRecipe={canShareRecipe}
               hasSupabaseConfig={hasSupabaseConfig}
