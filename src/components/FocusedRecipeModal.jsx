@@ -1,3 +1,5 @@
+import OptimizedImage from './OptimizedImage.jsx'
+
 export default function FocusedRecipeModal({
   focusedRecipe,
   closeFocusedRecipe,
@@ -100,7 +102,17 @@ export default function FocusedRecipeModal({
 
         {focusedRecipe.image ? (
           <div className="focused-recipe-image-wrap">
-            <img src={focusedRecipe.image} alt={focusedRecipe.name} className="focused-recipe-image" />
+            <OptimizedImage
+              src={focusedRecipe.image}
+              alt={focusedRecipe.name}
+              className="focused-recipe-image"
+              widthHint={1400}
+              quality={82}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              sizes="min(1100px, 100vw)"
+            />
           </div>
         ) : null}
 

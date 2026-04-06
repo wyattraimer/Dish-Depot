@@ -4,6 +4,7 @@ import dishDepotLogo from './assets/dishdepot-no-background-674x674.png'
 import dishDepotLogoBadge from './assets/dishdepot-674x674.png'
 import { hasSupabaseConfig, supabase } from './lib/supabaseClient'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
+import OptimizedImage from './components/OptimizedImage.jsx'
 
 const AddRecipeModal = lazy(() => import('./components/AddRecipeModal'))
 const FocusedRecipeModal = lazy(() => import('./components/FocusedRecipeModal'))
@@ -6323,7 +6324,7 @@ function App() {
         <div className="container header-container">
           <div className="header-content">
             <div className="header-brand">
-              <img className="header-logo" src={dishDepotLogo} alt="Dish Depot logo" />
+              <img className="header-logo" src={dishDepotLogo} alt="Dish Depot logo" loading="eager" decoding="async" fetchPriority="high" />
               <div className="header-title-block">
                 <h1 className="header-title">Dish Depot</h1>
                 <p className="header-tagline">Save. Organize. Cook.</p>
@@ -6732,7 +6733,18 @@ function App() {
                       </div>
 
                       <div className={`recipe-body ${isCompactCardView ? 'recipe-body-compact' : ''}`}>
-                        {recipe.image ? <img src={recipe.image} alt={recipe.name} className="recipe-image" /> : null}
+                        {recipe.image ? (
+                          <OptimizedImage
+                            src={recipe.image}
+                            alt={recipe.name}
+                            className="recipe-image"
+                            widthHint={720}
+                            quality={74}
+                            loading="lazy"
+                            decoding="async"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw"
+                          />
+                        ) : null}
 
                         {!isCompactCardView && recipe.notes ? <p className="recipe-notes">{recipe.notes}</p> : null}
 
@@ -8053,7 +8065,7 @@ function App() {
       <footer className="footer">
         <div className="container">
           <p>
-            <img className="footer-logo" src={dishDepotLogoBadge} alt="Dish Depot logo mark" />
+            <img className="footer-logo" src={dishDepotLogoBadge} alt="Dish Depot logo mark" loading="lazy" decoding="async" fetchPriority="low" />
             &copy; 2026 Dish Depot.<i className="fas fa-cross" />Made with <i className="fas fa-heart" /> for Quinci.
           </p>
         </div>
