@@ -7953,7 +7953,7 @@ function App() {
               </details>
             ) : null}
 
-            <details className="shopping-panel" open={pantryEntries.length > 0}>
+            <details className="shopping-panel shopping-pantry-panel" open={pantryEntries.length > 0}>
               <summary>Pantry / Have at Home ({pantryEntries.length})</summary>
               {pantryEntries.length > 0 ? (
                 <>

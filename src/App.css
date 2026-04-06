@@ -2819,6 +2819,10 @@ body[data-theme='dark'] .app-error-card i {
   border-color: rgba(114, 165, 138, 0.24);
 }
 
+.shopping-pantry-panel {
+  margin-bottom: 0.95rem;
+}
+
 .shopping-history-copy {
   min-width: 0;
   display: grid;
@@ -3006,6 +3010,45 @@ body[data-theme='dark'] .app-error-card i {
 .shopping-pantry-btn {
   margin-left: auto;
   align-self: center;
+}
+
+body[data-theme='dark'] .shopping-pantry-panel {
+  background: rgba(17, 28, 39, 0.82);
+  border-color: rgba(114, 165, 138, 0.16);
+}
+
+body[data-theme='dark'] .shopping-pantry-entry {
+  background: rgba(29, 58, 51, 0.92);
+  border-color: rgba(114, 165, 138, 0.24);
+}
+
+body[data-theme='dark'] .shopping-pantry-panel .shopping-history-copy strong {
+  color: #eef4fb;
+}
+
+body[data-theme='dark'] .shopping-pantry-panel .shopping-history-copy small,
+body[data-theme='dark'] .shopping-pantry-panel .shopping-panel-note {
+  color: #b8cfbf;
+}
+
+body[data-theme='dark'] .shopping-pantry-panel .empty-state-card {
+  background: rgba(20, 31, 43, 0.76);
+  border: 1px solid rgba(164, 180, 200, 0.16);
+  border-radius: 16px;
+  padding: 0.85rem 0.9rem;
+}
+
+body[data-theme='dark'] .shopping-pantry-panel .empty-state-icon {
+  background: rgba(43, 69, 60, 0.9);
+  color: #a6dabb;
+}
+
+body[data-theme='dark'] .shopping-pantry-panel .empty-state-copy h3 {
+  color: #eef4fb;
+}
+
+body[data-theme='dark'] .shopping-pantry-panel .empty-state-copy p {
+  color: #9fb2c5;
 }
 
 .form-group {
