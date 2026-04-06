@@ -2823,6 +2823,10 @@ body[data-theme='dark'] .app-error-card i {
   margin-bottom: 0.95rem;
 }
 
+.shopping-section-order-panel {
+  margin-bottom: 0.95rem;
+}
+
 .shopping-history-copy {
   min-width: 0;
   display: grid;
@@ -2845,6 +2849,53 @@ body[data-theme='dark'] .app-error-card i {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+.shopping-section-order-list,
+.shopping-suggestion-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.shopping-section-order-item,
+.shopping-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  border: 1px solid rgba(90, 105, 122, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.55rem 0.65rem;
+}
+
+.shopping-section-order-item strong,
+.shopping-suggestion-copy strong {
+  font-size: 0.84rem;
+  color: var(--ink-900);
+}
+
+.shopping-section-order-actions,
+.shopping-section-order-footer {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.shopping-section-order-footer {
+  margin-top: 0.6rem;
+}
+
+.shopping-suggestion-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.shopping-suggestion-copy small {
+  color: var(--ink-500);
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 
 .shopping-builder-controls {
@@ -3017,6 +3068,13 @@ body[data-theme='dark'] .shopping-pantry-panel {
   border-color: rgba(114, 165, 138, 0.16);
 }
 
+body[data-theme='dark'] .shopping-section-order-panel,
+body[data-theme='dark'] .shopping-suggestion-item,
+body[data-theme='dark'] .shopping-section-order-item {
+  background: rgba(20, 31, 43, 0.88);
+  border-color: rgba(164, 180, 200, 0.18);
+}
+
 body[data-theme='dark'] .shopping-pantry-entry {
   background: rgba(29, 58, 51, 0.92);
   border-color: rgba(114, 165, 138, 0.24);
@@ -3026,9 +3084,19 @@ body[data-theme='dark'] .shopping-pantry-panel .shopping-history-copy strong {
   color: #eef4fb;
 }
 
+body[data-theme='dark'] .shopping-section-order-item strong,
+body[data-theme='dark'] .shopping-suggestion-copy strong {
+  color: #eef4fb;
+}
+
 body[data-theme='dark'] .shopping-pantry-panel .shopping-history-copy small,
 body[data-theme='dark'] .shopping-pantry-panel .shopping-panel-note {
   color: #b8cfbf;
+}
+
+body[data-theme='dark'] .shopping-suggestion-copy small,
+body[data-theme='dark'] .shopping-section-order-panel .shopping-panel-note {
+  color: #9fb2c5;
 }
 
 body[data-theme='dark'] .shopping-pantry-panel .empty-state-card {

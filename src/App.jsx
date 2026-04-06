@@ -7,6 +7,7 @@ import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 
 const AddRecipeModal = lazy(() => import('./components/AddRecipeModal'))
 const FocusedRecipeModal = lazy(() => import('./components/FocusedRecipeModal'))
+const ShoppingListBuilder = lazy(() => import('./components/ShoppingListBuilder'))
 
 const CATEGORIES = {
   breakfast: { icon: 'fa-coffee', color: '#ffc107' },
@@ -920,6 +921,7 @@ const AVATAR_SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 30
 const AVATAR_FALLBACK_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 const SHOPPING_LIST_DRAFT_KEY = 'dishdepot-shopping-list-draft-v1'
 const SHOPPING_LIST_HISTORY_KEY = 'dishdepot-shopping-list-history-v1'
+const SHOPPING_SECTION_ORDER_KEY = 'dishdepot-shopping-section-order-v1'
 const CARD_SCAN_MAX_DIMENSION = 1800
 const CARD_SCAN_MIN_COMPRESSION_BYTES = 2.5 * 1024 * 1024
 
@@ -935,6 +937,8 @@ const SHOPPING_SECTION_RULES = [
   { name: 'Drinks', pattern: /(coffee|juice|soda|sparkling water|tea|water)/i },
 ]
 
+const DEFAULT_SHOPPING_SECTION_ORDER = [...SHOPPING_SECTION_RULES.map((rule) => rule.name), 'Other']
+
 function inferShoppingSection(label) {
   const normalized = String(label || '').trim()
   if (!normalized) {
@@ -945,7 +949,7 @@ function inferShoppingSection(label) {
   return matched?.name || 'Other'
 }
 
-function groupShoppingItemsBySection(items, getLabel) {
+function groupShoppingItemsBySection(items, getLabel, sectionOrderMap = null) {
   const groups = new Map()
 
   items.forEach((item) => {
@@ -961,7 +965,72 @@ function groupShoppingItemsBySection(items, getLabel) {
       section,
       items: sectionItems,
     }))
-    .sort((a, b) => a.section.localeCompare(b.section))
+    .sort((a, b) => {
+      const aOrder = sectionOrderMap?.[a.section]
+      const bOrder = sectionOrderMap?.[b.section]
+      const aHasOrder = Number.isInteger(aOrder)
+      const bHasOrder = Number.isInteger(bOrder)
+
+      if (aHasOrder && bHasOrder && aOrder !== bOrder) {
+        return aOrder - bOrder
+      }
+      if (aHasOrder && !bHasOrder) {
+        return -1
+      }
+      if (!aHasOrder && bHasOrder) {
+        return 1
+      }
+
+      return a.section.localeCompare(b.section)
+    })
+}
+
+function moveItemInArray(items, fromIndex, toIndex) {
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) {
+    return items
+  }
+
+  const next = [...items]
+  const [moved] = next.splice(fromIndex, 1)
+  next.splice(toIndex, 0, moved)
+  return next
+}
+
+function buildShoppingSectionOrderMap(order) {
+  return (Array.isArray(order) ? order : DEFAULT_SHOPPING_SECTION_ORDER).reduce((map, section, index) => {
+    map[section] = index
+    return map
+  }, {})
+}
+
+function computeNearDuplicateShoppingGroups(items) {
+  const groups = new Map()
+
+  items.forEach((item) => {
+    const canonicalName = normalizeIngredientName(item.text) || normalizeIngredientKey(item.text)
+    if (!canonicalName) {
+      return
+    }
+
+    const existing = groups.get(canonicalName) || {
+      key: canonicalName,
+      label: toDisplayName(canonicalName),
+      items: [],
+      totalCount: 0,
+    }
+
+    existing.items.push(item)
+    existing.totalCount += item.count || 1
+    groups.set(canonicalName, existing)
+  })
+
+  return [...groups.values()]
+    .filter((group) => group.items.length > 1)
+    .map((group) => ({
+      ...group,
+      items: group.items.sort((a, b) => a.text.localeCompare(b.text)),
+    }))
+    .sort((a, b) => b.items.length - a.items.length || a.label.localeCompare(b.label))
 }
 
 function extractAvatarStoragePath(value) {
@@ -1505,6 +1574,22 @@ function App() {
       return []
     }
   })
+  const [shoppingSectionOrder, setShoppingSectionOrder] = useState(() => {
+    try {
+      const raw = localStorage.getItem(SHOPPING_SECTION_ORDER_KEY)
+      const parsed = raw ? JSON.parse(raw) : null
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return DEFAULT_SHOPPING_SECTION_ORDER
+      }
+
+      const validSet = new Set(DEFAULT_SHOPPING_SECTION_ORDER)
+      const uniqueValid = parsed.filter((section, index) => typeof section === 'string' && validSet.has(section) && parsed.indexOf(section) === index)
+      const missing = DEFAULT_SHOPPING_SECTION_ORDER.filter((section) => !uniqueValid.includes(section))
+      return [...uniqueValid, ...missing]
+    } catch {
+      return DEFAULT_SHOPPING_SECTION_ORDER
+    }
+  })
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractWarnings, setExtractWarnings] = useState([])
   const [extractCandidate, setExtractCandidate] = useState(null)
@@ -1778,41 +1863,45 @@ function App() {
     () => unresolvedShoppingItems.filter((item) => !hiddenUnresolvedKeys.has(item.key)),
     [unresolvedShoppingItems, hiddenUnresolvedKeys],
   )
+  const shoppingSectionOrderMap = useMemo(
+    () => buildShoppingSectionOrderMap(shoppingSectionOrder),
+    [shoppingSectionOrder],
+  )
   const groupedCombinedShoppingItems = useMemo(
-    () => groupShoppingItemsBySection(combinedShoppingItems, (item) => item.amountLabel),
-    [combinedShoppingItems],
+    () => groupShoppingItemsBySection(combinedShoppingItems, (item) => item.amountLabel, shoppingSectionOrderMap),
+    [combinedShoppingItems, shoppingSectionOrderMap],
   )
   const groupedVisibleUnresolvedItems = useMemo(
-    () => groupShoppingItemsBySection(visibleUnresolvedItems, (item) => item.text),
-    [visibleUnresolvedItems],
+    () => groupShoppingItemsBySection(visibleUnresolvedItems, (item) => item.text, shoppingSectionOrderMap),
+    [shoppingSectionOrderMap, visibleUnresolvedItems],
   )
   const groupedManualShoppingItems = useMemo(
-    () => groupShoppingItemsBySection(shoppingManualGroups, (item) => item.text),
-    [shoppingManualGroups],
+    () => groupShoppingItemsBySection(shoppingManualGroups, (item) => item.text, shoppingSectionOrderMap),
+    [shoppingManualGroups, shoppingSectionOrderMap],
   )
   const visibleCombinedShoppingItems = useMemo(
     () => combinedShoppingItems.filter((item) => !hidePantryItems || !shoppingPantry[item.key]),
     [combinedShoppingItems, hidePantryItems, shoppingPantry],
   )
   const visibleGroupedCombinedShoppingItems = useMemo(
-    () => groupShoppingItemsBySection(visibleCombinedShoppingItems, (item) => item.amountLabel),
-    [visibleCombinedShoppingItems],
+    () => groupShoppingItemsBySection(visibleCombinedShoppingItems, (item) => item.amountLabel, shoppingSectionOrderMap),
+    [shoppingSectionOrderMap, visibleCombinedShoppingItems],
   )
   const filteredVisibleUnresolvedItems = useMemo(
     () => visibleUnresolvedItems.filter((item) => !hidePantryItems || !shoppingPantry[item.key]),
     [hidePantryItems, shoppingPantry, visibleUnresolvedItems],
   )
   const filteredGroupedVisibleUnresolvedItems = useMemo(
-    () => groupShoppingItemsBySection(filteredVisibleUnresolvedItems, (item) => item.text),
-    [filteredVisibleUnresolvedItems],
+    () => groupShoppingItemsBySection(filteredVisibleUnresolvedItems, (item) => item.text, shoppingSectionOrderMap),
+    [filteredVisibleUnresolvedItems, shoppingSectionOrderMap],
   )
   const visibleManualShoppingGroups = useMemo(
     () => shoppingManualGroups.filter((group) => !hidePantryItems || !shoppingPantry[group.key]),
     [hidePantryItems, shoppingManualGroups, shoppingPantry],
   )
   const visibleGroupedManualShoppingItems = useMemo(
-    () => groupShoppingItemsBySection(visibleManualShoppingGroups, (item) => item.text),
-    [visibleManualShoppingGroups],
+    () => groupShoppingItemsBySection(visibleManualShoppingGroups, (item) => item.text, shoppingSectionOrderMap),
+    [shoppingSectionOrderMap, visibleManualShoppingGroups],
   )
   const pantryItemCount = useMemo(
     () => Object.values(shoppingPantry).filter(Boolean).length,
@@ -1852,6 +1941,10 @@ function App() {
     return [...combinedEntries, ...unresolvedEntries, ...manualEntries]
       .sort((a, b) => a.section.localeCompare(b.section) || a.label.localeCompare(b.label))
   }, [combinedShoppingItems, shoppingManualGroups, shoppingPantry, visibleUnresolvedItems])
+  const nearDuplicateShoppingGroups = useMemo(
+    () => computeNearDuplicateShoppingGroups(filteredVisibleUnresolvedItems),
+    [filteredVisibleUnresolvedItems],
+  )
   const accountIdentityLabel = useMemo(() => {
     const displayName = profileDisplayName.trim()
     if (displayName) {
@@ -5577,6 +5670,39 @@ function App() {
     setHidePantryItems(false)
   }
 
+  function moveShoppingSection(sectionName, direction) {
+    setShoppingSectionOrder((prev) => {
+      const current = Array.isArray(prev) && prev.length > 0 ? prev : DEFAULT_SHOPPING_SECTION_ORDER
+      const currentIndex = current.indexOf(sectionName)
+      if (currentIndex === -1) {
+        return current
+      }
+
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+      const next = moveItemInArray(current, currentIndex, targetIndex)
+
+      try {
+        localStorage.setItem(SHOPPING_SECTION_ORDER_KEY, JSON.stringify(next))
+      } catch {
+        showMessage('Could not save shopping section order on this device.', 'info')
+        return current
+      }
+
+      return next
+    })
+  }
+
+  function resetShoppingSectionOrder() {
+    setShoppingSectionOrder(DEFAULT_SHOPPING_SECTION_ORDER)
+    try {
+      localStorage.setItem(SHOPPING_SECTION_ORDER_KEY, JSON.stringify(DEFAULT_SHOPPING_SECTION_ORDER))
+    } catch {
+      showMessage('Could not reset shopping section order on this device.', 'info')
+      return
+    }
+    showMessage('Shopping section order reset to default.', 'success')
+  }
+
   function toggleShoppingMergeSelection(itemKey) {
     if (hiddenUnresolvedKeys.has(itemKey)) {
       return
@@ -5627,6 +5753,30 @@ function App() {
     })
     setShoppingManualText('')
     showMessage('Merged selected items into a manual shopping entry.', 'success')
+  }
+
+  function applySuggestedShoppingMerge(group) {
+    const selectedKeys = Array.isArray(group?.items) ? group.items.map((item) => item.key).filter(Boolean) : []
+    if (selectedKeys.length < 2) {
+      return
+    }
+
+    const manualGroup = {
+      key: `manual:${Date.now()}:${Math.random().toString(16).slice(2)}`,
+      text: group.label || 'Suggested merge',
+      sourceKeys: selectedKeys,
+      count: selectedKeys.reduce((sum, key) => sum + (unresolvedByKey[key]?.count || 1), 0),
+    }
+
+    setShoppingManualGroups((prev) => [...prev, manualGroup])
+    setShoppingMergeSelection((prev) => {
+      const next = { ...prev }
+      selectedKeys.forEach((key) => {
+        delete next[key]
+      })
+      return next
+    })
+    showMessage(`Merged similar items into “${manualGroup.text}”.`, 'success')
   }
 
   function splitManualMergeGroup(groupKey) {
@@ -7842,352 +7992,63 @@ function App() {
         </div>
       ) : null}
 
-      {isShoppingListOpen ? (
-        <div className="modal show" role="dialog" aria-modal="true" onClick={closeShoppingListBuilder}>
-          <div className="modal-content shopping-list-modal" onClick={(event) => event.stopPropagation()}>
-            <span className="close" onClick={closeShoppingListBuilder}>
-              &times;
-            </span>
-            <h2>Shopping List Builder</h2>
-            <p className="import-preview-subtitle">
-              Start by selecting recipes, then Dish Depot will organize the list into grocery-style sections.
-            </p>
-
-            <div className="shopping-list-toolbar">
-              <div className="shopping-list-meta-pills">
-                <span className="shopping-list-meta-pill">Recipes selected: {selectedShoppingCount}</span>
-                <span className="shopping-list-meta-pill">Combined items: {combinedShoppingItems.length}</span>
-                {pantryItemCount > 0 ? <span className="shopping-list-meta-pill">Pantry items: {pantryItemCount}</span> : null}
-                {hasSavedShoppingDraft ? <span className="shopping-list-meta-pill">Draft saved on this device</span> : null}
-                {shoppingHistory.length > 0 ? <span className="shopping-list-meta-pill">Saved lists: {shoppingHistory.length}</span> : null}
-              </div>
-              <div className="shopping-list-toolbar-actions">
-                <button className="btn btn-secondary btn-small" type="button" onClick={saveShoppingDraft}>
-                  Save Draft
-                </button>
-                <button className="btn btn-secondary btn-small" type="button" onClick={saveShoppingListToHistory}>
-                  Save List
-                </button>
-                {hasSavedShoppingDraft ? (
-                  <button className="btn btn-secondary btn-small" type="button" onClick={() => clearSavedShoppingDraft()}>
-                    Clear Saved Draft
-                  </button>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="shopping-builder-controls">
-              <div className="import-preview-actions shopping-list-action-row">
-                <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllShoppingCandidates(true)}>
-                  Select All
-                </button>
-                <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllShoppingCandidates(false)}>
-                  Clear Recipes
-                </button>
-                <button className="btn btn-secondary btn-small" type="button" onClick={clearShoppingChecklist}>
-                  Uncheck Items
-                </button>
-                <button className="btn btn-secondary btn-small" type="button" onClick={clearShoppingPantry}>
-                  Clear Pantry
-                </button>
-                <button className="btn btn-secondary btn-small" type="button" onClick={exportShoppingListText}>
-                  Export List
-                </button>
-              </div>
-
-              <div className="shopping-unit-toggle" role="group" aria-label="Preferred units">
-                <button
-                  type="button"
-                  className={`btn btn-small ${shoppingUnitSystem === 'us' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setShoppingUnitSystem('us')}
-                >
-                  US Units
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-small ${shoppingUnitSystem === 'metric' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setShoppingUnitSystem('metric')}
-                >
-                  Metric Units
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-small ${hidePantryItems ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setHidePantryItems((prev) => !prev)}
-                >
-                  {hidePantryItems ? 'Show Pantry' : 'Hide Pantry'}
-                </button>
-              </div>
-              <p className="shopping-panel-note shopping-builder-hint">
-                Mark any item with <strong>Have at Home</strong> to add it to pantry. Your pantry items appear in their own section below.
-              </p>
-            </div>
-
-            {shoppingHistory.length > 0 ? (
-              <details className="shopping-panel">
-                <summary>Saved Lists ({shoppingHistory.length})</summary>
-                <p className="shopping-panel-note">Reuse a saved shopping setup without rebuilding it from scratch.</p>
-                <div className="shopping-history-list">
-                  {shoppingHistory.map((entry) => (
-                    <article key={entry.id} className="shopping-history-item">
-                      <div className="shopping-history-copy">
-                        <strong>{entry.label}</strong>
-                        <small>
-                          {entry.recipeCount} recipe{entry.recipeCount === 1 ? '' : 's'} · {entry.totalCount} combined item{entry.totalCount === 1 ? '' : 's'}
-                          {entry.unresolvedCount > 0 ? ` · ${entry.unresolvedCount} needs review` : ''}
-                          {entry.pantryCount > 0 ? ` · ${entry.pantryCount} pantry` : ''}
-                        </small>
-                        <small>Saved {formatRelativeTime(entry.savedAt)}</small>
-                      </div>
-                      <div className="shopping-history-actions">
-                        <button className="btn btn-small btn-secondary" type="button" onClick={() => restoreShoppingHistoryEntry(entry)}>
-                          Restore
-                        </button>
-                        <button className="btn btn-small btn-secondary" type="button" onClick={() => deleteShoppingHistoryEntry(entry.id)}>
-                          Delete
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </details>
-            ) : null}
-
-            <details className="shopping-panel shopping-pantry-panel" open={pantryEntries.length > 0}>
-              <summary>Pantry / Have at Home ({pantryEntries.length})</summary>
-              {pantryEntries.length > 0 ? (
-                <>
-                  <p className="shopping-panel-note">These are the items you marked as already available at home. Remove them here or use Hide Pantry to keep the active list focused.</p>
-                  <div className="shopping-history-list">
-                    {pantryEntries.map((entry) => (
-                      <article key={entry.key} className="shopping-history-item shopping-pantry-entry">
-                        <div className="shopping-history-copy">
-                          <strong>{entry.label}</strong>
-                          <small>{entry.section} · {entry.detail}</small>
-                        </div>
-                        <div className="shopping-history-actions">
-                          <button className="btn btn-small btn-secondary" type="button" onClick={() => toggleShoppingPantryItem(entry.key)}>
-                            Remove from Pantry
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <EmptyStateCard
-                  icon="fa-box-open"
-                  title="No pantry items yet"
-                  description="When you tap Have at Home on any ingredient, it will show up here so you can review or remove it later."
-                  compact
-                />
-              )}
-            </details>
-
-            <div className="shopping-list-layout">
-              <details className="shopping-panel" open>
-                <summary>1. Choose Recipes</summary>
-                <section className="shopping-list-recipes">
-                  <p className="shopping-panel-note">Pick only the recipes you want to shop for right now.</p>
-                  <div className="shopping-list-recipe-items">
-                    {shoppingCandidates.map((candidate) => (
-                      <label key={candidate.previewId} className="shopping-list-recipe-item">
-                        <input
-                          type="checkbox"
-                          checked={candidate.selected}
-                          onChange={() => toggleShoppingCandidate(candidate.previewId)}
-                        />
-                        <span>
-                          {candidate.recipe.name}
-                          <small>{(candidate.recipe.ingredients || []).length} ingredients</small>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </section>
-              </details>
-
-              <details className="shopping-panel" open={selectedShoppingCount > 0}>
-                 <summary>2. Combined Totals ({visibleCombinedShoppingItems.length})</summary>
-                 <section className="shopping-list-ingredients">
-                   {visibleCombinedShoppingItems.length > 0 ? (
-                     <div className="shopping-group-sections">
-                       {visibleGroupedCombinedShoppingItems.map((group) => (
-                         <section key={group.section} className="shopping-group-section">
-                           <div className="shopping-group-heading">{group.section}</div>
-                           <div className="shopping-list-ingredient-items">
-                             {group.items.map((item) => (
-                               <div key={item.key} className={`shopping-list-ingredient-item ${shoppingPantry[item.key] ? 'shopping-list-pantry-item' : ''}`}>
-                                 <input
-                                   type="checkbox"
-                                   checked={Boolean(shoppingChecklist[item.key])}
-                                   onChange={() => toggleShoppingItemChecked(item.key)}
-                                 />
-                                 <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
-                                   {item.amountLabel}
-                                   {item.sourceCount > 1 ? ` (${item.sourceCount} lines)` : ''}
-                                   {shoppingPantry[item.key] ? <small className="shopping-pantry-flag">Have at home</small> : null}
-                                 </span>
-                                 <button className="btn btn-secondary btn-small shopping-pantry-btn" type="button" onClick={() => toggleShoppingPantryItem(item.key)}>
-                                   {shoppingPantry[item.key] ? 'In Pantry' : 'Have at Home'}
-                                 </button>
-                               </div>
-                             ))}
-                           </div>
-                         </section>
-                      ))}
-                    </div>
-                  ) : (
-                    <EmptyStateCard
-                      icon="fa-cart-shopping"
-                      title="Select recipes to build your list"
-                      description="Start on the left by checking the recipes you want to shop for. Dish Depot will combine matching ingredients automatically."
-                      compact
-                    />
-                  )}
-                </section>
-              </details>
-
-               {filteredVisibleUnresolvedItems.length > 0 ? (
-                 <details className="shopping-panel">
-                  <summary>3. Needs Review ({filteredVisibleUnresolvedItems.length})</summary>
-                  <p className="shopping-panel-note">These ingredients could not be safely combined. You can check them off as-is or merge them manually.</p>
-                  <div className="shopping-manual-tools">
-                    <input
-                      type="text"
-                      className="shopping-manual-input"
-                      placeholder="Label for merged items"
-                      value={shoppingManualText}
-                      onChange={(event) => setShoppingManualText(event.target.value)}
-                    />
-                    <button className="btn btn-secondary btn-small" type="button" onClick={createManualMergeGroup}>
-                      Merge Selected
-                    </button>
-                  </div>
-                  <div className="shopping-group-sections">
-                    {filteredGroupedVisibleUnresolvedItems.map((group) => (
-                      <section key={group.section} className="shopping-group-section">
-                        <div className="shopping-group-heading">{group.section}</div>
-                        <div className="shopping-list-ingredient-items">
-                          {group.items.map((item) => (
-                            <div key={item.key} className={`shopping-list-ingredient-item shopping-list-unresolved-item ${shoppingPantry[item.key] ? 'shopping-list-pantry-item' : ''}`}>
-                              <input
-                                type="checkbox"
-                                checked={Boolean(shoppingChecklist[item.key])}
-                                onChange={() => toggleShoppingItemChecked(item.key)}
-                                title="Checklist done"
-                              />
-                              <input
-                                type="checkbox"
-                                className="shopping-merge-check"
-                                checked={Boolean(shoppingMergeSelection[item.key])}
-                                onChange={() => toggleShoppingMergeSelection(item.key)}
-                                title="Select for manual merge"
-                              />
-                              <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
-                                {item.text}
-                                {item.count > 1 ? ` (${item.count} recipes)` : ''}
-                                {shoppingPantry[item.key] ? <small className="shopping-pantry-flag">Have at home</small> : null}
-                              </span>
-                              <button className="btn btn-secondary btn-small shopping-pantry-btn" type="button" onClick={() => toggleShoppingPantryItem(item.key)}>
-                                {shoppingPantry[item.key] ? 'In Pantry' : 'Have at Home'}
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
-
-               {visibleManualShoppingGroups.length > 0 ? (
-                 <details className="shopping-panel">
-                  <summary>4. Manual Merge Items ({visibleManualShoppingGroups.length})</summary>
-                  <div className="shopping-group-sections">
-                    {visibleGroupedManualShoppingItems.map((section) => (
-                      <section key={section.section} className="shopping-group-section">
-                        <div className="shopping-group-heading">{section.section}</div>
-                        <div className="shopping-list-ingredient-items">
-                          {section.items.map((group) => (
-                            <div key={group.key} className={`shopping-list-ingredient-item shopping-list-manual-item ${shoppingPantry[group.key] ? 'shopping-list-pantry-item' : ''}`}>
-                              <input
-                                type="checkbox"
-                                checked={Boolean(shoppingChecklist[group.key])}
-                                onChange={() => toggleShoppingItemChecked(group.key)}
-                              />
-                              {shoppingManualEditingKey === group.key ? (
-                                <input
-                                  type="text"
-                                  className={`shopping-manual-item-input ${shoppingChecklist[group.key] ? 'shopping-list-item-checked' : ''}`}
-                                  value={shoppingManualEditDraft}
-                                  onChange={(event) => setShoppingManualEditDraft(event.target.value)}
-                                />
-                              ) : (
-                                <span className={`shopping-manual-item-text ${shoppingChecklist[group.key] ? 'shopping-list-item-checked' : ''}`}>
-                                  {group.text}
-                                </span>
-                              )}
-                              <span className="shopping-manual-item-count">
-                                {group.count > 1 ? `${group.count} lines` : '1 line'}
-                                {shoppingPantry[group.key] ? ' · Have at home' : ''}
-                              </span>
-                              <div className="shopping-manual-actions">
-                                <button
-                                  className="btn btn-small btn-secondary"
-                                  type="button"
-                                  onClick={() => toggleShoppingPantryItem(group.key)}
-                                >
-                                  {shoppingPantry[group.key] ? 'In Pantry' : 'Have at Home'}
-                                </button>
-                                {shoppingManualEditingKey === group.key ? (
-                                  <>
-                                    <button
-                                      className="btn btn-small btn-primary"
-                                      type="button"
-                                      onClick={() => saveEditingManualMergeGroup(group.key)}
-                                    >
-                                      Save
-                                    </button>
-                                    <button className="btn btn-small btn-secondary" type="button" onClick={cancelEditingManualMergeGroup}>
-                                      Cancel
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    className="btn btn-small btn-secondary"
-                                    type="button"
-                                    onClick={() => startEditingManualMergeGroup(group)}
-                                  >
-                                    Edit
-                                  </button>
-                                )}
-                                <button
-                                  className="btn btn-small btn-secondary"
-                                  type="button"
-                                  onClick={() => splitManualMergeGroup(group.key)}
-                                >
-                                  Split
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
-            </div>
-
-            <div className="import-preview-footer">
-              <button className="btn btn-secondary" type="button" onClick={closeShoppingListBuilder}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <ShoppingListBuilder
+          isOpen={isShoppingListOpen}
+          onClose={closeShoppingListBuilder}
+          selectedShoppingCount={selectedShoppingCount}
+          combinedShoppingItems={combinedShoppingItems}
+          pantryItemCount={pantryItemCount}
+          hasSavedShoppingDraft={hasSavedShoppingDraft}
+          shoppingHistory={shoppingHistory}
+          onSaveDraft={saveShoppingDraft}
+          onSaveListToHistory={saveShoppingListToHistory}
+          onClearSavedDraft={() => clearSavedShoppingDraft()}
+          onSelectAllCandidates={() => setAllShoppingCandidates(true)}
+          onClearRecipes={() => setAllShoppingCandidates(false)}
+          onClearChecklist={clearShoppingChecklist}
+          onClearPantry={clearShoppingPantry}
+          onExportList={exportShoppingListText}
+          shoppingUnitSystem={shoppingUnitSystem}
+          onSetShoppingUnitSystem={setShoppingUnitSystem}
+          hidePantryItems={hidePantryItems}
+          onToggleHidePantry={() => setHidePantryItems((prev) => !prev)}
+          shoppingSectionOrder={shoppingSectionOrder}
+          onMoveShoppingSection={moveShoppingSection}
+          onResetShoppingSectionOrder={resetShoppingSectionOrder}
+          onRestoreHistoryEntry={restoreShoppingHistoryEntry}
+          onDeleteHistoryEntry={deleteShoppingHistoryEntry}
+          pantryEntries={pantryEntries}
+          onTogglePantryItem={toggleShoppingPantryItem}
+          shoppingCandidates={shoppingCandidates}
+          onToggleShoppingCandidate={toggleShoppingCandidate}
+          visibleCombinedShoppingItems={visibleCombinedShoppingItems}
+          visibleGroupedCombinedShoppingItems={visibleGroupedCombinedShoppingItems}
+          shoppingChecklist={shoppingChecklist}
+          shoppingPantry={shoppingPantry}
+          onToggleShoppingItemChecked={toggleShoppingItemChecked}
+          nearDuplicateShoppingGroups={nearDuplicateShoppingGroups}
+          onApplySuggestedShoppingMerge={applySuggestedShoppingMerge}
+          filteredVisibleUnresolvedItems={filteredVisibleUnresolvedItems}
+          filteredGroupedVisibleUnresolvedItems={filteredGroupedVisibleUnresolvedItems}
+          shoppingManualText={shoppingManualText}
+          onChangeShoppingManualText={setShoppingManualText}
+          onCreateManualMergeGroup={createManualMergeGroup}
+          shoppingMergeSelection={shoppingMergeSelection}
+          onToggleShoppingMergeSelection={toggleShoppingMergeSelection}
+          visibleManualShoppingGroups={visibleManualShoppingGroups}
+          visibleGroupedManualShoppingItems={visibleGroupedManualShoppingItems}
+          shoppingManualEditingKey={shoppingManualEditingKey}
+          shoppingManualEditDraft={shoppingManualEditDraft}
+          onChangeShoppingManualEditDraft={setShoppingManualEditDraft}
+          onToggleManualGroupPantry={toggleShoppingPantryItem}
+          onSaveEditingManualMergeGroup={saveEditingManualMergeGroup}
+          onCancelEditingManualMergeGroup={cancelEditingManualMergeGroup}
+          onStartEditingManualMergeGroup={startEditingManualMergeGroup}
+          onSplitManualMergeGroup={splitManualMergeGroup}
+          formatRelativeTime={formatRelativeTime}
+        />
+      </Suspense>
 
       <footer className="footer">
         <div className="container">
