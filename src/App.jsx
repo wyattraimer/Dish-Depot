@@ -9,6 +9,9 @@ import OptimizedImage from './components/OptimizedImage.jsx'
 const AddRecipeModal = lazy(() => import('./components/AddRecipeModal'))
 const FocusedRecipeModal = lazy(() => import('./components/FocusedRecipeModal'))
 const ShoppingListBuilder = lazy(() => import('./components/ShoppingListBuilder'))
+const GroupManagementModal = lazy(() => import('./components/GroupManagementModal'))
+const GroupInvitesModal = lazy(() => import('./components/GroupInvitesModal'))
+const ShareRecipeModal = lazy(() => import('./components/ShareRecipeModal'))
 
 const CATEGORIES = {
   breakfast: { icon: 'fa-coffee', color: '#ffc107' },
@@ -7447,464 +7450,92 @@ function App() {
         </div>
       ) : null}
 
-      {isGroupModalOpen ? (
-        <div className="modal show share-modal-overlay" role="dialog" aria-modal="true" onClick={closeGroupModal}>
-          <div className="modal-content share-modal" onClick={(event) => event.stopPropagation()}>
-            <span className="close" onClick={closeGroupModal}>
-              &times;
-            </span>
-            <h2>Groups</h2>
-            <p className="share-modal-subtitle">Create and manage collaborative groups for shared recipes.</p>
-            <p className="share-helper-note">Sections below can be expanded or collapsed to keep things focused.</p>
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <GroupManagementModal
+          isOpen={isGroupModalOpen}
+          onClose={closeGroupModal}
+          handleCreateGroup={handleCreateGroup}
+          groupNameDraft={groupNameDraft}
+          onChangeGroupNameDraft={setGroupNameDraft}
+          groupBusy={groupBusy}
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onChangeSelectedGroup={(nextGroupId) => {
+            setSelectedGroupId(nextGroupId)
+            setGroupMembers([])
+            setGroupPendingInvites([])
+            setGroupActivity([])
+            void loadSelectedGroupMembers(nextGroupId)
+            void loadSelectedGroupPendingInvites(nextGroupId)
+            void loadSelectedGroupActivity(nextGroupId)
+          }}
+          isUuidLike={isUuidLike}
+          searchGroupInviteCandidates={searchGroupInviteCandidates}
+          groupInviteLookup={groupInviteLookup}
+          onChangeGroupInviteLookup={setGroupInviteLookup}
+          canAdminSelectedGroup={canAdminSelectedGroup}
+          groupInviteRole={groupInviteRole}
+          onChangeGroupInviteRole={setGroupInviteRole}
+          GROUP_ROLE_OPTIONS={GROUP_ROLE_OPTIONS}
+          GROUP_ROLE_LABELS={GROUP_ROLE_LABELS}
+          GROUP_ROLE_DESCRIPTIONS={GROUP_ROLE_DESCRIPTIONS}
+          groupInviteResults={groupInviteResults}
+          IdentityBlock={IdentityBlock}
+          onAddUserToSelectedGroup={(result) => void addUserToSelectedGroup(result)}
+          groupInvitesLoading={groupInvitesLoading}
+          groupPendingInvites={groupPendingInvites}
+          getIdentityProps={getIdentityProps}
+          formatInviteExpiry={formatInviteExpiry}
+          onResendGroupInvite={(invite) => void resendGroupInvite(invite)}
+          onCancelGroupInvite={(invite) => void cancelGroupInvite(invite)}
+          groupMembersLoading={groupMembersLoading}
+          groupMembers={groupMembers}
+          authUser={authUser}
+          onUpdateGroupMemberRole={(member, role) => void updateGroupMemberRole(member, role)}
+          onRemoveUserFromSelectedGroup={(member) => void removeUserFromSelectedGroup(member)}
+          groupActivityLoading={groupActivityLoading}
+          groupActivityViewModels={groupActivityViewModels}
+          IdentityAvatar={IdentityAvatar}
+          onDeleteSelectedGroup={() => void deleteSelectedGroup()}
+        />
+      </Suspense>
 
-            <details className="modal-section" open>
-              <summary>Create Group</summary>
-              <form className="share-form" onSubmit={handleCreateGroup}>
-                <div className="form-group">
-                  <label htmlFor="groupNameInput">Group Name</label>
-                  <div className="share-lookup-row">
-                    <input
-                      id="groupNameInput"
-                      type="text"
-                      value={groupNameDraft}
-                      onChange={(event) => setGroupNameDraft(event.target.value)}
-                      placeholder="The Johnson Family"
-                    />
-                    <button className="btn btn-secondary" type="submit" disabled={groupBusy}>
-                      {groupBusy ? 'Creating...' : 'Create'}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </details>
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <GroupInvitesModal
+          isOpen={isGroupInvitesModalOpen}
+          onClose={closeGroupInvitesModal}
+          groupInvitesLoading={groupInvitesLoading}
+          pendingGroupInvites={pendingGroupInvites}
+          IdentityBlock={IdentityBlock}
+          getIdentityProps={getIdentityProps}
+          GROUP_ROLE_LABELS={GROUP_ROLE_LABELS}
+          formatInviteExpiry={formatInviteExpiry}
+          formatInviteTimestamp={formatInviteTimestamp}
+          onAcceptPendingGroupInvite={(invite) => void acceptPendingGroupInvite(invite)}
+          onDeclinePendingGroupInvite={(invite) => void declinePendingGroupInvite(invite)}
+        />
+      </Suspense>
 
-            {groups.length > 0 ? (
-              <details className="modal-section" open>
-                <summary>Selected Group</summary>
-                <div className="form-group">
-                  <label htmlFor="groupSelectInModal">Choose Group</label>
-                  <select
-                    id="groupSelectInModal"
-                    value={selectedGroupId}
-                    onChange={(event) => {
-                      const nextGroupId = event.target.value
-                      setSelectedGroupId(nextGroupId)
-                      setGroupMembers([])
-                      setGroupPendingInvites([])
-                      setGroupActivity([])
-                      void loadSelectedGroupMembers(nextGroupId)
-                      void loadSelectedGroupPendingInvites(nextGroupId)
-                      void loadSelectedGroupActivity(nextGroupId)
-                    }}
-                  >
-                    {groups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </details>
-            ) : null}
-
-            {isUuidLike(selectedGroupId) ? (
-              <>
-                <details className="modal-section" open>
-                  <summary>Invite Members</summary>
-                  <form className="share-form" onSubmit={searchGroupInviteCandidates}>
-                    <div className="form-group">
-                      <label htmlFor="groupInviteLookup">Send Invite by Username</label>
-                      <p className="share-helper-note">Invited users will be able to accept or decline before joining.</p>
-                      <div className="share-lookup-row">
-                        <input
-                          id="groupInviteLookup"
-                          type="text"
-                          value={groupInviteLookup}
-                          onChange={(event) => setGroupInviteLookup(event.target.value.toLowerCase())}
-                          placeholder="chefmaria"
-                          autoComplete="off"
-                          disabled={!canAdminSelectedGroup}
-                        />
-                        <select value={groupInviteRole} onChange={(event) => setGroupInviteRole(event.target.value)} disabled={!canAdminSelectedGroup}>
-                          {GROUP_ROLE_OPTIONS.map((role) => (
-                            <option key={role} value={role}>
-                              {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
-                            </option>
-                          ))}
-                        </select>
-                        <button className="btn btn-secondary" type="submit" disabled={groupBusy || !canAdminSelectedGroup}>
-                          {groupBusy ? 'Searching...' : 'Find User'}
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-
-                  {groupInviteResults.length > 0 ? (
-                    <div className="share-results" aria-label="Group invite results">
-                        {groupInviteResults.map((result) => (
-                          <div key={result.id} className="share-result-item">
-                            <IdentityBlock
-                              displayName={result.displayName}
-                              username={result.username}
-                              avatarUrl={result.avatarUrl}
-                              fallback={result.id || 'Dish Depot user'}
-                              meta="Ready to invite"
-                              tone="search"
-                            />
-                            <button className="btn btn-secondary" type="button" onClick={() => void addUserToSelectedGroup(result)} disabled={!canAdminSelectedGroup || groupBusy}>
-                              Send Invite
-                            </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </details>
-
-                <details className="modal-section" open>
-                  <summary>Pending Invites</summary>
-                  <section className="share-existing" aria-label="Pending invites for selected group">
-                    {groupInvitesLoading ? <p className="share-empty">Loading pending invites...</p> : null}
-                    {!groupInvitesLoading && groupPendingInvites.length === 0 ? (
-                      <EmptyStateCard
-                        icon="fa-paper-plane"
-                        title="No pending invites"
-                        description="Invite someone by username to bring collaborators into this group. New invites will appear here until they are accepted or canceled."
-                        compact
-                      />
-                    ) : null}
-                    {!groupInvitesLoading && groupPendingInvites.length > 0 ? (
-                      <div className="share-existing-list">
-                        {groupPendingInvites.map((invite) => (
-                          <div key={invite.id} className="share-existing-item">
-                            <IdentityBlock
-                              {...getIdentityProps({
-                                userId: invite.invitedUserId,
-                                displayName: invite.invitedDisplayName,
-                                username: invite.invitedUsername,
-                                fallback: invite.invitedUserId || 'Invited member',
-                              })}
-                              meta={`${GROUP_ROLE_LABELS[invite.role] || invite.role} · ${formatInviteExpiry(invite.expiresAt)}`}
-                              tone="invite"
-                            />
-                            <div className="share-existing-actions">
-                              <button className="btn btn-secondary" type="button" onClick={() => void resendGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
-                                Resend
-                              </button>
-                              <button className="btn btn-danger" type="button" onClick={() => void cancelGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </section>
-                </details>
-
-                <details className="modal-section" open>
-                  <summary>Members</summary>
-                  <section className="share-existing" aria-label="Group members">
-                    {groupMembersLoading ? <p className="share-empty">Loading members...</p> : null}
-                    {!groupMembersLoading && groupMembers.length === 0 ? (
-                      <EmptyStateCard
-                        icon="fa-user-group"
-                        title="No members yet"
-                        description="Invite people into this group so they can browse, contribute, and help manage shared recipes."
-                        compact
-                      />
-                    ) : null}
-                    {!groupMembersLoading && groupMembers.length > 0 ? (
-                      <div className="share-existing-list">
-                        {groupMembers.map((member) => (
-                          <div key={member.userId} className="share-existing-item">
-                            <IdentityBlock
-                              {...getIdentityProps({
-                                userId: member.userId,
-                                displayName: member.displayName,
-                                username: member.username,
-                                fallback: member.userId === authUser?.id ? 'You' : member.userId,
-                              })}
-                              meta={`${GROUP_ROLE_LABELS[member.role] || member.role}${member.userId === authUser?.id ? ' · You' : ''}`}
-                              tone={member.userId === authUser?.id ? 'self' : 'member'}
-                            />
-                            <div className="share-existing-actions">
-                              <select
-                                value={member.role}
-                                onChange={(event) => void updateGroupMemberRole(member, event.target.value)}
-                                disabled={!canAdminSelectedGroup || groupBusy || member.userId === authUser?.id}
-                              >
-                                {GROUP_ROLE_OPTIONS.map((role) => (
-                                  <option key={role} value={role}>
-                                    {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
-                                  </option>
-                                ))}
-                              </select>
-                              {!(member.userId === authUser?.id && groupMembers.length === 1) ? (
-                                <button
-                                  className="btn btn-danger"
-                                  type="button"
-                                  onClick={() => void removeUserFromSelectedGroup(member)}
-                                  disabled={groupBusy || (!canAdminSelectedGroup && member.userId !== authUser?.id)}
-                                >
-                                  {member.userId === authUser?.id ? 'Leave' : 'Remove'}
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </section>
-                </details>
-
-                <details className="modal-section" open>
-                  <summary>Recent Activity</summary>
-                  <section className="group-activity-list" aria-label="Recent group activity">
-                    {groupActivityLoading ? <p className="share-empty">Loading activity...</p> : null}
-                    {!groupActivityLoading && groupActivity.length === 0 ? (
-                      <EmptyStateCard
-                        icon="fa-clock-rotate-left"
-                        title="No activity yet"
-                        description="Invite members or add recipes to this group. Dish Depot will keep the recent activity feed here so everyone can follow along."
-                        compact
-                      />
-                    ) : null}
-                    {!groupActivityLoading && groupActivity.length > 0 ? (
-                      <div className="group-activity-items">
-                        {groupActivityViewModels.map(({ activity, activityPresentation, activityMeta, identity, relativeTime }) => {
-                          return (
-                            <article key={activity.id} className="group-activity-item">
-                              <div className="group-activity-identity">
-                                <IdentityAvatar
-                                  displayName={identity.displayName}
-                                  username={identity.username}
-                                  avatarUrl={identity.avatarUrl}
-                                  fallback={identity.fallback}
-                                  tone="activity"
-                                />
-                                <span className="group-activity-type-badge" aria-hidden="true">
-                                  <i className={`fas ${activityPresentation.icon}`} />
-                                </span>
-                              </div>
-                              <div className="group-activity-content">
-                                <strong>{activityPresentation.title}</strong>
-                                <small>{activityMeta}</small>
-                              </div>
-                              <time className="group-activity-time" dateTime={activity.occurredAt || undefined}>
-                                {relativeTime}
-                              </time>
-                            </article>
-                          )
-                        })}
-                      </div>
-                    ) : null}
-                  </section>
-                </details>
-
-                {canAdminSelectedGroup ? (
-                  <details className="modal-section">
-                    <summary>Danger Zone</summary>
-                    <div className="share-form-actions group-danger-zone">
-                      <button className="btn btn-danger" type="button" onClick={() => void deleteSelectedGroup()} disabled={groupBusy}>
-                        <i className="fas fa-trash" />
-                        Delete Group
-                      </button>
-                    </div>
-                  </details>
-                ) : null}
-              </>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {isGroupInvitesModalOpen ? (
-        <div className="modal show share-modal-overlay" role="dialog" aria-modal="true" onClick={closeGroupInvitesModal}>
-          <div className="modal-content share-modal" onClick={(event) => event.stopPropagation()}>
-            <span className="close" onClick={closeGroupInvitesModal}>
-              &times;
-            </span>
-            <h2>Group Invites</h2>
-            <p className="share-modal-subtitle">Accept or decline invitations to join collaborative groups.</p>
-
-            {groupInvitesLoading ? <p className="share-empty">Loading invites...</p> : null}
-            {!groupInvitesLoading && pendingGroupInvites.length === 0 ? (
-              <EmptyStateCard
-                icon="fa-envelope-open-text"
-                title="No pending invites right now"
-                description="When another Dish Depot user invites you into a group, it will appear here so you can accept or decline it."
-                compact
-              />
-            ) : null}
-
-            {!groupInvitesLoading && pendingGroupInvites.length > 0 ? (
-              <div className="share-existing-list" aria-label="Pending group invites">
-                {pendingGroupInvites.map((invite) => (
-                  <div key={invite.id} className="share-existing-item">
-                    <div className="share-existing-item-shell">
-                        <IdentityBlock
-                          {...getIdentityProps({
-                            userId: invite.invitedBy,
-                            displayName: invite.inviterDisplayName,
-                            username: invite.inviterUsername,
-                            fallback: 'Group invite',
-                          })}
-                          meta={`Invited you to ${invite.groupName || 'Group'}`}
-                          tone="invite"
-                        />
-                        <div className="share-existing-meta-block">
-                          <strong>{invite.groupName || 'Group'}</strong>
-                          <small>
-                            {GROUP_ROLE_LABELS[invite.role] || invite.role} · {formatInviteExpiry(invite.expiresAt)}
-                          </small>
-                          <small>Sent: {formatInviteTimestamp(invite.createdAt)}</small>
-                        </div>
-                      </div>
-                    <div className="share-existing-actions">
-                      <button className="btn btn-secondary" type="button" onClick={() => void acceptPendingGroupInvite(invite)} disabled={groupInvitesLoading}>
-                        Accept
-                      </button>
-                      <button className="btn btn-danger" type="button" onClick={() => void declinePendingGroupInvite(invite)} disabled={groupInvitesLoading}>
-                        Decline
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {isShareModalOpen && shareTargetRecipe ? (
-        <div className="modal show share-modal-overlay" role="dialog" aria-modal="true" onClick={closeShareModal}>
-          <div className="modal-content share-modal" onClick={(event) => event.stopPropagation()}>
-            <span className="close" onClick={closeShareModal}>
-              &times;
-            </span>
-            <h2>Share Recipe</h2>
-            <p className="share-modal-subtitle">
-              Share <strong>{shareTargetRecipe.name}</strong> with another Dish Depot user.
-            </p>
-            <p className="share-helper-note">Search by username. Recipient must already have an account.</p>
-
-            <details className="modal-section" open>
-              <summary>Find Recipient</summary>
-              <form className="share-form" onSubmit={searchShareCandidates}>
-                <div className="form-group">
-                  <label htmlFor="shareRecipientLookup">Recipient Username</label>
-                  <div className="share-lookup-row">
-                    <input
-                      id="shareRecipientLookup"
-                      type="text"
-                      required
-                      value={shareLookupText}
-                      onChange={(event) => setShareLookupText(event.target.value.toLowerCase())}
-                      placeholder="chefmaria"
-                      autoComplete="off"
-                    />
-                    <button className="btn btn-secondary" type="submit" disabled={shareBusy}>
-                      {shareBusy ? 'Searching...' : 'Find User'}
-                    </button>
-                  </div>
-                </div>
-
-                <label className="share-edit-toggle">
-                  <input
-                    type="checkbox"
-                    checked={shareCanEdit}
-                    onChange={(event) => setShareCanEdit(event.target.checked)}
-                  />
-                  Allow recipient to edit this recipe
-                </label>
-
-                {shareResults.length > 0 ? (
-                  <div className="share-results" aria-label="Share search results">
-                    {shareResults.map((result) => (
-                      <div key={result.id} className="share-result-item">
-                        <IdentityBlock
-                          displayName={result.displayName}
-                          username={result.username}
-                          avatarUrl={result.avatarUrl}
-                          fallback="Dish Depot user"
-                          meta="Ready to share"
-                          tone="search"
-                        />
-                        <button
-                          className="btn btn-primary btn-small"
-                          type="button"
-                          onClick={() => void shareRecipeWithUser(result)}
-                          disabled={shareBusy}
-                        >
-                          Share
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </form>
-            </details>
-
-            <details className="modal-section" open>
-              <summary>Currently Shared With</summary>
-              <section className="share-existing" aria-label="Current shares">
-                {shareRecipientsLoading ? <p className="share-empty">Loading shares...</p> : null}
-
-                {!shareRecipientsLoading && shareRecipients.length === 0 ? (
-                  <EmptyStateCard
-                    icon="fa-user-plus"
-                    title="No recipients yet"
-                    description="Search for a Dish Depot username above to share this recipe. You can make it view-only or allow editing."
-                    compact
-                  />
-                ) : null}
-
-                {!shareRecipientsLoading && shareRecipients.length > 0 ? (
-                  <div className="share-existing-list">
-                    {shareRecipients.map((recipient) => (
-                      <div key={recipient.userId} className="share-existing-item">
-                        <IdentityBlock
-                          displayName={recipient.displayName}
-                          username={recipient.username}
-                          avatarUrl={recipient.avatarUrl}
-                          fallback={recipient.userId || 'Shared user'}
-                          meta={recipient.canEdit ? 'Can edit this recipe' : 'View only'}
-                          tone={recipient.canEdit ? 'editable' : 'default'}
-                        />
-
-                        <div className="share-existing-actions">
-                          <button
-                            className="btn btn-secondary btn-small"
-                            type="button"
-                            onClick={() => void updateSharePermission(recipient, !recipient.canEdit)}
-                            disabled={shareBusy}
-                          >
-                            {recipient.canEdit ? 'Set View Only' : 'Allow Edit'}
-                          </button>
-                          <button
-                            className="btn btn-danger btn-small"
-                            type="button"
-                            onClick={() => void revokeShare(recipient)}
-                            disabled={shareBusy}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </section>
-            </details>
-
-            <div className="share-form-actions">
-              <button className="btn btn-secondary" type="button" onClick={closeShareModal}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <ShareRecipeModal
+          isOpen={isShareModalOpen}
+          onClose={closeShareModal}
+          shareTargetRecipe={shareTargetRecipe}
+          searchShareCandidates={searchShareCandidates}
+          shareLookupText={shareLookupText}
+          onChangeShareLookupText={setShareLookupText}
+          shareBusy={shareBusy}
+          shareCanEdit={shareCanEdit}
+          onChangeShareCanEdit={setShareCanEdit}
+          shareResults={shareResults}
+          IdentityBlock={IdentityBlock}
+          onShareRecipeWithUser={(result) => void shareRecipeWithUser(result)}
+          shareRecipientsLoading={shareRecipientsLoading}
+          shareRecipients={shareRecipients}
+          onUpdateSharePermission={(recipient, canEdit) => void updateSharePermission(recipient, canEdit)}
+          onRevokeShare={(recipient) => void revokeShare(recipient)}
+        />
+      </Suspense>
 
       {isImportPreviewOpen ? (
         <div className="modal show" role="dialog" aria-modal="true" onClick={closeImportPreview}>
