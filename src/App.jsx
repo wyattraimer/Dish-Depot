@@ -1215,6 +1215,7 @@ function App() {
   const [groupInvitesLoading, setGroupInvitesLoading] = useState(false)
   const [isGroupRecipesRefreshing, setIsGroupRecipesRefreshing] = useState(false)
   const [groupRefreshNotice, setGroupRefreshNotice] = useState('')
+  const [profileSummaries, setProfileSummaries] = useState({})
   const [isGroupInvitesModalOpen, setIsGroupInvitesModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareTargetRecipe, setShareTargetRecipe] = useState(null)
@@ -1314,6 +1315,41 @@ function App() {
       return `@${username}`
     }
     return userId ? 'A group member' : 'Someone'
+  }
+
+  function getUserSummary(userId) {
+    if (!userId) {
+      return null
+    }
+
+    if (authUser?.id && userId === authUser.id) {
+      return {
+        username: profileUsername,
+        displayName: profileDisplayName,
+      }
+    }
+
+    return profileSummaries[userId] || null
+  }
+
+  function getCollaboratorLabel(userId, fallback = 'A member') {
+    if (!userId) {
+      return fallback
+    }
+    if (authUser?.id && userId === authUser.id) {
+      return 'You'
+    }
+
+    const summary = getUserSummary(userId)
+    if (!summary) {
+      return fallback
+    }
+
+    return getActivityDisplayName({
+      username: summary?.username || '',
+      displayName: summary?.displayName || '',
+      userId,
+    })
   }
 
   function formatRelativeTime(timestamp) {
@@ -1551,12 +1587,49 @@ function App() {
     }
   }, [recipeScope, selectedGroup])
 
+  const loadProfileSummaries = useCallback(async (userIds) => {
+    if (!hasSupabaseConfig || !supabase) {
+      return
+    }
+
+    const ids = [...new Set((userIds || []).filter((id) => isUuidLike(id) && !profileSummaries[id]))]
+    if (ids.length === 0) {
+      return
+    }
+
+    const { data, error } = await supabase.rpc('get_profile_summaries', {
+      target_user_ids: ids,
+    })
+
+    if (error) {
+      return
+    }
+
+    if (Array.isArray(data) && data.length > 0) {
+      setProfileSummaries((prev) => {
+        const next = { ...prev }
+        data.forEach((row) => {
+          if (row?.id) {
+            next[row.id] = {
+              username: row.username || '',
+              displayName: row.display_name || '',
+            }
+          }
+        })
+        return next
+      })
+    }
+  }, [profileSummaries])
+
   function getRecipeOriginBadges(recipe) {
     const badges = []
 
     if (recipeScope === 'shared') {
       badges.push({ tone: 'shared', icon: 'fa-share-nodes', label: 'Shared with me' })
       badges.push({ tone: recipe.sharedReadOnly ? 'readonly' : 'editable', icon: recipe.sharedReadOnly ? 'fa-eye' : 'fa-pen-to-square', label: recipe.sharedReadOnly ? 'View only' : 'Can edit' })
+      if (recipe.ownerId) {
+        badges.push({ tone: 'meta', icon: recipe.ownerId === authUser?.id ? 'fa-user-check' : 'fa-user', label: `Owner: ${getCollaboratorLabel(recipe.ownerId, 'Unknown owner')}` })
+      }
       return badges
     }
 
@@ -1564,7 +1637,10 @@ function App() {
       badges.push({ tone: 'group', icon: 'fa-users', label: groupSourceContext?.label || 'Group recipe' })
       badges.push({ tone: recipe.sharedReadOnly ? 'readonly' : 'editable', icon: recipe.sharedReadOnly ? 'fa-eye' : 'fa-pen-to-square', label: recipe.sharedReadOnly ? 'View only' : 'Can edit' })
       if (recipe.groupAddedBy) {
-        badges.push({ tone: 'meta', icon: recipe.groupAddedBy === authUser?.id ? 'fa-user-check' : 'fa-user-plus', label: recipe.groupAddedBy === authUser?.id ? 'Added by you' : 'Added by group member' })
+        badges.push({ tone: 'meta', icon: recipe.groupAddedBy === authUser?.id ? 'fa-user-check' : 'fa-user-plus', label: `Added by ${getCollaboratorLabel(recipe.groupAddedBy, 'a member')}` })
+      }
+      if (recipe.ownerId) {
+        badges.push({ tone: 'meta', icon: recipe.ownerId === authUser?.id ? 'fa-user-check' : 'fa-user', label: `Owner: ${getCollaboratorLabel(recipe.ownerId, 'Unknown owner')}` })
       }
       return badges
     }
@@ -1824,6 +1900,7 @@ function App() {
     }
 
     const nextRows = Array.isArray(recipeRows) ? recipeRows : []
+    await loadProfileSummaries(nextRows.flatMap((row) => [row.owner_id, row.added_by]))
     const nextRecipeIds = new Set(nextRows.map((row) => row.id).filter((id) => isUuidLike(id)))
     const previousRecipeIds = latestGroupRecipeIdsRef.current
     const newlyVisibleCount = [...nextRecipeIds].filter((id) => !previousRecipeIds.has(id)).length
@@ -1853,7 +1930,7 @@ function App() {
     }
 
     updateGroupRefreshNotice('Live updates on')
-  }, [authUser?.id, selectedGroupId, selectedGroupRole])
+  }, [authUser?.id, loadProfileSummaries, selectedGroupId, selectedGroupRole])
 
   useEffect(() => {
     try {
@@ -2278,6 +2355,8 @@ function App() {
         return
       }
 
+      await loadProfileSummaries((sharedRows || []).map((row) => row.owner_id))
+
       const mapped = migrateRecipes(
         (sharedRows || []).map((row) => ({
           ...mapSupabaseRecipeToApp(row),
@@ -2293,7 +2372,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, isOnline, recipeScope])
+  }, [authUser?.id, isOnline, loadProfileSummaries, recipeScope])
 
   useEffect(() => {
     void loadGroups().catch(() => undefined)
