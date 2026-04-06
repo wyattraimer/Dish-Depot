@@ -1824,6 +1824,16 @@ function App() {
     [scopedRecipes],
   )
 
+  const groupSourceContext = useMemo(() => {
+    if (recipeScope !== 'group' || !selectedGroup) {
+      return null
+    }
+    return {
+      label: `In ${selectedGroup.name}`,
+      recipeScope: 'group',
+    }
+  }, [recipeScope, selectedGroup])
+
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase().trim()
     return scopedRecipeSearchIndex
@@ -2076,16 +2086,6 @@ function App() {
     () => buildExtractFieldReview(extractCandidate, extractWarnings),
     [extractCandidate, extractWarnings],
   )
-
-  const groupSourceContext = useMemo(() => {
-    if (recipeScope !== 'group' || !selectedGroup) {
-      return null
-    }
-    return {
-      label: `In ${selectedGroup.name}`,
-      recipeScope: 'group',
-    }
-  }, [recipeScope, selectedGroup])
 
   const loadProfileSummaries = useCallback(async (userIds) => {
     if (!hasSupabaseConfig || !supabase) {
