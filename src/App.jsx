@@ -3301,12 +3301,13 @@ function App() {
   }, [])
 
   useEffect(() => {
-    setShoppingChecklist((prev) => {
     const validKeys = new Set([
       ...combinedShoppingItems.map((item) => item.key),
       ...visibleUnresolvedItems.map((item) => item.key),
       ...shoppingManualGroups.map((group) => group.key),
     ])
+
+    setShoppingChecklist((prev) => {
       const next = {}
       Object.entries(prev).forEach(([key, checked]) => {
         if (validKeys.has(key)) {
