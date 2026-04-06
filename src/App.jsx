@@ -1631,12 +1631,22 @@ function App() {
   const latestGroupRecipeIdsRef = useRef(new Set())
   const groupRefreshNoticeTimeoutRef = useRef(0)
 
-  const selectedGroup = useMemo(() => groups.find((group) => group.id === selectedGroupId) || null, [groups, selectedGroupId])
+  const groupsById = useMemo(
+    () => new Map(groups.map((group) => [group.id, group])),
+    [groups],
+  )
 
-  const selectedGroupRole = useMemo(() => {
-    const membership = groupMemberships.find((item) => item.groupId === selectedGroupId)
-    return membership?.role || ''
-  }, [groupMemberships, selectedGroupId])
+  const groupMembershipRoleByGroupId = useMemo(
+    () => new Map(groupMemberships.map((membership) => [membership.groupId, membership.role || ''])),
+    [groupMemberships],
+  )
+
+  const selectedGroup = useMemo(() => groupsById.get(selectedGroupId) || null, [groupsById, selectedGroupId])
+
+  const selectedGroupRole = useMemo(
+    () => groupMembershipRoleByGroupId.get(selectedGroupId) || '',
+    [groupMembershipRoleByGroupId, selectedGroupId],
+  )
 
   const canContributeToSelectedGroup = hasGroupRoleOrHigher(selectedGroupRole, 'contributor')
   const canAdminSelectedGroup = hasGroupRoleOrHigher(selectedGroupRole, 'admin')
@@ -1797,22 +1807,55 @@ function App() {
     return recipes
   }, [recipeScope, sharedRecipes, groupRecipes, recipes])
 
+  const scopedRecipeSearchIndex = useMemo(
+    () =>
+      scopedRecipes.map((recipe) => ({
+        recipe,
+        isPinned: Boolean(recipe.pinned),
+        categories: recipe.categories || [],
+        searchText: [
+          recipe.name || '',
+          ...(recipe.categories || []),
+          recipe.notes || '',
+        ]
+          .join(' ')
+          .toLowerCase(),
+      })),
+    [scopedRecipes],
+  )
+
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase().trim()
-    return scopedRecipes
-      .filter((recipe) => {
-        const matchesSearch =
-          !normalizedSearch ||
-          recipe.name.toLowerCase().includes(normalizedSearch) ||
-          (recipe.categories || []).some((cat) => cat.toLowerCase().includes(normalizedSearch)) ||
-          (recipe.notes || '').toLowerCase().includes(normalizedSearch)
-
-        const matchesCategory = !categoryFilter || (recipe.categories || []).includes(categoryFilter)
-        const matchesPinned = !showPinnedOnly || Boolean(recipe.pinned)
+    return scopedRecipeSearchIndex
+      .filter(({ searchText, categories, isPinned }) => {
+        const matchesSearch = !normalizedSearch || searchText.includes(normalizedSearch)
+        const matchesCategory = !categoryFilter || categories.includes(categoryFilter)
+        const matchesPinned = !showPinnedOnly || isPinned
         return matchesSearch && matchesCategory && matchesPinned
       })
+      .map(({ recipe }) => recipe)
       .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
-  }, [scopedRecipes, searchTerm, categoryFilter, showPinnedOnly])
+  }, [scopedRecipeSearchIndex, searchTerm, categoryFilter, showPinnedOnly])
+
+  const recipeCardViewModels = useMemo(
+    () =>
+      filteredRecipes.map((recipe) => {
+        const categories = recipe.categories || (recipe.category ? [recipe.category] : [])
+        const hasIngredients = Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0
+        const hasDirections = Array.isArray(recipe.directions) && recipe.directions.length > 0
+
+        return {
+          recipe,
+          categories,
+          hasIngredients,
+          hasDirections,
+          hasDetailedRecipe: hasIngredients || hasDirections,
+          recipeOriginBadges: getRecipeOriginBadges(recipe),
+          recipeProvenanceEntries: getRecipeProvenanceEntries(recipe),
+        }
+      }),
+    [filteredRecipes, recipeScope, authUser?.id, profileSummaries, profileUsername, profileDisplayName, profileAvatarUrl, groupSourceContext, selectedGroup?.name],
+  )
 
   const plannerRecipes = useMemo(
     () => [...recipes].sort((a, b) => a.name.localeCompare(b.name)),
@@ -1945,6 +1988,32 @@ function App() {
   const nearDuplicateShoppingGroups = useMemo(
     () => computeNearDuplicateShoppingGroups(filteredVisibleUnresolvedItems),
     [filteredVisibleUnresolvedItems],
+  )
+  const groupActivityViewModels = useMemo(
+    () =>
+      groupActivity.map((activity) => {
+        const activityPresentation = describeGroupActivityItem(activity)
+        const activityMeta = [activityPresentation.detail]
+        const identity = getIdentityProps({
+          userId: activity.actorUserId || activity.subjectUserId,
+          displayName: activity.actorDisplayName || activity.subjectDisplayName,
+          username: activity.actorUsername || activity.subjectUsername,
+          fallback: activity.actorUserId || activity.subjectUserId || 'Member',
+        })
+
+        if (activity.actorDisplayName || activity.actorUsername) {
+          activityMeta.push(`By ${activity.actorDisplayName || `@${activity.actorUsername}`}`)
+        }
+
+        return {
+          activity,
+          activityPresentation,
+          activityMeta: activityMeta.join(' · '),
+          identity,
+          relativeTime: formatRelativeTime(activity.occurredAt),
+        }
+      }),
+    [groupActivity, profileSummaries, profileUsername, profileDisplayName, profileAvatarUrl, authUser?.id],
   )
   const accountIdentityLabel = useMemo(() => {
     const displayName = profileDisplayName.trim()
@@ -6665,14 +6734,8 @@ function App() {
           {activeView === 'recipes' ? (
             filteredRecipes.length > 0 ? (
               <section className="recipe-grid">
-                {filteredRecipes.map((recipe) => {
-                  const categories = recipe.categories || (recipe.category ? [recipe.category] : [])
-                  const hasIngredients = Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0
-                  const hasDirections = Array.isArray(recipe.directions) && recipe.directions.length > 0
-                  const hasDetailedRecipe = hasIngredients || hasDirections
+                {recipeCardViewModels.map(({ recipe, categories, hasIngredients, hasDirections, hasDetailedRecipe, recipeOriginBadges, recipeProvenanceEntries }) => {
                   const canManage = canManageRecipe(recipe)
-                  const recipeOriginBadges = getRecipeOriginBadges(recipe)
-                  const recipeProvenanceEntries = getRecipeProvenanceEntries(recipe)
 
                   return (
                     <article
@@ -7608,18 +7671,7 @@ function App() {
                     ) : null}
                     {!groupActivityLoading && groupActivity.length > 0 ? (
                       <div className="group-activity-items">
-                        {groupActivity.map((activity) => {
-                          const activityPresentation = describeGroupActivityItem(activity)
-                          const activityMeta = [activityPresentation.detail]
-                          const identity = getIdentityProps({
-                            userId: activity.actorUserId || activity.subjectUserId,
-                            displayName: activity.actorDisplayName || activity.subjectDisplayName,
-                            username: activity.actorUsername || activity.subjectUsername,
-                            fallback: activity.actorUserId || activity.subjectUserId || 'Member',
-                          })
-                          if (activity.actorDisplayName || activity.actorUsername) {
-                            activityMeta.push(`By ${activity.actorDisplayName || `@${activity.actorUsername}`}`)
-                          }
+                        {groupActivityViewModels.map(({ activity, activityPresentation, activityMeta, identity, relativeTime }) => {
                           return (
                             <article key={activity.id} className="group-activity-item">
                               <div className="group-activity-identity">
@@ -7636,10 +7688,10 @@ function App() {
                               </div>
                               <div className="group-activity-content">
                                 <strong>{activityPresentation.title}</strong>
-                                <small>{activityMeta.join(' · ')}</small>
+                                <small>{activityMeta}</small>
                               </div>
                               <time className="group-activity-time" dateTime={activity.occurredAt || undefined}>
-                                {formatRelativeTime(activity.occurredAt)}
+                                {relativeTime}
                               </time>
                             </article>
                           )
