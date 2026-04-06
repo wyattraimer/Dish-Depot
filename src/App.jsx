@@ -1845,7 +1845,7 @@ function App() {
         key: group.key,
         label: group.text,
         detail: group.count > 1 ? `${group.count} lines merged` : 'Manual pantry item',
-        section: inferShoppingSection(group.text) || 'Manual Merge Items',
+        section: 'Manual Merge Items',
         kind: 'manual',
       }))
 
