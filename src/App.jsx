@@ -1870,13 +1870,22 @@ function App() {
     let data = null
     let error = null
 
-    const primaryResult = await supabase
-      .from('profiles')
-      .select(`id,${PROFILE_SELECT_FIELDS}`)
-      .in('id', ids)
+    const primaryResult = await supabase.rpc('get_profile_summaries', {
+      target_user_ids: ids,
+    })
 
     data = primaryResult.data
     error = primaryResult.error || null
+
+    if (error) {
+      const directResult = await supabase
+        .from('profiles')
+        .select(`id,${PROFILE_SELECT_FIELDS}`)
+        .in('id', ids)
+
+      data = directResult.data
+      error = directResult.error || null
+    }
 
     if (error && String(error.message || '').toLowerCase().includes('avatar_url')) {
       const fallbackResult = await supabase
