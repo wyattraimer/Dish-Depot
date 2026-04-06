@@ -2699,6 +2699,12 @@ body[data-theme='dark'] .header-tagline {
   color: var(--ink-900);
 }
 
+.shopping-list-ingredient-item span {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+}
+
 .shopping-list-recipe-item small {
   display: block;
   font-size: 0.74rem;
@@ -2708,6 +2714,25 @@ body[data-theme='dark'] .header-tagline {
 .shopping-list-item-checked {
   text-decoration: line-through;
   color: var(--ink-500);
+}
+
+.shopping-list-pantry-item {
+  background: rgba(248, 250, 252, 0.72);
+  border-color: rgba(114, 165, 138, 0.22);
+}
+
+.shopping-pantry-flag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 22px;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(114, 165, 138, 0.14);
+  border: 1px solid rgba(114, 165, 138, 0.2);
+  color: #3d7658;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .shopping-list-empty {
@@ -2746,10 +2771,59 @@ body[data-theme='dark'] .header-tagline {
   gap: 0.45rem;
 }
 
+.shopping-history-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.shopping-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  border: 1px solid rgba(90, 105, 122, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.6rem 0.68rem;
+}
+
+.shopping-pantry-entry {
+  background: rgba(244, 251, 246, 0.92);
+  border-color: rgba(114, 165, 138, 0.24);
+}
+
+.shopping-history-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.shopping-history-copy strong {
+  font-size: 0.86rem;
+  color: var(--ink-900);
+  line-height: 1.35;
+}
+
+.shopping-history-copy small {
+  font-size: 0.75rem;
+  color: var(--ink-500);
+  line-height: 1.4;
+}
+
+.shopping-history-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .shopping-builder-controls {
   display: grid;
   gap: 0.7rem;
   margin-bottom: 0.8rem;
+}
+
+.shopping-builder-hint {
+  margin-top: -0.15rem;
 }
 
 .shopping-panel {
@@ -2900,6 +2974,11 @@ body[data-theme='dark'] .header-tagline {
   flex-wrap: wrap;
   gap: 0.35rem;
   justify-content: flex-start;
+}
+
+.shopping-pantry-btn {
+  margin-left: auto;
+  align-self: center;
 }
 
 .form-group {

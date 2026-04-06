@@ -919,6 +919,7 @@ function isRunningStandalonePwa() {
 const AVATAR_SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 30
 const AVATAR_FALLBACK_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 const SHOPPING_LIST_DRAFT_KEY = 'dishdepot-shopping-list-draft-v1'
+const SHOPPING_LIST_HISTORY_KEY = 'dishdepot-shopping-list-history-v1'
 const CARD_SCAN_MAX_DIMENSION = 1800
 const CARD_SCAN_MIN_COMPRESSION_BYTES = 2.5 * 1024 * 1024
 
@@ -1480,6 +1481,8 @@ function App() {
   const [isShoppingListOpen, setIsShoppingListOpen] = useState(false)
   const [shoppingCandidates, setShoppingCandidates] = useState([])
   const [shoppingChecklist, setShoppingChecklist] = useState({})
+  const [shoppingPantry, setShoppingPantry] = useState({})
+  const [hidePantryItems, setHidePantryItems] = useState(false)
   const [shoppingUnitSystem, setShoppingUnitSystem] = useState('us')
   const [shoppingMergeSelection, setShoppingMergeSelection] = useState({})
   const [shoppingManualGroups, setShoppingManualGroups] = useState([])
@@ -1491,6 +1494,15 @@ function App() {
       return Boolean(localStorage.getItem(SHOPPING_LIST_DRAFT_KEY))
     } catch {
       return false
+    }
+  })
+  const [shoppingHistory, setShoppingHistory] = useState(() => {
+    try {
+      const raw = localStorage.getItem(SHOPPING_LIST_HISTORY_KEY)
+      const parsed = raw ? JSON.parse(raw) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
     }
   })
   const [isExtracting, setIsExtracting] = useState(false)
@@ -1778,6 +1790,68 @@ function App() {
     () => groupShoppingItemsBySection(shoppingManualGroups, (item) => item.text),
     [shoppingManualGroups],
   )
+  const visibleCombinedShoppingItems = useMemo(
+    () => combinedShoppingItems.filter((item) => !hidePantryItems || !shoppingPantry[item.key]),
+    [combinedShoppingItems, hidePantryItems, shoppingPantry],
+  )
+  const visibleGroupedCombinedShoppingItems = useMemo(
+    () => groupShoppingItemsBySection(visibleCombinedShoppingItems, (item) => item.amountLabel),
+    [visibleCombinedShoppingItems],
+  )
+  const filteredVisibleUnresolvedItems = useMemo(
+    () => visibleUnresolvedItems.filter((item) => !hidePantryItems || !shoppingPantry[item.key]),
+    [hidePantryItems, shoppingPantry, visibleUnresolvedItems],
+  )
+  const filteredGroupedVisibleUnresolvedItems = useMemo(
+    () => groupShoppingItemsBySection(filteredVisibleUnresolvedItems, (item) => item.text),
+    [filteredVisibleUnresolvedItems],
+  )
+  const visibleManualShoppingGroups = useMemo(
+    () => shoppingManualGroups.filter((group) => !hidePantryItems || !shoppingPantry[group.key]),
+    [hidePantryItems, shoppingManualGroups, shoppingPantry],
+  )
+  const visibleGroupedManualShoppingItems = useMemo(
+    () => groupShoppingItemsBySection(visibleManualShoppingGroups, (item) => item.text),
+    [visibleManualShoppingGroups],
+  )
+  const pantryItemCount = useMemo(
+    () => Object.values(shoppingPantry).filter(Boolean).length,
+    [shoppingPantry],
+  )
+  const pantryEntries = useMemo(() => {
+    const combinedEntries = combinedShoppingItems
+      .filter((item) => shoppingPantry[item.key])
+      .map((item) => ({
+        key: item.key,
+        label: item.amountLabel,
+        detail: item.sourceCount > 1 ? `${item.sourceCount} ingredient lines combined` : 'Combined total',
+        section: item.section || 'Pantry',
+        kind: 'combined',
+      }))
+
+    const unresolvedEntries = visibleUnresolvedItems
+      .filter((item) => shoppingPantry[item.key])
+      .map((item) => ({
+        key: item.key,
+        label: item.text,
+        detail: item.count > 1 ? `${item.count} recipes need review` : 'Needs review item',
+        section: item.section || 'Needs Review',
+        kind: 'unresolved',
+      }))
+
+    const manualEntries = shoppingManualGroups
+      .filter((group) => shoppingPantry[group.key])
+      .map((group) => ({
+        key: group.key,
+        label: group.text,
+        detail: group.count > 1 ? `${group.count} lines merged` : 'Manual pantry item',
+        section: inferShoppingSection(group.text) || 'Manual Merge Items',
+        kind: 'manual',
+      }))
+
+    return [...combinedEntries, ...unresolvedEntries, ...manualEntries]
+      .sort((a, b) => a.section.localeCompare(b.section) || a.label.localeCompare(b.label))
+  }, [combinedShoppingItems, shoppingManualGroups, shoppingPantry, visibleUnresolvedItems])
   const accountIdentityLabel = useMemo(() => {
     const displayName = profileDisplayName.trim()
     if (displayName) {
@@ -3228,15 +3302,25 @@ function App() {
 
   useEffect(() => {
     setShoppingChecklist((prev) => {
-      const validKeys = new Set([
-        ...combinedShoppingItems.map((item) => item.key),
-        ...visibleUnresolvedItems.map((item) => item.key),
-        ...shoppingManualGroups.map((group) => group.key),
-      ])
+    const validKeys = new Set([
+      ...combinedShoppingItems.map((item) => item.key),
+      ...visibleUnresolvedItems.map((item) => item.key),
+      ...shoppingManualGroups.map((group) => group.key),
+    ])
       const next = {}
       Object.entries(prev).forEach(([key, checked]) => {
         if (validKeys.has(key)) {
           next[key] = checked
+        }
+      })
+      return next
+    })
+
+    setShoppingPantry((prev) => {
+      const next = {}
+      Object.entries(prev).forEach(([key, value]) => {
+        if (validKeys.has(key)) {
+          next[key] = value
         }
       })
       return next
@@ -5430,6 +5514,8 @@ function App() {
 
     setShoppingCandidates(candidates)
     setShoppingChecklist({})
+    setShoppingPantry({})
+    setHidePantryItems(false)
     setShoppingMergeSelection({})
     setShoppingManualGroups([])
     setShoppingManualText('')
@@ -5446,6 +5532,8 @@ function App() {
     setIsShoppingListOpen(false)
     setShoppingCandidates([])
     setShoppingChecklist({})
+    setShoppingPantry({})
+    setHidePantryItems(false)
     setShoppingMergeSelection({})
     setShoppingManualGroups([])
     setShoppingManualText('')
@@ -5472,8 +5560,20 @@ function App() {
     }))
   }
 
+  function toggleShoppingPantryItem(itemKey) {
+    setShoppingPantry((prev) => ({
+      ...prev,
+      [itemKey]: !prev[itemKey],
+    }))
+  }
+
   function clearShoppingChecklist() {
     setShoppingChecklist({})
+  }
+
+  function clearShoppingPantry() {
+    setShoppingPantry({})
+    setHidePantryItems(false)
   }
 
   function toggleShoppingMergeSelection(itemKey) {
@@ -5531,6 +5631,11 @@ function App() {
   function splitManualMergeGroup(groupKey) {
     setShoppingManualGroups((prev) => prev.filter((group) => group.key !== groupKey))
     setShoppingChecklist((prev) => {
+      const next = { ...prev }
+      delete next[groupKey]
+      return next
+    })
+    setShoppingPantry((prev) => {
       const next = { ...prev }
       delete next[groupKey]
       return next
@@ -5595,25 +5700,31 @@ function App() {
     lines.push('Combined Totals:')
 
     combinedShoppingItems.forEach((item) => {
+      if (hidePantryItems && shoppingPantry[item.key]) {
+        return
+      }
       const mark = shoppingChecklist[item.key] ? '[x]' : '[ ]'
-      lines.push(`${mark} ${item.amountLabel}`)
+      const pantryLabel = shoppingPantry[item.key] ? ' [pantry]' : ''
+      lines.push(`${mark} ${item.amountLabel}${pantryLabel}`)
     })
 
-    if (visibleUnresolvedItems.length > 0) {
+    if (filteredVisibleUnresolvedItems.length > 0) {
       lines.push('')
       lines.push('Needs Review (not safely totaled):')
-      visibleUnresolvedItems.forEach((item) => {
+      filteredVisibleUnresolvedItems.forEach((item) => {
         const mark = shoppingChecklist[item.key] ? '[x]' : '[ ]'
-        lines.push(`${mark} ${item.text}${item.count > 1 ? ` (${item.count} recipes)` : ''}`)
+        const pantryLabel = shoppingPantry[item.key] ? ' [pantry]' : ''
+        lines.push(`${mark} ${item.text}${item.count > 1 ? ` (${item.count} recipes)` : ''}${pantryLabel}`)
       })
     }
 
-    if (shoppingManualGroups.length > 0) {
+    if (visibleManualShoppingGroups.length > 0) {
       lines.push('')
       lines.push('Manual Merge Items:')
-      shoppingManualGroups.forEach((group) => {
+      visibleManualShoppingGroups.forEach((group) => {
         const mark = shoppingChecklist[group.key] ? '[x]' : '[ ]'
-        lines.push(`${mark} ${group.text}${group.count > 1 ? ` (${group.count} lines)` : ''}`)
+        const pantryLabel = shoppingPantry[group.key] ? ' [pantry]' : ''
+        lines.push(`${mark} ${group.text}${group.count > 1 ? ` (${group.count} lines)` : ''}${pantryLabel}`)
       })
     }
 
@@ -5641,6 +5752,106 @@ function App() {
     }
   }
 
+  function buildShoppingHistoryLabel(candidates) {
+    const selectedNames = candidates
+      .filter((candidate) => candidate.selected)
+      .map((candidate) => candidate.recipe.name)
+
+    if (selectedNames.length === 0) {
+      return 'Untitled shopping list'
+    }
+
+    if (selectedNames.length === 1) {
+      return selectedNames[0]
+    }
+
+    if (selectedNames.length === 2) {
+      return `${selectedNames[0]} + ${selectedNames[1]}`
+    }
+
+    return `${selectedNames[0]} + ${selectedNames.length - 1} more`
+  }
+
+  function saveShoppingListToHistory() {
+    const selectedCount = shoppingCandidates.filter((candidate) => candidate.selected).length
+    if (selectedCount === 0) {
+      showMessage('Select at least one recipe before saving a shopping list.', 'error')
+      return
+    }
+
+    const snapshot = buildShoppingDraftSnapshot(shoppingCandidates)
+    const entry = {
+      id: `history:${Date.now()}:${Math.random().toString(16).slice(2)}`,
+      label: buildShoppingHistoryLabel(shoppingCandidates),
+      recipeCount: selectedCount,
+      totalCount: combinedShoppingItems.length,
+      unresolvedCount: visibleUnresolvedItems.length,
+      pantryCount: pantryItemCount,
+      snapshot,
+      savedAt: new Date().toISOString(),
+    }
+
+    setShoppingHistory((prev) => {
+      const next = [entry, ...prev].slice(0, 8)
+      try {
+        localStorage.setItem(SHOPPING_LIST_HISTORY_KEY, JSON.stringify(next))
+      } catch {
+        showMessage('Could not save shopping list history on this device.', 'info')
+        return prev
+      }
+      showMessage('Shopping list saved to history.', 'success')
+      return next
+    })
+  }
+
+  function applyShoppingSnapshot(snapshot) {
+    const selectedIds = new Set(Array.isArray(snapshot?.recipeIds) ? snapshot.recipeIds : [])
+    const candidates = recipes
+      .filter((recipe) => Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0)
+      .map((recipe) => ({
+        previewId: `shop-${recipe.id}`,
+        recipe,
+        selected: selectedIds.size === 0 ? false : selectedIds.has(recipe.id),
+      }))
+
+    if (candidates.length === 0) {
+      return false
+    }
+
+    setShoppingCandidates(candidates)
+    setShoppingChecklist(snapshot?.checklist && typeof snapshot.checklist === 'object' ? snapshot.checklist : {})
+    setShoppingPantry(snapshot?.pantry && typeof snapshot.pantry === 'object' ? snapshot.pantry : {})
+    setHidePantryItems(Boolean(snapshot?.hidePantryItems))
+    setShoppingUnitSystem(snapshot?.unitSystem === 'metric' ? 'metric' : 'us')
+    setShoppingMergeSelection(snapshot?.mergeSelection && typeof snapshot.mergeSelection === 'object' ? snapshot.mergeSelection : {})
+    setShoppingManualGroups(Array.isArray(snapshot?.manualGroups) ? snapshot.manualGroups : [])
+    setShoppingManualText(typeof snapshot?.manualText === 'string' ? snapshot.manualText : '')
+    setShoppingManualEditingKey(typeof snapshot?.manualEditingKey === 'string' ? snapshot.manualEditingKey : '')
+    setShoppingManualEditDraft(typeof snapshot?.manualEditDraft === 'string' ? snapshot.manualEditDraft : '')
+    setIsShoppingListOpen(true)
+    return true
+  }
+
+  function restoreShoppingHistoryEntry(entry) {
+    const didRestore = applyShoppingSnapshot(entry?.snapshot)
+    if (didRestore) {
+      showMessage(`Restored ${entry.label || 'saved shopping list'}.`, 'success')
+    }
+  }
+
+  function deleteShoppingHistoryEntry(entryId) {
+    setShoppingHistory((prev) => {
+      const next = prev.filter((entry) => entry.id !== entryId)
+      try {
+        localStorage.setItem(SHOPPING_LIST_HISTORY_KEY, JSON.stringify(next))
+      } catch {
+        showMessage('Could not update shopping list history on this device.', 'info')
+        return prev
+      }
+      return next
+    })
+  }
+
   function clearSavedShoppingDraft({ closeBuilder = false } = {}) {
     try {
       localStorage.removeItem(SHOPPING_LIST_DRAFT_KEY)
@@ -5657,6 +5868,8 @@ function App() {
   const buildShoppingDraftSnapshot = useCallback((candidates) => ({
     recipeIds: candidates.filter((candidate) => candidate.selected).map((candidate) => candidate.recipe.id),
     checklist: shoppingChecklist,
+    pantry: shoppingPantry,
+    hidePantryItems,
     unitSystem: shoppingUnitSystem,
     mergeSelection: shoppingMergeSelection,
     manualGroups: shoppingManualGroups,
@@ -5664,7 +5877,7 @@ function App() {
     manualEditingKey: shoppingManualEditingKey,
     manualEditDraft: shoppingManualEditDraft,
     savedAt: new Date().toISOString(),
-  }), [shoppingChecklist, shoppingManualEditDraft, shoppingManualEditingKey, shoppingManualGroups, shoppingManualText, shoppingMergeSelection, shoppingUnitSystem])
+  }), [hidePantryItems, shoppingChecklist, shoppingManualEditDraft, shoppingManualEditingKey, shoppingManualGroups, shoppingManualText, shoppingMergeSelection, shoppingPantry, shoppingUnitSystem])
 
   function restoreShoppingDraft() {
     try {
@@ -5674,28 +5887,10 @@ function App() {
       }
 
       const parsed = JSON.parse(raw)
-      const selectedIds = new Set(Array.isArray(parsed.recipeIds) ? parsed.recipeIds : [])
-      const candidates = recipes
-        .filter((recipe) => Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0)
-        .map((recipe) => ({
-          previewId: `shop-${recipe.id}`,
-          recipe,
-          selected: selectedIds.size === 0 ? false : selectedIds.has(recipe.id),
-        }))
-
-      if (candidates.length === 0) {
+      const didRestore = applyShoppingSnapshot(parsed)
+      if (!didRestore) {
         return false
       }
-
-      setShoppingCandidates(candidates)
-      setShoppingChecklist(parsed.checklist && typeof parsed.checklist === 'object' ? parsed.checklist : {})
-      setShoppingUnitSystem(parsed.unitSystem === 'metric' ? 'metric' : 'us')
-      setShoppingMergeSelection(parsed.mergeSelection && typeof parsed.mergeSelection === 'object' ? parsed.mergeSelection : {})
-      setShoppingManualGroups(Array.isArray(parsed.manualGroups) ? parsed.manualGroups : [])
-      setShoppingManualText(typeof parsed.manualText === 'string' ? parsed.manualText : '')
-      setShoppingManualEditingKey(typeof parsed.manualEditingKey === 'string' ? parsed.manualEditingKey : '')
-      setShoppingManualEditDraft(typeof parsed.manualEditDraft === 'string' ? parsed.manualEditDraft : '')
-      setIsShoppingListOpen(true)
       showMessage('Restored your last shopping list draft.', 'success')
       return true
     } catch {
@@ -7661,11 +7856,16 @@ function App() {
               <div className="shopping-list-meta-pills">
                 <span className="shopping-list-meta-pill">Recipes selected: {selectedShoppingCount}</span>
                 <span className="shopping-list-meta-pill">Combined items: {combinedShoppingItems.length}</span>
+                {pantryItemCount > 0 ? <span className="shopping-list-meta-pill">Pantry items: {pantryItemCount}</span> : null}
                 {hasSavedShoppingDraft ? <span className="shopping-list-meta-pill">Draft saved on this device</span> : null}
+                {shoppingHistory.length > 0 ? <span className="shopping-list-meta-pill">Saved lists: {shoppingHistory.length}</span> : null}
               </div>
               <div className="shopping-list-toolbar-actions">
                 <button className="btn btn-secondary btn-small" type="button" onClick={saveShoppingDraft}>
                   Save Draft
+                </button>
+                <button className="btn btn-secondary btn-small" type="button" onClick={saveShoppingListToHistory}>
+                  Save List
                 </button>
                 {hasSavedShoppingDraft ? (
                   <button className="btn btn-secondary btn-small" type="button" onClick={() => clearSavedShoppingDraft()}>
@@ -7685,6 +7885,9 @@ function App() {
                 </button>
                 <button className="btn btn-secondary btn-small" type="button" onClick={clearShoppingChecklist}>
                   Uncheck Items
+                </button>
+                <button className="btn btn-secondary btn-small" type="button" onClick={clearShoppingPantry}>
+                  Clear Pantry
                 </button>
                 <button className="btn btn-secondary btn-small" type="button" onClick={exportShoppingListText}>
                   Export List
@@ -7706,8 +7909,79 @@ function App() {
                 >
                   Metric Units
                 </button>
+                <button
+                  type="button"
+                  className={`btn btn-small ${hidePantryItems ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setHidePantryItems((prev) => !prev)}
+                >
+                  {hidePantryItems ? 'Show Pantry' : 'Hide Pantry'}
+                </button>
               </div>
+              <p className="shopping-panel-note shopping-builder-hint">
+                Mark any item with <strong>Have at Home</strong> to add it to pantry. Your pantry items appear in their own section below.
+              </p>
             </div>
+
+            {shoppingHistory.length > 0 ? (
+              <details className="shopping-panel">
+                <summary>Saved Lists ({shoppingHistory.length})</summary>
+                <p className="shopping-panel-note">Reuse a saved shopping setup without rebuilding it from scratch.</p>
+                <div className="shopping-history-list">
+                  {shoppingHistory.map((entry) => (
+                    <article key={entry.id} className="shopping-history-item">
+                      <div className="shopping-history-copy">
+                        <strong>{entry.label}</strong>
+                        <small>
+                          {entry.recipeCount} recipe{entry.recipeCount === 1 ? '' : 's'} · {entry.totalCount} combined item{entry.totalCount === 1 ? '' : 's'}
+                          {entry.unresolvedCount > 0 ? ` · ${entry.unresolvedCount} needs review` : ''}
+                          {entry.pantryCount > 0 ? ` · ${entry.pantryCount} pantry` : ''}
+                        </small>
+                        <small>Saved {formatRelativeTime(entry.savedAt)}</small>
+                      </div>
+                      <div className="shopping-history-actions">
+                        <button className="btn btn-small btn-secondary" type="button" onClick={() => restoreShoppingHistoryEntry(entry)}>
+                          Restore
+                        </button>
+                        <button className="btn btn-small btn-secondary" type="button" onClick={() => deleteShoppingHistoryEntry(entry.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+
+            <details className="shopping-panel" open={pantryEntries.length > 0}>
+              <summary>Pantry / Have at Home ({pantryEntries.length})</summary>
+              {pantryEntries.length > 0 ? (
+                <>
+                  <p className="shopping-panel-note">These are the items you marked as already available at home. Remove them here or use Hide Pantry to keep the active list focused.</p>
+                  <div className="shopping-history-list">
+                    {pantryEntries.map((entry) => (
+                      <article key={entry.key} className="shopping-history-item shopping-pantry-entry">
+                        <div className="shopping-history-copy">
+                          <strong>{entry.label}</strong>
+                          <small>{entry.section} · {entry.detail}</small>
+                        </div>
+                        <div className="shopping-history-actions">
+                          <button className="btn btn-small btn-secondary" type="button" onClick={() => toggleShoppingPantryItem(entry.key)}>
+                            Remove from Pantry
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <EmptyStateCard
+                  icon="fa-box-open"
+                  title="No pantry items yet"
+                  description="When you tap Have at Home on any ingredient, it will show up here so you can review or remove it later."
+                  compact
+                />
+              )}
+            </details>
 
             <div className="shopping-list-layout">
               <details className="shopping-panel" open>
@@ -7733,29 +8007,33 @@ function App() {
               </details>
 
               <details className="shopping-panel" open={selectedShoppingCount > 0}>
-                <summary>2. Combined Totals ({combinedShoppingItems.length})</summary>
-                <section className="shopping-list-ingredients">
-                  {combinedShoppingItems.length > 0 ? (
-                    <div className="shopping-group-sections">
-                      {groupedCombinedShoppingItems.map((group) => (
-                        <section key={group.section} className="shopping-group-section">
-                          <div className="shopping-group-heading">{group.section}</div>
-                          <div className="shopping-list-ingredient-items">
-                            {group.items.map((item) => (
-                              <label key={item.key} className="shopping-list-ingredient-item">
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(shoppingChecklist[item.key])}
-                                  onChange={() => toggleShoppingItemChecked(item.key)}
-                                />
-                                <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
-                                  {item.amountLabel}
-                                  {item.sourceCount > 1 ? ` (${item.sourceCount} lines)` : ''}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        </section>
+                 <summary>2. Combined Totals ({visibleCombinedShoppingItems.length})</summary>
+                 <section className="shopping-list-ingredients">
+                   {visibleCombinedShoppingItems.length > 0 ? (
+                     <div className="shopping-group-sections">
+                       {visibleGroupedCombinedShoppingItems.map((group) => (
+                         <section key={group.section} className="shopping-group-section">
+                           <div className="shopping-group-heading">{group.section}</div>
+                           <div className="shopping-list-ingredient-items">
+                             {group.items.map((item) => (
+                               <div key={item.key} className={`shopping-list-ingredient-item ${shoppingPantry[item.key] ? 'shopping-list-pantry-item' : ''}`}>
+                                 <input
+                                   type="checkbox"
+                                   checked={Boolean(shoppingChecklist[item.key])}
+                                   onChange={() => toggleShoppingItemChecked(item.key)}
+                                 />
+                                 <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
+                                   {item.amountLabel}
+                                   {item.sourceCount > 1 ? ` (${item.sourceCount} lines)` : ''}
+                                   {shoppingPantry[item.key] ? <small className="shopping-pantry-flag">Have at home</small> : null}
+                                 </span>
+                                 <button className="btn btn-secondary btn-small shopping-pantry-btn" type="button" onClick={() => toggleShoppingPantryItem(item.key)}>
+                                   {shoppingPantry[item.key] ? 'In Pantry' : 'Have at Home'}
+                                 </button>
+                               </div>
+                             ))}
+                           </div>
+                         </section>
                       ))}
                     </div>
                   ) : (
@@ -7769,9 +8047,9 @@ function App() {
                 </section>
               </details>
 
-              {visibleUnresolvedItems.length > 0 ? (
-                <details className="shopping-panel">
-                  <summary>3. Needs Review ({visibleUnresolvedItems.length})</summary>
+               {filteredVisibleUnresolvedItems.length > 0 ? (
+                 <details className="shopping-panel">
+                  <summary>3. Needs Review ({filteredVisibleUnresolvedItems.length})</summary>
                   <p className="shopping-panel-note">These ingredients could not be safely combined. You can check them off as-is or merge them manually.</p>
                   <div className="shopping-manual-tools">
                     <input
@@ -7786,12 +8064,12 @@ function App() {
                     </button>
                   </div>
                   <div className="shopping-group-sections">
-                    {groupedVisibleUnresolvedItems.map((group) => (
+                    {filteredGroupedVisibleUnresolvedItems.map((group) => (
                       <section key={group.section} className="shopping-group-section">
                         <div className="shopping-group-heading">{group.section}</div>
                         <div className="shopping-list-ingredient-items">
                           {group.items.map((item) => (
-                            <label key={item.key} className="shopping-list-ingredient-item shopping-list-unresolved-item">
+                            <div key={item.key} className={`shopping-list-ingredient-item shopping-list-unresolved-item ${shoppingPantry[item.key] ? 'shopping-list-pantry-item' : ''}`}>
                               <input
                                 type="checkbox"
                                 checked={Boolean(shoppingChecklist[item.key])}
@@ -7808,8 +8086,12 @@ function App() {
                               <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
                                 {item.text}
                                 {item.count > 1 ? ` (${item.count} recipes)` : ''}
+                                {shoppingPantry[item.key] ? <small className="shopping-pantry-flag">Have at home</small> : null}
                               </span>
-                            </label>
+                              <button className="btn btn-secondary btn-small shopping-pantry-btn" type="button" onClick={() => toggleShoppingPantryItem(item.key)}>
+                                {shoppingPantry[item.key] ? 'In Pantry' : 'Have at Home'}
+                              </button>
+                            </div>
                           ))}
                         </div>
                       </section>
@@ -7818,16 +8100,16 @@ function App() {
                 </details>
               ) : null}
 
-              {shoppingManualGroups.length > 0 ? (
-                <details className="shopping-panel">
-                  <summary>4. Manual Merge Items ({shoppingManualGroups.length})</summary>
+               {visibleManualShoppingGroups.length > 0 ? (
+                 <details className="shopping-panel">
+                  <summary>4. Manual Merge Items ({visibleManualShoppingGroups.length})</summary>
                   <div className="shopping-group-sections">
-                    {groupedManualShoppingItems.map((section) => (
+                    {visibleGroupedManualShoppingItems.map((section) => (
                       <section key={section.section} className="shopping-group-section">
                         <div className="shopping-group-heading">{section.section}</div>
                         <div className="shopping-list-ingredient-items">
                           {section.items.map((group) => (
-                            <div key={group.key} className="shopping-list-ingredient-item shopping-list-manual-item">
+                            <div key={group.key} className={`shopping-list-ingredient-item shopping-list-manual-item ${shoppingPantry[group.key] ? 'shopping-list-pantry-item' : ''}`}>
                               <input
                                 type="checkbox"
                                 checked={Boolean(shoppingChecklist[group.key])}
@@ -7847,8 +8129,16 @@ function App() {
                               )}
                               <span className="shopping-manual-item-count">
                                 {group.count > 1 ? `${group.count} lines` : '1 line'}
+                                {shoppingPantry[group.key] ? ' · Have at home' : ''}
                               </span>
                               <div className="shopping-manual-actions">
+                                <button
+                                  className="btn btn-small btn-secondary"
+                                  type="button"
+                                  onClick={() => toggleShoppingPantryItem(group.key)}
+                                >
+                                  {shoppingPantry[group.key] ? 'In Pantry' : 'Have at Home'}
+                                </button>
                                 {shoppingManualEditingKey === group.key ? (
                                   <>
                                     <button
