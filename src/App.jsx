@@ -917,6 +917,7 @@ function isRunningStandalonePwa() {
 }
 
 const AVATAR_SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 30
+const AVATAR_FALLBACK_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 const SHOPPING_LIST_DRAFT_KEY = 'dishdepot-shopping-list-draft-v1'
 const CARD_SCAN_MAX_DIMENSION = 1800
 const CARD_SCAN_MIN_COMPRESSION_BYTES = 2.5 * 1024 * 1024
@@ -1016,6 +1017,22 @@ async function resolveAvatarDisplayUrl(value) {
   }
 
   return /^https?:\/\//i.test(trimmed) ? trimmed : ''
+}
+
+async function resolveAvatarDisplayUrlForUserId(userId) {
+  if (!isUuidLike(userId) || !hasSupabaseConfig || !supabase) {
+    return ''
+  }
+
+  for (const extension of AVATAR_FALLBACK_EXTENSIONS) {
+    const storagePath = `${userId}/avatar.${extension}`
+    const { data, error } = await supabase.storage.from('avatars').createSignedUrl(storagePath, AVATAR_SIGNED_URL_TTL_SECONDS)
+    if (!error && data?.signedUrl) {
+      return data.signedUrl
+    }
+  }
+
+  return ''
 }
 
 function FloatingControls({
@@ -1872,7 +1889,42 @@ function App() {
     }
 
     if (error) {
-      return cachedEntries
+      const fallbackProfiles = await Promise.all(
+        ids.map(async (id) => ({
+          id,
+          username: cachedEntries[id]?.username || '',
+          displayName: cachedEntries[id]?.displayName || '',
+          avatarUrl: await resolveAvatarDisplayUrlForUserId(id),
+        })),
+      )
+
+      const validFallbackProfiles = fallbackProfiles.filter((profile) => profile.avatarUrl)
+      if (validFallbackProfiles.length === 0) {
+        return cachedEntries
+      }
+
+      setProfileSummaries((prev) => {
+        const next = { ...prev }
+        validFallbackProfiles.forEach((profile) => {
+          next[profile.id] = {
+            username: profile.username || next[profile.id]?.username || '',
+            displayName: profile.displayName || next[profile.id]?.displayName || '',
+            avatarUrl: profile.avatarUrl,
+          }
+        })
+        return next
+      })
+
+      return {
+        ...cachedEntries,
+        ...Object.fromEntries(
+          validFallbackProfiles.map((profile) => [profile.id, {
+            username: profile.username || cachedEntries[profile.id]?.username || '',
+            displayName: profile.displayName || cachedEntries[profile.id]?.displayName || '',
+            avatarUrl: profile.avatarUrl,
+          }]),
+        ),
+      }
     }
 
     if (Array.isArray(data) && data.length > 0) {
@@ -1883,16 +1935,28 @@ function App() {
             id: row.id,
             username: row.username || '',
             displayName: row.display_name || '',
-            avatarUrl: await resolveAvatarDisplayUrl(row.avatar_url || ''),
+            avatarUrl: (await resolveAvatarDisplayUrl(row.avatar_url || '')) || (await resolveAvatarDisplayUrlForUserId(row.id)),
           })),
       )
 
+      const unresolvedIds = ids.filter((id) => !resolvedProfiles.some((profile) => profile.id === id))
+      const probedProfiles = await Promise.all(
+        unresolvedIds.map(async (id) => ({
+          id,
+          username: '',
+          displayName: '',
+          avatarUrl: await resolveAvatarDisplayUrlForUserId(id),
+        })),
+      )
+
+      const allResolvedProfiles = [...resolvedProfiles, ...probedProfiles.filter((profile) => profile.avatarUrl)]
+
       setProfileSummaries((prev) => {
         const next = { ...prev }
-        resolvedProfiles.forEach((profile) => {
+        allResolvedProfiles.forEach((profile) => {
           next[profile.id] = {
-            username: profile.username,
-            displayName: profile.displayName,
+            username: profile.username || next[profile.id]?.username || '',
+            displayName: profile.displayName || next[profile.id]?.displayName || '',
             avatarUrl: profile.avatarUrl,
           }
         })
@@ -1902,9 +1966,9 @@ function App() {
       return {
         ...cachedEntries,
         ...Object.fromEntries(
-          resolvedProfiles.map((profile) => [profile.id, {
-            username: profile.username,
-            displayName: profile.displayName,
+          allResolvedProfiles.map((profile) => [profile.id, {
+            username: profile.username || cachedEntries[profile.id]?.username || '',
+            displayName: profile.displayName || cachedEntries[profile.id]?.displayName || '',
             avatarUrl: profile.avatarUrl,
           }]),
         ),
