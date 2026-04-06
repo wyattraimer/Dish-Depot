@@ -1300,12 +1300,12 @@ function buildIdentityInitials(...parts) {
   return initials || source.slice(0, 2).toUpperCase()
 }
 
-function IdentityAvatar({ displayName = '', username = '', fallback = '', tone = 'default' }) {
+function IdentityAvatar({ displayName = '', username = '', fallback = '', tone = 'default', avatarUrl = '' }) {
   const initials = buildIdentityInitials(displayName, username, fallback)
 
   return (
     <span className={`identity-avatar identity-avatar-${tone}`} aria-hidden="true">
-      {initials}
+      {avatarUrl ? <img className="identity-avatar-image" src={avatarUrl} alt="" /> : initials}
     </span>
   )
 }
@@ -1316,6 +1316,7 @@ function IdentityBlock({
   fallback = 'Dish Depot user',
   meta = '',
   tone = 'default',
+  avatarUrl = '',
 }) {
   const hasDisplayName = Boolean(displayName)
   const hasUsername = Boolean(username)
@@ -1336,7 +1337,7 @@ function IdentityBlock({
 
   return (
     <div className="identity-block">
-      <IdentityAvatar displayName={displayName} username={username} fallback={fallback} tone={tone} />
+      <IdentityAvatar displayName={displayName} username={username} fallback={fallback} tone={tone} avatarUrl={avatarUrl} />
       <div className="identity-copy">
         <strong>{primary}</strong>
         {secondaryParts.length > 0 ? <small>{secondaryParts.join(' · ')}</small> : null}
@@ -1548,10 +1549,22 @@ function App() {
       return {
         username: profileUsername,
         displayName: profileDisplayName,
+        avatarUrl: profileAvatarUrl,
       }
     }
 
     return profileSummaries[userId] || null
+  }
+
+  function getIdentityProps({ userId = '', displayName = '', username = '', avatarUrl = '', fallback = 'Dish Depot user' } = {}) {
+    const summary = userId ? getUserSummary(userId) : null
+
+    return {
+      displayName: displayName || summary?.displayName || '',
+      username: username || summary?.username || '',
+      avatarUrl: avatarUrl || summary?.avatarUrl || '',
+      fallback,
+    }
   }
 
   function getCollaboratorLabel(userId, fallback = 'A member') {
@@ -1816,37 +1829,84 @@ function App() {
 
   const loadProfileSummaries = useCallback(async (userIds) => {
     if (!hasSupabaseConfig || !supabase) {
-      return
+      return {}
     }
 
-    const ids = [...new Set((userIds || []).filter((id) => isUuidLike(id) && !profileSummaries[id]))]
+    const requestedIds = [...new Set((userIds || []).filter((id) => isUuidLike(id)))]
+    const cachedEntries = Object.fromEntries(
+      requestedIds
+        .filter((id) => profileSummaries[id])
+        .map((id) => [id, profileSummaries[id]]),
+    )
+
+    const ids = requestedIds.filter((id) => !profileSummaries[id])
     if (ids.length === 0) {
-      return
+      return cachedEntries
     }
 
-    const { data, error } = await supabase.rpc('get_profile_summaries', {
-      target_user_ids: ids,
-    })
+    let data = null
+    let error = null
+
+    const primaryResult = await supabase
+      .from('profiles')
+      .select(`id,${PROFILE_SELECT_FIELDS}`)
+      .in('id', ids)
+
+    data = primaryResult.data
+    error = primaryResult.error || null
+
+    if (error && String(error.message || '').toLowerCase().includes('avatar_url')) {
+      const fallbackResult = await supabase
+        .from('profiles')
+        .select('id,display_name,username')
+        .in('id', ids)
+
+      data = fallbackResult.data
+      error = fallbackResult.error || null
+    }
 
     if (error) {
-      return
+      return cachedEntries
     }
 
     if (Array.isArray(data) && data.length > 0) {
+      const resolvedProfiles = await Promise.all(
+        data
+          .filter((row) => row?.id)
+          .map(async (row) => ({
+            id: row.id,
+            username: row.username || '',
+            displayName: row.display_name || '',
+            avatarUrl: await resolveAvatarDisplayUrl(row.avatar_url || ''),
+          })),
+      )
+
       setProfileSummaries((prev) => {
         const next = { ...prev }
-        data.forEach((row) => {
-          if (row?.id) {
-            next[row.id] = {
-              username: row.username || '',
-              displayName: row.display_name || '',
-            }
+        resolvedProfiles.forEach((profile) => {
+          next[profile.id] = {
+            username: profile.username,
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
           }
         })
         return next
       })
+
+      return {
+        ...cachedEntries,
+        ...Object.fromEntries(
+          resolvedProfiles.map((profile) => [profile.id, {
+            username: profile.username,
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
+          }]),
+        ),
+      }
     }
-  }, [profileSummaries])
+
+    return cachedEntries
+  }, [profileSummaries, profileAvatarUrl, profileDisplayName, profileUsername])
 
   function getRecipeOriginBadges(recipe) {
     const badges = []
@@ -2629,7 +2689,7 @@ function App() {
           return
         }
 
-        const invites = Array.isArray(data)
+      const invites = Array.isArray(data)
           ? data.map((row) => ({
               id: row.id,
               groupId: row.group_id,
@@ -2643,6 +2703,8 @@ function App() {
               groupName: row.group_name || 'Group',
             }))
           : []
+
+        await loadProfileSummaries(invites.map((invite) => invite.invitedBy))
 
         setPendingGroupInvites(invites)
       } finally {
@@ -3467,6 +3529,8 @@ function App() {
             }))
         : []
 
+      await loadProfileSummaries(mappedMembers.map((member) => member.userId))
+
       setGroupMembers(mappedMembers)
     } finally {
       setGroupMembersLoading(false)
@@ -3504,6 +3568,8 @@ function App() {
             invitedDisplayName: row.invited_display_name || '',
           }))
         : []
+
+      await loadProfileSummaries(invites.map((invite) => invite.invitedUserId))
 
       setGroupPendingInvites(invites)
     } finally {
@@ -3547,6 +3613,8 @@ function App() {
             role: row.role || '',
           }))
         : []
+
+      await loadProfileSummaries(activity.flatMap((item) => [item.actorUserId, item.subjectUserId]))
 
       setGroupActivity(activity)
     } finally {
@@ -3714,7 +3782,15 @@ function App() {
             }))
         : []
 
-      setGroupInviteResults(normalized)
+      const summaries = await loadProfileSummaries(normalized.map((row) => row.id))
+
+      setGroupInviteResults(
+        normalized.map((row) => ({
+          ...row,
+          avatarUrl: summaries[row.id]?.avatarUrl || '',
+        })),
+      )
+
       if (normalized.length === 0) {
         showMessage('No new users found for that username.', 'info')
       }
@@ -4068,34 +4144,17 @@ function App() {
       const rows = Array.isArray(shareRows) ? shareRows : []
       const ids = [...new Set(rows.map((row) => row.shared_with_user_id).filter((id) => isUuidLike(id)))]
 
-      let profileMap = new Map()
-      if (ids.length > 0) {
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('id,username,display_name')
-          .in('id', ids)
-
-        if (!profileError && Array.isArray(profiles)) {
-          profileMap = new Map(
-            profiles.map((profile) => [
-              profile.id,
-              {
-                username: profile.username || '',
-                displayName: profile.display_name || '',
-              },
-            ]),
-          )
-        }
-      }
+      const profileMap = ids.length > 0 ? await loadProfileSummaries(ids) : {}
 
       const normalized = rows
         .map((row) => {
-          const profile = profileMap.get(row.shared_with_user_id)
+          const profile = profileMap[row.shared_with_user_id]
           return {
             userId: row.shared_with_user_id,
             canEdit: Boolean(row.can_edit),
             username: profile?.username || '',
             displayName: profile?.displayName || '',
+            avatarUrl: profile?.avatarUrl || '',
           }
         })
         .sort((a, b) => {
@@ -4178,7 +4237,14 @@ function App() {
             }))
         : []
 
-      setShareResults(normalized)
+      const summaries = await loadProfileSummaries(normalized.map((row) => row.id))
+
+      setShareResults(
+        normalized.map((row) => ({
+          ...row,
+          avatarUrl: summaries[row.id]?.avatarUrl || '',
+        })),
+      )
 
       if (normalized.length === 0) {
         showMessage('No users found with that username.', 'info')
@@ -6916,15 +6982,19 @@ function App() {
 
                   {groupInviteResults.length > 0 ? (
                     <div className="share-results" aria-label="Group invite results">
-                      {groupInviteResults.map((result) => (
-                        <div key={result.id} className="share-result-item">
-                          <div>
-                            <strong>{result.username ? `@${result.username}` : result.displayName || result.id}</strong>
-                            <small>{result.displayName || 'No display name set'}</small>
-                          </div>
-                          <button className="btn btn-secondary" type="button" onClick={() => void addUserToSelectedGroup(result)} disabled={!canAdminSelectedGroup || groupBusy}>
-                            Send Invite
-                          </button>
+                        {groupInviteResults.map((result) => (
+                          <div key={result.id} className="share-result-item">
+                            <IdentityBlock
+                              displayName={result.displayName}
+                              username={result.username}
+                              avatarUrl={result.avatarUrl}
+                              fallback={result.id || 'Dish Depot user'}
+                              meta="Ready to invite"
+                              tone="search"
+                            />
+                            <button className="btn btn-secondary" type="button" onClick={() => void addUserToSelectedGroup(result)} disabled={!canAdminSelectedGroup || groupBusy}>
+                              Send Invite
+                            </button>
                         </div>
                       ))}
                     </div>
@@ -6948,9 +7018,12 @@ function App() {
                         {groupPendingInvites.map((invite) => (
                           <div key={invite.id} className="share-existing-item">
                             <IdentityBlock
-                              displayName={invite.invitedDisplayName}
-                              username={invite.invitedUsername}
-                              fallback={invite.invitedUserId || 'Invited member'}
+                              {...getIdentityProps({
+                                userId: invite.invitedUserId,
+                                displayName: invite.invitedDisplayName,
+                                username: invite.invitedUsername,
+                                fallback: invite.invitedUserId || 'Invited member',
+                              })}
                               meta={`${GROUP_ROLE_LABELS[invite.role] || invite.role} · ${formatInviteExpiry(invite.expiresAt)}`}
                               tone="invite"
                             />
@@ -6986,9 +7059,12 @@ function App() {
                         {groupMembers.map((member) => (
                           <div key={member.userId} className="share-existing-item">
                             <IdentityBlock
-                              displayName={member.displayName}
-                              username={member.username}
-                              fallback={member.userId === authUser?.id ? 'You' : member.userId}
+                              {...getIdentityProps({
+                                userId: member.userId,
+                                displayName: member.displayName,
+                                username: member.username,
+                                fallback: member.userId === authUser?.id ? 'You' : member.userId,
+                              })}
                               meta={`${GROUP_ROLE_LABELS[member.role] || member.role}${member.userId === authUser?.id ? ' · You' : ''}`}
                               tone={member.userId === authUser?.id ? 'self' : 'member'}
                             />
@@ -7039,6 +7115,12 @@ function App() {
                         {groupActivity.map((activity) => {
                           const activityPresentation = describeGroupActivityItem(activity)
                           const activityMeta = [activityPresentation.detail]
+                          const identity = getIdentityProps({
+                            userId: activity.actorUserId || activity.subjectUserId,
+                            displayName: activity.actorDisplayName || activity.subjectDisplayName,
+                            username: activity.actorUsername || activity.subjectUsername,
+                            fallback: activity.actorUserId || activity.subjectUserId || 'Member',
+                          })
                           if (activity.actorDisplayName || activity.actorUsername) {
                             activityMeta.push(`By ${activity.actorDisplayName || `@${activity.actorUsername}`}`)
                           }
@@ -7046,9 +7128,10 @@ function App() {
                             <article key={activity.id} className="group-activity-item">
                               <div className="group-activity-identity">
                                 <IdentityAvatar
-                                  displayName={activity.actorDisplayName || activity.subjectDisplayName}
-                                  username={activity.actorUsername || activity.subjectUsername}
-                                  fallback={activity.actorUserId || activity.subjectUserId || 'Member'}
+                                  displayName={identity.displayName}
+                                  username={identity.username}
+                                  avatarUrl={identity.avatarUrl}
+                                  fallback={identity.fallback}
                                   tone="activity"
                                 />
                                 <span className="group-activity-type-badge" aria-hidden="true">
@@ -7109,12 +7192,15 @@ function App() {
             {!groupInvitesLoading && pendingGroupInvites.length > 0 ? (
               <div className="share-existing-list" aria-label="Pending group invites">
                 {pendingGroupInvites.map((invite) => (
-                    <div key={invite.id} className="share-existing-item">
-                      <div className="share-existing-item-shell">
+                  <div key={invite.id} className="share-existing-item">
+                    <div className="share-existing-item-shell">
                         <IdentityBlock
-                          displayName={invite.inviterDisplayName}
-                          username={invite.inviterUsername}
-                          fallback="Group invite"
+                          {...getIdentityProps({
+                            userId: invite.invitedBy,
+                            displayName: invite.inviterDisplayName,
+                            username: invite.inviterUsername,
+                            fallback: 'Group invite',
+                          })}
                           meta={`Invited you to ${invite.groupName || 'Group'}`}
                           tone="invite"
                         />
@@ -7126,9 +7212,9 @@ function App() {
                           <small>Sent: {formatInviteTimestamp(invite.createdAt)}</small>
                         </div>
                       </div>
-                      <div className="share-existing-actions">
-                        <button className="btn btn-secondary" type="button" onClick={() => void acceptPendingGroupInvite(invite)} disabled={groupInvitesLoading}>
-                          Accept
+                    <div className="share-existing-actions">
+                      <button className="btn btn-secondary" type="button" onClick={() => void acceptPendingGroupInvite(invite)} disabled={groupInvitesLoading}>
+                        Accept
                       </button>
                       <button className="btn btn-danger" type="button" onClick={() => void declinePendingGroupInvite(invite)} disabled={groupInvitesLoading}>
                         Decline
@@ -7191,6 +7277,7 @@ function App() {
                         <IdentityBlock
                           displayName={result.displayName}
                           username={result.username}
+                          avatarUrl={result.avatarUrl}
                           fallback="Dish Depot user"
                           meta="Ready to share"
                           tone="search"
@@ -7231,6 +7318,7 @@ function App() {
                         <IdentityBlock
                           displayName={recipient.displayName}
                           username={recipient.username}
+                          avatarUrl={recipient.avatarUrl}
                           fallback={recipient.userId || 'Shared user'}
                           meta={recipient.canEdit ? 'Can edit this recipe' : 'View only'}
                           tone={recipient.canEdit ? 'editable' : 'default'}
