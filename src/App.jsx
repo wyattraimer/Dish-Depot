@@ -1284,6 +1284,82 @@ function buildExtractFieldReview(extractCandidate, extractWarnings) {
   }
 }
 
+function buildIdentityInitials(...parts) {
+  const source = parts
+    .filter(Boolean)
+    .join(' ')
+    .replace(/[@_-]+/g, ' ')
+    .trim()
+
+  if (!source) {
+    return 'DD'
+  }
+
+  const words = source.split(/\s+/).filter(Boolean)
+  const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase() || '').join('')
+  return initials || source.slice(0, 2).toUpperCase()
+}
+
+function IdentityAvatar({ displayName = '', username = '', fallback = '', tone = 'default' }) {
+  const initials = buildIdentityInitials(displayName, username, fallback)
+
+  return (
+    <span className={`identity-avatar identity-avatar-${tone}`} aria-hidden="true">
+      {initials}
+    </span>
+  )
+}
+
+function IdentityBlock({
+  displayName = '',
+  username = '',
+  fallback = 'Dish Depot user',
+  meta = '',
+  tone = 'default',
+}) {
+  const hasDisplayName = Boolean(displayName)
+  const hasUsername = Boolean(username)
+  const primary = hasDisplayName ? displayName : hasUsername ? `@${username}` : fallback
+  const secondaryParts = []
+
+  if (hasDisplayName && hasUsername) {
+    secondaryParts.push(`@${username}`)
+  } else if (!hasDisplayName && !hasUsername && fallback) {
+    secondaryParts.push(fallback)
+  } else if (!hasDisplayName && hasUsername) {
+    secondaryParts.push('Dish Depot member')
+  }
+
+  if (meta) {
+    secondaryParts.push(meta)
+  }
+
+  return (
+    <div className="identity-block">
+      <IdentityAvatar displayName={displayName} username={username} fallback={fallback} tone={tone} />
+      <div className="identity-copy">
+        <strong>{primary}</strong>
+        {secondaryParts.length > 0 ? <small>{secondaryParts.join(' · ')}</small> : null}
+      </div>
+    </div>
+  )
+}
+
+function EmptyStateCard({ icon, title, description, action = null, compact = false }) {
+  return (
+    <div className={`empty-state-card${compact ? ' empty-state-card-compact' : ''}`}>
+      <div className="empty-state-icon" aria-hidden="true">
+        <i className={`fas ${icon}`} />
+      </div>
+      <div className="empty-state-copy">
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+      {action ? <div className="empty-state-actions">{action}</div> : null}
+    </div>
+  )
+}
+
 function App() {
   const [recipes, setRecipes] = useState(() => {
     try {
@@ -3594,7 +3670,7 @@ function App() {
       setSelectedGroupId(groupRow.id)
       setRecipeScope('group')
       setGroupNameDraft('')
-      showMessage(`Group "${groupRow.name}" created.`, 'success')
+      showMessage(`Group "${groupRow.name}" created. Invite members or add a recipe to get started.`, 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -3694,7 +3770,7 @@ function App() {
       setGroupInviteResults((prev) => prev.filter((row) => row.id !== recipient.id))
       await loadSelectedGroupPendingInvites(selectedGroupId)
       await loadSelectedGroupActivity(selectedGroupId)
-      showMessage('Invite sent. The user can choose to join from their invite list.', 'success')
+      showMessage('Invite sent. They can join from their invite list after signing in.', 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -3941,7 +4017,7 @@ function App() {
       setSelectedGroupId(acceptedGroupId)
       setRecipeScope('group')
 
-      showMessage(`Joined ${acceptedGroupName}.`, 'success')
+      showMessage(`Joined ${acceptedGroupName}. You can now browse or add group recipes.`, 'success')
     } finally {
       setGroupInvitesLoading(false)
     }
@@ -4143,7 +4219,7 @@ function App() {
       }
 
       const targetLabel = recipient.username ? `@${recipient.username}` : recipient.displayName || 'recipient'
-      showMessage(`Recipe shared with ${targetLabel}.`, 'success')
+      showMessage(`Recipe shared with ${targetLabel}. They will see it in Shared With Me.`, 'success')
       setShareLookupText('')
       setShareResults([])
       await loadShareRecipients(shareTargetRecipe.id)
@@ -6292,41 +6368,89 @@ function App() {
               </section>
             ) : (
               <section className="no-recipes">
-                <i className="fas fa-cookie-bite" />
-                <h2>
-                  {recipeScope === 'shared'
-                    ? 'No shared recipes yet'
-                    : recipeScope === 'group'
-                      ? groups.length === 0
-                        ? 'No groups yet'
-                        : 'No group recipes yet'
-                      : recipes.length > 0
-                        ? 'No recipes found'
-                        : 'No recipes yet!'}
-                </h2>
-                <p>
-                  {recipeScope === 'shared'
-                    ? 'No one has shared a recipe with you yet. Shared recipes will appear here.'
-                    : recipeScope === 'group'
-                      ? groups.length === 0
-                        ? 'Create your first group to start collaborating with family, friends, or event teams.'
-                        : 'This group has no contributed recipes yet. Add one from any recipe card.'
-                      : recipes.length > 0
-                        ? 'Try adjusting your search terms.'
-                        : 'Start building your collection by adding your favorite recipe websites.'}
-                </p>
-                {recipeScope === 'group' && groups.length === 0 ? (
-                  <button className="btn btn-primary" type="button" onClick={() => void openGroupModal()}>
-                    <i className="fas fa-users" />
-                    Create Your First Group
-                  </button>
-                ) : null}
-                {recipeScope !== 'shared' && recipeScope !== 'group' && recipes.length === 0 ? (
-                  <button className="btn btn-primary" type="button" onClick={() => openModal()}>
-                    <i className="fas fa-plus" />
-                    Add Your First Recipe
-                  </button>
-                ) : null}
+                {recipeScope === 'shared' ? (
+                  <EmptyStateCard
+                    icon="fa-share-nodes"
+                    title="No shared recipes yet"
+                    description="When someone shares a recipe with you, it will appear here with the right editing permissions."
+                    action={
+                      <button className="btn btn-secondary" type="button" onClick={() => setRecipeScope('mine')}>
+                        <i className="fas fa-utensils" />
+                        Back to My Recipes
+                      </button>
+                    }
+                  />
+                ) : recipeScope === 'group' ? (
+                  groups.length === 0 ? (
+                    <EmptyStateCard
+                      icon="fa-users"
+                      title="No groups yet"
+                      description="Create a group to share recipes with family, friends, or event teams. Once it exists, you can invite members and start contributing recipes together."
+                      action={
+                        <button className="btn btn-primary" type="button" onClick={() => void openGroupModal()}>
+                          <i className="fas fa-users" />
+                          Create Your First Group
+                        </button>
+                      }
+                    />
+                  ) : (
+                    <EmptyStateCard
+                      icon="fa-book-open"
+                      title="No group recipes yet"
+                      description={`Nothing has been added to ${selectedGroup?.name || 'this group'} yet. Add an existing recipe or create a new one, then share it with the group.`}
+                      action={
+                        <div className="empty-state-action-row">
+                          <button className="btn btn-primary" type="button" onClick={() => openModal()}>
+                            <i className="fas fa-plus" />
+                            Add a Recipe
+                          </button>
+                          <button className="btn btn-secondary" type="button" onClick={() => void openGroupModal()}>
+                            <i className="fas fa-users-gear" />
+                            Manage Group
+                          </button>
+                        </div>
+                      }
+                    />
+                  )
+                ) : recipes.length > 0 ? (
+                  <EmptyStateCard
+                    icon="fa-magnifying-glass"
+                    title="No recipes found"
+                    description="Try changing your search terms, clearing the category filter, or switching off pinned-only mode."
+                    action={
+                      <button
+                        className="btn btn-secondary"
+                        type="button"
+                        onClick={() => {
+                          setSearchTerm('')
+                          setCategoryFilter('')
+                          setShowPinnedOnly(false)
+                        }}
+                      >
+                        <i className="fas fa-rotate-left" />
+                        Clear Filters
+                      </button>
+                    }
+                  />
+                ) : (
+                  <EmptyStateCard
+                    icon="fa-cookie-bite"
+                    title="No recipes yet"
+                    description="Start your collection with a recipe link, a scanned card, or a custom family favorite. Dish Depot will help you organize the rest."
+                    action={
+                      <div className="empty-state-action-row">
+                        <button className="btn btn-primary" type="button" onClick={() => openModal()}>
+                          <i className="fas fa-plus" />
+                          Add Your First Recipe
+                        </button>
+                        <button className="btn btn-secondary" type="button" onClick={() => setIsWelcomeModalOpen(true)}>
+                          <i className="fas fa-circle-info" />
+                          See What Dish Depot Can Do
+                        </button>
+                      </div>
+                    }
+                  />
+                )}
               </section>
             )
           ) : (
@@ -6339,7 +6463,18 @@ function App() {
                 </button>
               </div>
               {plannerRecipes.length === 0 ? (
-                <p className="meal-planner-empty">Add at least one recipe before building your meal plan.</p>
+                <EmptyStateCard
+                  icon="fa-calendar-plus"
+                  title="Your meal plan starts with recipes"
+                  description="Add at least one recipe first, then you can drop it into breakfast, lunch, or dinner for the week."
+                  action={
+                    <button className="btn btn-primary" type="button" onClick={() => setActiveView('recipes')}>
+                      <i className="fas fa-arrow-left" />
+                      Go to Recipes
+                    </button>
+                  }
+                  compact
+                />
               ) : null}
               <div className="meal-planner-grid">
                 {MEAL_DAYS.map((day) => (
@@ -6800,17 +6935,25 @@ function App() {
                   <summary>Pending Invites</summary>
                   <section className="share-existing" aria-label="Pending invites for selected group">
                     {groupInvitesLoading ? <p className="share-empty">Loading pending invites...</p> : null}
-                    {!groupInvitesLoading && groupPendingInvites.length === 0 ? <p className="share-empty">No pending invites.</p> : null}
+                    {!groupInvitesLoading && groupPendingInvites.length === 0 ? (
+                      <EmptyStateCard
+                        icon="fa-paper-plane"
+                        title="No pending invites"
+                        description="Invite someone by username to bring collaborators into this group. New invites will appear here until they are accepted or canceled."
+                        compact
+                      />
+                    ) : null}
                     {!groupInvitesLoading && groupPendingInvites.length > 0 ? (
                       <div className="share-existing-list">
                         {groupPendingInvites.map((invite) => (
                           <div key={invite.id} className="share-existing-item">
-                            <div>
-                              <strong>{invite.invitedDisplayName || (invite.invitedUsername ? `@${invite.invitedUsername}` : invite.invitedUserId)}</strong>
-                              <small>
-                                {invite.invitedUsername ? `@${invite.invitedUsername}` : 'No username set'} · {invite.role} · {formatInviteExpiry(invite.expiresAt)}
-                              </small>
-                            </div>
+                            <IdentityBlock
+                              displayName={invite.invitedDisplayName}
+                              username={invite.invitedUsername}
+                              fallback={invite.invitedUserId || 'Invited member'}
+                              meta={`${GROUP_ROLE_LABELS[invite.role] || invite.role} · ${formatInviteExpiry(invite.expiresAt)}`}
+                              tone="invite"
+                            />
                             <div className="share-existing-actions">
                               <button className="btn btn-secondary" type="button" onClick={() => void resendGroupInvite(invite)} disabled={!canAdminSelectedGroup || groupBusy}>
                                 Resend
@@ -6830,15 +6973,25 @@ function App() {
                   <summary>Members</summary>
                   <section className="share-existing" aria-label="Group members">
                     {groupMembersLoading ? <p className="share-empty">Loading members...</p> : null}
-                    {!groupMembersLoading && groupMembers.length === 0 ? <p className="share-empty">No members yet.</p> : null}
+                    {!groupMembersLoading && groupMembers.length === 0 ? (
+                      <EmptyStateCard
+                        icon="fa-user-group"
+                        title="No members yet"
+                        description="Invite people into this group so they can browse, contribute, and help manage shared recipes."
+                        compact
+                      />
+                    ) : null}
                     {!groupMembersLoading && groupMembers.length > 0 ? (
                       <div className="share-existing-list">
                         {groupMembers.map((member) => (
                           <div key={member.userId} className="share-existing-item">
-                            <div>
-                              <strong>{member.displayName || (member.username ? `@${member.username}` : member.userId)}</strong>
-                              <small>{member.username ? `@${member.username}` : 'No username set'}</small>
-                            </div>
+                            <IdentityBlock
+                              displayName={member.displayName}
+                              username={member.username}
+                              fallback={member.userId === authUser?.id ? 'You' : member.userId}
+                              meta={`${GROUP_ROLE_LABELS[member.role] || member.role}${member.userId === authUser?.id ? ' · You' : ''}`}
+                              tone={member.userId === authUser?.id ? 'self' : 'member'}
+                            />
                             <div className="share-existing-actions">
                               <select
                                 value={member.role}
@@ -6874,20 +7027,37 @@ function App() {
                   <section className="group-activity-list" aria-label="Recent group activity">
                     {groupActivityLoading ? <p className="share-empty">Loading activity...</p> : null}
                     {!groupActivityLoading && groupActivity.length === 0 ? (
-                      <p className="share-empty">No activity yet. Add recipes or invite members to build this group history.</p>
+                      <EmptyStateCard
+                        icon="fa-clock-rotate-left"
+                        title="No activity yet"
+                        description="Invite members or add recipes to this group. Dish Depot will keep the recent activity feed here so everyone can follow along."
+                        compact
+                      />
                     ) : null}
                     {!groupActivityLoading && groupActivity.length > 0 ? (
                       <div className="group-activity-items">
                         {groupActivity.map((activity) => {
                           const activityPresentation = describeGroupActivityItem(activity)
+                          const activityMeta = [activityPresentation.detail]
+                          if (activity.actorDisplayName || activity.actorUsername) {
+                            activityMeta.push(`By ${activity.actorDisplayName || `@${activity.actorUsername}`}`)
+                          }
                           return (
                             <article key={activity.id} className="group-activity-item">
-                              <div className="group-activity-icon" aria-hidden="true">
-                                <i className={`fas ${activityPresentation.icon}`} />
+                              <div className="group-activity-identity">
+                                <IdentityAvatar
+                                  displayName={activity.actorDisplayName || activity.subjectDisplayName}
+                                  username={activity.actorUsername || activity.subjectUsername}
+                                  fallback={activity.actorUserId || activity.subjectUserId || 'Member'}
+                                  tone="activity"
+                                />
+                                <span className="group-activity-type-badge" aria-hidden="true">
+                                  <i className={`fas ${activityPresentation.icon}`} />
+                                </span>
                               </div>
                               <div className="group-activity-content">
                                 <strong>{activityPresentation.title}</strong>
-                                <small>{activityPresentation.detail}</small>
+                                <small>{activityMeta.join(' · ')}</small>
                               </div>
                               <time className="group-activity-time" dateTime={activity.occurredAt || undefined}>
                                 {formatRelativeTime(activity.occurredAt)}
@@ -6928,26 +7098,37 @@ function App() {
 
             {groupInvitesLoading ? <p className="share-empty">Loading invites...</p> : null}
             {!groupInvitesLoading && pendingGroupInvites.length === 0 ? (
-              <p className="share-empty">No pending invites right now.</p>
+              <EmptyStateCard
+                icon="fa-envelope-open-text"
+                title="No pending invites right now"
+                description="When another Dish Depot user invites you into a group, it will appear here so you can accept or decline it."
+                compact
+              />
             ) : null}
 
             {!groupInvitesLoading && pendingGroupInvites.length > 0 ? (
               <div className="share-existing-list" aria-label="Pending group invites">
                 {pendingGroupInvites.map((invite) => (
-                  <div key={invite.id} className="share-existing-item">
-                    <div>
-                      <strong>{invite.groupName || 'Group'}</strong>
-                      <small>
-                        Role: {invite.role} · {formatInviteExpiry(invite.expiresAt)}
-                        {invite.inviterDisplayName || invite.inviterUsername
-                          ? ` · Invited by ${invite.inviterDisplayName || `@${invite.inviterUsername}`}`
-                          : ''}
-                      </small>
-                      <small>Sent: {formatInviteTimestamp(invite.createdAt)}</small>
-                    </div>
-                    <div className="share-existing-actions">
-                      <button className="btn btn-secondary" type="button" onClick={() => void acceptPendingGroupInvite(invite)} disabled={groupInvitesLoading}>
-                        Accept
+                    <div key={invite.id} className="share-existing-item">
+                      <div className="share-existing-item-shell">
+                        <IdentityBlock
+                          displayName={invite.inviterDisplayName}
+                          username={invite.inviterUsername}
+                          fallback="Group invite"
+                          meta={`Invited you to ${invite.groupName || 'Group'}`}
+                          tone="invite"
+                        />
+                        <div className="share-existing-meta-block">
+                          <strong>{invite.groupName || 'Group'}</strong>
+                          <small>
+                            {GROUP_ROLE_LABELS[invite.role] || invite.role} · {formatInviteExpiry(invite.expiresAt)}
+                          </small>
+                          <small>Sent: {formatInviteTimestamp(invite.createdAt)}</small>
+                        </div>
+                      </div>
+                      <div className="share-existing-actions">
+                        <button className="btn btn-secondary" type="button" onClick={() => void acceptPendingGroupInvite(invite)} disabled={groupInvitesLoading}>
+                          Accept
                       </button>
                       <button className="btn btn-danger" type="button" onClick={() => void declinePendingGroupInvite(invite)} disabled={groupInvitesLoading}>
                         Decline
@@ -7007,10 +7188,13 @@ function App() {
                   <div className="share-results" aria-label="Share search results">
                     {shareResults.map((result) => (
                       <div key={result.id} className="share-result-item">
-                        <div>
-                          <strong>@{result.username || 'user'}</strong>
-                          <small>{result.displayName || 'Dish Depot user'}</small>
-                        </div>
+                        <IdentityBlock
+                          displayName={result.displayName}
+                          username={result.username}
+                          fallback="Dish Depot user"
+                          meta="Ready to share"
+                          tone="search"
+                        />
                         <button
                           className="btn btn-primary btn-small"
                           type="button"
@@ -7032,17 +7216,25 @@ function App() {
                 {shareRecipientsLoading ? <p className="share-empty">Loading shares...</p> : null}
 
                 {!shareRecipientsLoading && shareRecipients.length === 0 ? (
-                  <p className="share-empty">No recipients yet.</p>
+                  <EmptyStateCard
+                    icon="fa-user-plus"
+                    title="No recipients yet"
+                    description="Search for a Dish Depot username above to share this recipe. You can make it view-only or allow editing."
+                    compact
+                  />
                 ) : null}
 
                 {!shareRecipientsLoading && shareRecipients.length > 0 ? (
                   <div className="share-existing-list">
                     {shareRecipients.map((recipient) => (
                       <div key={recipient.userId} className="share-existing-item">
-                        <div>
-                          <strong>{recipient.username ? `@${recipient.username}` : 'Shared user'}</strong>
-                          <small>{recipient.displayName || recipient.userId}</small>
-                        </div>
+                        <IdentityBlock
+                          displayName={recipient.displayName}
+                          username={recipient.username}
+                          fallback={recipient.userId || 'Shared user'}
+                          meta={recipient.canEdit ? 'Can edit this recipe' : 'View only'}
+                          tone={recipient.canEdit ? 'editable' : 'default'}
+                        />
 
                         <div className="share-existing-actions">
                           <button
@@ -7341,7 +7533,12 @@ function App() {
                       ))}
                     </div>
                   ) : (
-                    <p className="shopping-list-empty">Select recipes first to build your combined grocery list.</p>
+                    <EmptyStateCard
+                      icon="fa-cart-shopping"
+                      title="Select recipes to build your list"
+                      description="Start on the left by checking the recipes you want to shop for. Dish Depot will combine matching ingredients automatically."
+                      compact
+                    />
                   )}
                 </section>
               </details>
