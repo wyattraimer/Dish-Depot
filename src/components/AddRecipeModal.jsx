@@ -18,6 +18,7 @@ export default function AddRecipeModal({
   handleExtractFromCard,
   extractCandidate,
   extractReviewSummary,
+  extractFieldReview,
   extractWarnings,
   applyExtractCandidate,
   discardExtractCandidate,
@@ -29,6 +30,43 @@ export default function AddRecipeModal({
   hasSupabaseConfig,
   closeModal,
 }) {
+  const getReviewToneLabel = (status) => {
+    if (status === 'strong') {
+      return 'Looks good'
+    }
+    if (status === 'missing') {
+      return 'Missing'
+    }
+    return 'Review'
+  }
+
+  const getReviewToneIcon = (status) => {
+    if (status === 'strong') {
+      return 'fa-circle-check'
+    }
+    if (status === 'missing') {
+      return 'fa-circle-xmark'
+    }
+    return 'fa-triangle-exclamation'
+  }
+
+  const renderSuspiciousList = (items) => {
+    if (!items || items.length === 0) {
+      return <p className="extract-field-empty">No flagged lines in this section.</p>
+    }
+
+    return (
+      <ul className="extract-suspicious-list">
+        {items.map((item) => (
+          <li key={`${item.index}-${item.text}`} className="extract-suspicious-item">
+            <div className="extract-suspicious-line">{item.text}</div>
+            <small>{item.reason}</small>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
   return (
     <div className="modal show" role="dialog" aria-modal="true" onClick={closeModal}>
       <div className="modal-content add-recipe-modal" onClick={(event) => event.stopPropagation()}>
@@ -194,6 +232,19 @@ export default function AddRecipeModal({
                   </div>
                 </div>
               ) : null}
+              {extractFieldReview?.sectionsNeedingReview?.length > 0 ? (
+                <div className="extract-review-checklist" aria-label="Sections needing review">
+                  <strong>Review these sections:</strong>
+                  <div className="extract-review-checklist-items">
+                    {extractFieldReview.sectionsNeedingReview.map((section) => (
+                      <span key={section.key} className={`extract-review-checklist-item extract-review-checklist-item-${section.status}`}>
+                        <i className={`fas ${getReviewToneIcon(section.status)}`} />
+                        {section.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="extract-preview-shell">
                 <div className="extract-preview-header">
                   <strong>{extractCandidate.data.name || 'Unnamed recipe'}</strong>
@@ -210,6 +261,76 @@ export default function AddRecipeModal({
                     {extractWarnings.map((warning, warningIndex) => (
                       <p key={`extract-warning-${warningIndex}`}>{warning}</p>
                     ))}
+                  </div>
+                ) : null}
+
+                {extractFieldReview ? (
+                  <div className="extract-field-review-grid">
+                    <section className={`extract-field-card extract-field-card-${extractFieldReview.fields.name.status}`}>
+                      <div className="extract-field-card-header">
+                        <div>
+                          <h4>Title</h4>
+                          <p>{extractFieldReview.fields.name.detail}</p>
+                        </div>
+                        <span className={`extract-field-status extract-field-status-${extractFieldReview.fields.name.status}`}>
+                          <i className={`fas ${getReviewToneIcon(extractFieldReview.fields.name.status)}`} />
+                          {getReviewToneLabel(extractFieldReview.fields.name.status)}
+                        </span>
+                      </div>
+                      <div className="extract-field-card-body">
+                        <strong>{extractCandidate.data.name || 'No title captured yet'}</strong>
+                      </div>
+                    </section>
+
+                    <section className={`extract-field-card extract-field-card-${extractFieldReview.fields.ingredients.status}`}>
+                      <div className="extract-field-card-header">
+                        <div>
+                          <h4>Ingredients</h4>
+                          <p>{extractFieldReview.fields.ingredients.detail}</p>
+                        </div>
+                        <span className={`extract-field-status extract-field-status-${extractFieldReview.fields.ingredients.status}`}>
+                          <i className={`fas ${getReviewToneIcon(extractFieldReview.fields.ingredients.status)}`} />
+                          {getReviewToneLabel(extractFieldReview.fields.ingredients.status)}
+                        </span>
+                      </div>
+                      {extractFieldReview.suspiciousIngredients.length > 0 ? renderSuspiciousList(extractFieldReview.suspiciousIngredients) : <p className="extract-field-empty">No suspicious ingredient lines flagged.</p>}
+                    </section>
+
+                    <section className={`extract-field-card extract-field-card-${extractFieldReview.fields.directions.status}`}>
+                      <div className="extract-field-card-header">
+                        <div>
+                          <h4>Directions</h4>
+                          <p>{extractFieldReview.fields.directions.detail}</p>
+                        </div>
+                        <span className={`extract-field-status extract-field-status-${extractFieldReview.fields.directions.status}`}>
+                          <i className={`fas ${getReviewToneIcon(extractFieldReview.fields.directions.status)}`} />
+                          {getReviewToneLabel(extractFieldReview.fields.directions.status)}
+                        </span>
+                      </div>
+                      {extractFieldReview.suspiciousDirections.length > 0 ? renderSuspiciousList(extractFieldReview.suspiciousDirections) : <p className="extract-field-empty">No suspicious direction steps flagged.</p>}
+                    </section>
+
+                    <section className={`extract-field-card extract-field-card-${extractFieldReview.fields.categories.status}`}>
+                      <div className="extract-field-card-header">
+                        <div>
+                          <h4>Categories</h4>
+                          <p>{extractFieldReview.fields.categories.detail}</p>
+                        </div>
+                        <span className={`extract-field-status extract-field-status-${extractFieldReview.fields.categories.status}`}>
+                          <i className={`fas ${getReviewToneIcon(extractFieldReview.fields.categories.status)}`} />
+                          {getReviewToneLabel(extractFieldReview.fields.categories.status)}
+                        </span>
+                      </div>
+                      {Array.isArray(extractCandidate.data.categories) && extractCandidate.data.categories.length > 0 ? (
+                        <div className="extract-category-chips">
+                          {extractCandidate.data.categories.map((category) => (
+                            <span key={category} className="extract-category-chip">{formatCategory(category)}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="extract-field-empty">No category suggestions yet.</p>
+                      )}
+                    </section>
                   </div>
                 ) : null}
 

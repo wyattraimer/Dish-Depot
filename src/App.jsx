@@ -1138,6 +1138,152 @@ function FloatingControls({
   )
 }
 
+function normalizeReviewText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim()
+}
+
+function detectSuspiciousExtractLine(line, kind) {
+  const normalized = normalizeReviewText(line)
+  if (!normalized) {
+    return { flagged: true, reason: 'Blank line detected' }
+  }
+
+  const letterCount = (normalized.match(/[a-z]/gi) || []).length
+
+  if (/[|{}<>_=~]{2,}/.test(normalized) || /(?:\?\?\?)+/.test(normalized)) {
+    return { flagged: true, reason: 'Contains OCR-looking symbols' }
+  }
+
+  if (kind === 'ingredient') {
+    if (/^(ingredients?|directions?|instructions?|notes?)[:.]?$/i.test(normalized)) {
+      return { flagged: true, reason: 'Looks like a section heading, not an ingredient' }
+    }
+
+    if (letterCount < 3) {
+      return { flagged: true, reason: 'Very little readable text' }
+    }
+
+    if (normalized.length > 120) {
+      return { flagged: true, reason: 'Unusually long ingredient line' }
+    }
+  }
+
+  if (kind === 'direction') {
+    if (letterCount < 6) {
+      return { flagged: true, reason: 'Step may be incomplete' }
+    }
+
+    if (normalized.length < 10) {
+      return { flagged: true, reason: 'Very short step' }
+    }
+
+    if (/^(ingredients?|directions?|instructions?|notes?)[:.]?$/i.test(normalized)) {
+      return { flagged: true, reason: 'Looks like a section heading, not a direction' }
+    }
+  }
+
+  if (/^[\d\W]+$/.test(normalized)) {
+    return { flagged: true, reason: 'Mostly symbols or numbers' }
+  }
+
+  if (/[Il|]{4,}/.test(normalized)) {
+    return { flagged: true, reason: 'Looks like OCR confusion between letters' }
+  }
+
+  return { flagged: false, reason: '' }
+}
+
+function buildExtractFieldReview(extractCandidate, extractWarnings) {
+  if (!extractCandidate?.data) {
+    return null
+  }
+
+  const data = extractCandidate.data
+  const warnings = Array.isArray(extractWarnings) ? extractWarnings : []
+  const warningText = warnings.join(' ').toLowerCase()
+  const ingredients = Array.isArray(data.ingredients) ? data.ingredients : []
+  const directions = Array.isArray(data.directions) ? data.directions : []
+  const categories = Array.isArray(data.categories) ? data.categories : []
+
+  const suspiciousIngredients = ingredients
+    .map((line, index) => ({ index, text: line, ...detectSuspiciousExtractLine(line, 'ingredient') }))
+    .filter((item) => item.flagged)
+
+  const suspiciousDirections = directions
+    .map((line, index) => ({ index, text: line, ...detectSuspiciousExtractLine(line, 'direction') }))
+    .filter((item) => item.flagged)
+
+  const buildStatus = ({ hasValue, warningMatch = '', suspiciousCount = 0 }) => {
+    if (!hasValue) {
+      return 'missing'
+    }
+    if ((warningMatch && warningText.includes(warningMatch)) || suspiciousCount > 0) {
+      return 'review'
+    }
+    return 'strong'
+  }
+
+  const fields = {
+    name: {
+      label: 'Title',
+      value: data.name || '',
+      status: buildStatus({ hasValue: Boolean(normalizeReviewText(data.name)), warningMatch: 'title' }),
+      detail: !normalizeReviewText(data.name)
+        ? 'No title was captured.'
+        : normalizeReviewText(data.name).length < 4
+          ? 'Short title — worth a quick check.'
+          : 'Looks ready to use.',
+    },
+    ingredients: {
+      label: 'Ingredients',
+      items: ingredients,
+      suspiciousItems: suspiciousIngredients,
+      status: buildStatus({ hasValue: ingredients.length > 0, warningMatch: 'ingredient', suspiciousCount: suspiciousIngredients.length }),
+      detail:
+        ingredients.length === 0
+          ? 'No ingredients were captured.'
+          : suspiciousIngredients.length > 0
+            ? `${suspiciousIngredients.length} ingredient line${suspiciousIngredients.length === 1 ? ' looks' : 's look'} suspicious.`
+            : 'Ingredient list looks consistent.',
+    },
+    directions: {
+      label: 'Directions',
+      items: directions,
+      suspiciousItems: suspiciousDirections,
+      status: buildStatus({ hasValue: directions.length > 0, warningMatch: 'direction', suspiciousCount: suspiciousDirections.length }),
+      detail:
+        directions.length === 0
+          ? 'No directions were captured.'
+          : suspiciousDirections.length > 0
+            ? `${suspiciousDirections.length} direction step${suspiciousDirections.length === 1 ? ' looks' : 's look'} suspicious.`
+            : 'Direction steps look usable.',
+    },
+    categories: {
+      label: 'Categories',
+      items: categories,
+      status: categories.length === 0 ? 'review' : 'strong',
+      detail: categories.length === 0 ? 'No category was suggested.' : `${categories.length} categor${categories.length === 1 ? 'y' : 'ies'} suggested.`,
+    },
+    image: {
+      label: 'Image',
+      value: data.image || '',
+      status: data.image ? 'strong' : 'review',
+      detail: data.image ? 'Image preview is available.' : 'No image was captured from the source.',
+    },
+  }
+
+  const sectionsNeedingReview = Object.entries(fields)
+    .filter(([, field]) => field.status !== 'strong')
+    .map(([key, field]) => ({ key, label: field.label, status: field.status }))
+
+  return {
+    fields,
+    suspiciousIngredients,
+    suspiciousDirections,
+    sectionsNeedingReview,
+  }
+}
+
 function App() {
   const [recipes, setRecipes] = useState(() => {
     try {
@@ -1576,6 +1722,11 @@ function App() {
       directionsCount,
     }
   }, [extractCandidate, extractWarnings])
+
+  const extractFieldReview = useMemo(
+    () => buildExtractFieldReview(extractCandidate, extractWarnings),
+    [extractCandidate, extractWarnings],
+  )
 
   const groupSourceContext = useMemo(() => {
     if (recipeScope !== 'group' || !selectedGroup) {
@@ -6280,6 +6431,7 @@ function App() {
               handleExtractFromCard={handleExtractFromCard}
               extractCandidate={extractCandidate}
               extractReviewSummary={extractReviewSummary}
+              extractFieldReview={extractFieldReview}
               extractWarnings={extractWarnings}
               applyExtractCandidate={applyExtractCandidate}
               discardExtractCandidate={discardExtractCandidate}
