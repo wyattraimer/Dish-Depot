@@ -3808,7 +3808,7 @@ function App() {
       return
     }
 
-    showMessage(`Added recipe to ${selectedGroup?.name || 'group'}.`, 'success')
+    showMessage(`Added recipe to ${selectedGroup?.name || 'group'}. Open the group recipes view to confirm it looks right for everyone.`, 'success')
 
     if (recipeScope === 'group') {
       setGroupRecipes((prev) => {
@@ -3864,7 +3864,7 @@ function App() {
     if (isGroupModalOpen) {
       void loadSelectedGroupActivity(selectedGroupId)
     }
-    showMessage(`Removed recipe from ${selectedGroup?.name || 'group'}.`, 'success')
+    showMessage(`Removed recipe from ${selectedGroup?.name || 'group'}. The group recipe list should now stay focused on what members still use.`, 'success')
   }
 
   const loadSelectedGroupMembers = useCallback(async (groupId = selectedGroupId) => {
@@ -4106,7 +4106,7 @@ function App() {
       setSelectedGroupId(groupRow.id)
       setRecipeScope('group')
       setGroupNameDraft('')
-      showMessage(`Group "${groupRow.name}" created. Invite members or add a recipe to get started.`, 'success')
+      showMessage(`Group "${groupRow.name}" created. Invite members, then add a recipe so the group has something to browse right away.`, 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -4214,7 +4214,7 @@ function App() {
       setGroupInviteResults((prev) => prev.filter((row) => row.id !== recipient.id))
       await loadSelectedGroupPendingInvites(selectedGroupId)
       await loadSelectedGroupActivity(selectedGroupId)
-      showMessage('Invite sent. They can join from their invite list after signing in.', 'success')
+      showMessage('Invite sent. They can join from their invite list after signing in, and you can watch for them in Recent Activity.', 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -4249,7 +4249,7 @@ function App() {
 
       await loadSelectedGroupPendingInvites(selectedGroupId)
       await loadSelectedGroupActivity(selectedGroupId)
-      showMessage('Invite refreshed and resent.', 'success')
+      showMessage('Invite refreshed and resent. The member will keep the same group role when they accept.', 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -4277,7 +4277,7 @@ function App() {
 
       setGroupPendingInvites((prev) => prev.filter((item) => item.id !== invite.id))
       await loadSelectedGroupActivity(selectedGroupId)
-      showMessage('Invite canceled.', 'success')
+      showMessage('Invite canceled. You can search for another user or send a fresh invite later.', 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -4317,7 +4317,7 @@ function App() {
       setSelectedGroupId('')
       setRecipeScope('mine')
       closeGroupModal()
-      showMessage(`${groupName} deleted.`, 'success')
+      showMessage(`${groupName} deleted. You are back in My Recipes, where you can create a new group anytime.`, 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -4352,7 +4352,7 @@ function App() {
         setGroupMemberships((prev) => prev.map((item) => (item.groupId === selectedGroupId ? { ...item, role: nextRole } : item)))
       }
       await loadSelectedGroupActivity(selectedGroupId)
-      showMessage('Member role updated.', 'success')
+      showMessage('Member role updated. Their access changes apply the next time they work in this group.', 'success')
     } finally {
       setGroupBusy(false)
     }
@@ -4397,7 +4397,7 @@ function App() {
       return
     }
 
-    showMessage('Member removed from group.', 'success')
+    showMessage('Member removed from group. Review Recent Activity if you want to confirm the change for other admins.', 'success')
     if (isGroupModalOpen) {
       await loadSelectedGroupActivity(selectedGroupId)
     }
@@ -4461,7 +4461,7 @@ function App() {
       setSelectedGroupId(acceptedGroupId)
       setRecipeScope('group')
 
-      showMessage(`Joined ${acceptedGroupName}. You can now browse or add group recipes.`, 'success')
+      showMessage(`Joined ${acceptedGroupName}. You can browse group recipes now, and add one when you are ready to contribute.`, 'success')
     } finally {
       setGroupInvitesLoading(false)
     }
@@ -4653,7 +4653,7 @@ function App() {
       }
 
       const targetLabel = recipient.username ? `@${recipient.username}` : recipient.displayName || 'recipient'
-      showMessage(`Recipe shared with ${targetLabel}. They will see it in Shared With Me.`, 'success')
+      showMessage(`Recipe shared with ${targetLabel}. They will see it in Shared With Me, and you can adjust permissions from this modal anytime.`, 'success')
       setShareLookupText('')
       setShareResults([])
       await loadShareRecipients(shareTargetRecipe.id)
@@ -4684,7 +4684,7 @@ function App() {
       setShareRecipients((prev) =>
         prev.map((item) => (item.userId === recipient.userId ? { ...item, canEdit } : item)),
       )
-      showMessage('Share permissions updated.', 'success')
+      showMessage('Share permissions updated. The recipient will see the new access level the next time they open the recipe.', 'success')
     } finally {
       setShareBusy(false)
     }
@@ -4789,7 +4789,7 @@ function App() {
         }
 
         if (data.session) {
-          showMessage('Account created and signed in.', 'success')
+          showMessage('Account created and signed in. Next, upload a profile photo or start syncing your recipes to the cloud.', 'success')
         } else {
           showMessage('Account created. Check your inbox to confirm your email, then return to sign in.', 'info')
         }
@@ -4806,7 +4806,7 @@ function App() {
         return
       }
 
-      showMessage('Signed in successfully.', 'success')
+      showMessage('Signed in successfully. Your synced recipes, groups, and shares are ready to use.', 'success')
     } finally {
       setAuthBusy(false)
     }
@@ -5007,7 +5007,7 @@ function App() {
       }
 
       setProfileAvatarValue(path)
-      showMessage('Profile picture uploaded. Save profile to apply.', 'success')
+      showMessage('Profile picture uploaded. Save your profile to apply it everywhere your identity appears.', 'success')
     } finally {
       setProfileUploading(false)
       event.target.value = ''
@@ -5043,7 +5043,7 @@ function App() {
 
       setProfileAvatarValue('')
       setProfileAvatarUrl('')
-      showMessage('Profile picture removed.', 'success')
+      showMessage('Profile picture removed. Save your profile to switch back to initials everywhere.', 'success')
     } finally {
       setProfileUploading(false)
     }
@@ -5221,7 +5221,7 @@ function App() {
         }
       }
 
-      showMessage('Recipe updated successfully!', 'success')
+      showMessage('Recipe updated. Reopen it to review details, or share it if it is ready for someone else.', 'success')
     } else {
       const existingIds = new Set(recipes.map((recipe) => recipe.id))
       const localId = makeRecipeId(existingIds)
@@ -5232,7 +5232,7 @@ function App() {
         await insertRecipeToCloud(newRecipe, localId)
       }
 
-      showMessage('Recipe added successfully!', 'success')
+      showMessage('Recipe added. You can add it to your planner, build a shopping list, or share it next.', 'success')
     }
 
     closeModal()
@@ -5380,7 +5380,7 @@ function App() {
         meta: payload.meta || null,
         warnings,
       })
-      showMessage('Recipe details extracted. Review and apply.', 'success')
+      showMessage('Recipe details extracted. Review the flagged sections, then apply the fields into your form.', 'success')
     } catch (error) {
       const failedMessage = error?.message || 'Extraction failed'
       const isNetworkFailure =
@@ -5468,7 +5468,7 @@ function App() {
         meta: payload.meta || null,
         warnings,
       })
-      showMessage('Recipe card scanned. Review and apply.', 'success')
+      showMessage('Recipe card scanned. Check the low-confidence sections first, then apply the fields you want to keep.', 'success')
     } catch (error) {
       const failedMessage = error?.message || 'Recipe card scanning failed'
       const isNetworkFailure =
@@ -5518,13 +5518,13 @@ function App() {
 
     setExtractCandidate(null)
     setExtractWarnings([])
-    showMessage('Extracted fields applied to the form.', 'success')
+    showMessage('Extracted fields applied. Make any final edits below, then save the recipe when it looks right.', 'success')
   }
 
   function discardExtractCandidate() {
     setExtractCandidate(null)
     setExtractWarnings([])
-    showMessage('Extracted preview discarded.', 'info')
+    showMessage('Extracted preview discarded. You can run the scan again or keep entering details manually.', 'info')
   }
 
   function randomizeRecipe() {
@@ -5773,7 +5773,7 @@ function App() {
       showMessage('Could not reset shopping section order on this device.', 'info')
       return
     }
-    showMessage('Shopping section order reset to default.', 'success')
+    showMessage('Shopping section order reset to default. Reorder it again anytime to match your store layout.', 'success')
   }
 
   function toggleShoppingMergeSelection(itemKey) {
@@ -5825,7 +5825,7 @@ function App() {
       return next
     })
     setShoppingManualText('')
-    showMessage('Merged selected items into a manual shopping entry.', 'success')
+    showMessage('Merged selected items into a manual shopping entry. Edit the label if you want it to be clearer before exporting.', 'success')
   }
 
   function applySuggestedShoppingMerge(group) {
@@ -5849,7 +5849,7 @@ function App() {
       })
       return next
     })
-    showMessage(`Merged similar items into “${manualGroup.text}”.`, 'success')
+    showMessage(`Merged similar items into “${manualGroup.text}”. Review the manual merge section to rename or split it if needed.`, 'success')
   }
 
   function splitManualMergeGroup(groupKey) {
@@ -5963,14 +5963,14 @@ function App() {
     document.body.removeChild(link)
     URL.revokeObjectURL(downloadUrl)
 
-    showMessage('Shopping list exported.', 'success')
+    showMessage('Shopping list exported. You can share the file, print it, or save this setup to history for later.', 'success')
   }
 
   function saveShoppingDraft() {
     try {
       localStorage.setItem(SHOPPING_LIST_DRAFT_KEY, JSON.stringify(buildShoppingDraftSnapshot(shoppingCandidates)))
       setHasSavedShoppingDraft(true)
-      showMessage('Shopping list draft saved.', 'success')
+      showMessage('Shopping list draft saved. Reopen the builder later to keep working where you left off.', 'success')
     } catch {
       showMessage('Could not save this shopping list draft on this device.', 'info')
     }
@@ -6023,7 +6023,7 @@ function App() {
         showMessage('Could not save shopping list history on this device.', 'info')
         return prev
       }
-      showMessage('Shopping list saved to history.', 'success')
+      showMessage('Shopping list saved to history. Restore it later whenever you want to repeat the same shopping run.', 'success')
       return next
     })
   }
@@ -6059,7 +6059,7 @@ function App() {
   function restoreShoppingHistoryEntry(entry) {
     const didRestore = applyShoppingSnapshot(entry?.snapshot)
     if (didRestore) {
-      showMessage(`Restored ${entry.label || 'saved shopping list'}.`, 'success')
+      showMessage(`Restored ${entry.label || 'saved shopping list'}. Review pantry and unresolved items before exporting.`, 'success')
     }
   }
 
@@ -6115,7 +6115,7 @@ function App() {
       if (!didRestore) {
         return false
       }
-      showMessage('Restored your last shopping list draft.', 'success')
+      showMessage('Restored your last shopping list draft. Check section order and pantry items before you export.', 'success')
       return true
     } catch {
       return false
@@ -6194,7 +6194,7 @@ function App() {
 
     closeImportPreview()
     showMessage(
-      `Successfully imported ${selectedRecipes.length} recipe${selectedRecipes.length !== 1 ? 's' : ''}!`,
+      `Imported ${selectedRecipes.length} recipe${selectedRecipes.length !== 1 ? 's' : ''}. Open one to review it, or build a shopping list from the new additions.`,
       'success',
     )
   }
