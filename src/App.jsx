@@ -13,6 +13,8 @@ const ShoppingListBuilder = lazy(() => import('./components/ShoppingListBuilder'
 const GroupManagementModal = lazy(() => import('./components/GroupManagementModal'))
 const GroupInvitesModal = lazy(() => import('./components/GroupInvitesModal'))
 const ShareRecipeModal = lazy(() => import('./components/ShareRecipeModal'))
+const ImportPreviewModal = lazy(() => import('./components/ImportPreviewModal'))
+const ExportPreviewModal = lazy(() => import('./components/ExportPreviewModal'))
 
 const CATEGORIES = {
   breakfast: { icon: 'fa-coffee', color: '#ffc107' },
@@ -7624,155 +7626,36 @@ function App() {
         />
       </Suspense>
 
-      {isImportPreviewOpen ? (
-        <div className="modal show" role="dialog" aria-modal="true" onClick={closeImportPreview}>
-          <div className="modal-content import-preview-modal" onClick={(event) => event.stopPropagation()}>
-            <span className="close" onClick={closeImportPreview}>
-              &times;
-            </span>
-            <h2>Review Import</h2>
-            <p className="import-preview-subtitle">
-              Select which recipes to import. You can uncheck or remove any recipe before importing.
-            </p>
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <ImportPreviewModal
+          isOpen={isImportPreviewOpen}
+          onClose={closeImportPreview}
+          importSummary={importSummary}
+          onSelectAll={() => setAllImportCandidates(true)}
+          onClearAll={() => setAllImportCandidates(false)}
+          importCandidates={importCandidates}
+          onToggleCandidate={toggleImportCandidate}
+          formatCategory={formatCategory}
+          onRemoveCandidate={removeImportCandidate}
+          onConfirmImport={confirmImportSelection}
+          selectedImportCount={selectedImportCount}
+        />
+      </Suspense>
 
-            {importSummary ? (
-              <div className="import-summary">
-                <span className="import-summary-chip">File: {importSummary.totalInFile}</span>
-                <span className="import-summary-chip">Valid: {importSummary.validCount}</span>
-                <span className="import-summary-chip">Duplicates skipped: {importSummary.duplicateCount}</span>
-                <span className="import-summary-chip">Invalid skipped: {importSummary.invalidCount}</span>
-              </div>
-            ) : null}
-
-            <div className="import-preview-actions">
-              <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllImportCandidates(true)}>
-                Select All
-              </button>
-              <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllImportCandidates(false)}>
-                Clear All
-              </button>
-            </div>
-
-            <div className="import-preview-list">
-              {importCandidates.map((candidate) => {
-                const { recipe, previewId, selected } = candidate
-                const categories = recipe.categories || []
-                const recipeType = recipe.type === 'custom' || !recipe.url ? 'Custom recipe' : 'URL recipe'
-
-                return (
-                  <article key={previewId} className="import-preview-item">
-                    <label className="import-preview-check">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleImportCandidate(previewId)}
-                      />
-                      <span>Include</span>
-                    </label>
-                    <div className="import-preview-content">
-                      <h3>{recipe.name}</h3>
-                      <p>{recipeType}</p>
-                      {recipe.url ? <a href={recipe.url}>{recipe.url}</a> : null}
-                      {categories.length > 0 ? (
-                        <div className="import-preview-categories">
-                          {categories.map((cat, categoryIndex) => (
-                            <span key={`${previewId}-${cat}-${categoryIndex}`}>{formatCategory(cat)}</span>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                    <button
-                      className="btn btn-danger btn-small"
-                      type="button"
-                      onClick={() => removeImportCandidate(previewId)}
-                    >
-                      Remove
-                    </button>
-                  </article>
-                )
-              })}
-            </div>
-
-            <div className="import-preview-footer">
-              <button className="btn btn-secondary" type="button" onClick={closeImportPreview}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" type="button" onClick={confirmImportSelection}>
-                Import Selected ({selectedImportCount})
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {isExportPreviewOpen ? (
-        <div className="modal show" role="dialog" aria-modal="true" onClick={closeExportPreview}>
-          <div className="modal-content export-preview-modal" onClick={(event) => event.stopPropagation()}>
-            <span className="close" onClick={closeExportPreview}>
-              &times;
-            </span>
-            <h2>Review Export</h2>
-            <p className="import-preview-subtitle">
-              Select which recipes to export. All recipes are selected by default.
-            </p>
-
-            <div className="import-preview-actions">
-              <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllExportCandidates(true)}>
-                Select All
-              </button>
-              <button className="btn btn-secondary btn-small" type="button" onClick={() => setAllExportCandidates(false)}>
-                Clear All
-              </button>
-            </div>
-
-            <div className="export-preview-list">
-              {exportCandidates.map((candidate) => {
-                const { recipe, previewId, selected } = candidate
-                const categories = recipe.categories || []
-
-                return (
-                  <article key={previewId} className="export-preview-item">
-                    <label className="import-preview-check">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleExportCandidate(previewId)}
-                      />
-                      <span>Include</span>
-                    </label>
-                    <div className="export-preview-content">
-                      <h3>
-                        {recipe.pinned ? <i className="fas fa-star" aria-hidden="true" /> : null}
-                        {recipe.name}
-                      </h3>
-                      {recipe.url ? <a href={recipe.url}>{recipe.url}</a> : <p>Custom recipe</p>}
-                      {categories.length > 0 ? (
-                        <div className="import-preview-categories">
-                          {categories.map((cat, categoryIndex) => (
-                            <span key={`${previewId}-${cat}-${categoryIndex}`}>{formatCategory(cat)}</span>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-
-            <div className="import-preview-footer">
-              <button className="btn btn-secondary" type="button" onClick={closeExportPreview}>
-                Cancel
-              </button>
-              <button className="btn btn-print" type="button" onClick={confirmPrintSelection}>
-                Print / Save PDF ({selectedExportCount})
-              </button>
-              <button className="btn btn-primary" type="button" onClick={confirmExportSelection}>
-                Export Selected ({selectedExportCount})
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <ExportPreviewModal
+          isOpen={isExportPreviewOpen}
+          onClose={closeExportPreview}
+          onSelectAll={() => setAllExportCandidates(true)}
+          onClearAll={() => setAllExportCandidates(false)}
+          exportCandidates={exportCandidates}
+          onToggleCandidate={toggleExportCandidate}
+          formatCategory={formatCategory}
+          onConfirmPrint={confirmPrintSelection}
+          onConfirmExport={confirmExportSelection}
+          selectedExportCount={selectedExportCount}
+        />
+      </Suspense>
 
       <Suspense fallback={<ModalLoadingFallback />}>
         <ShoppingListBuilder
