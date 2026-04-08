@@ -1647,6 +1647,8 @@ function App() {
   const latestGroupRecipeIdsRef = useRef(new Set())
   const groupRefreshNoticeTimeoutRef = useRef(0)
   const messageTimeoutsRef = useRef(new Map())
+  const selectedGroupIdRef = useRef('')
+  const shareTargetRecipeIdRef = useRef('')
 
   const groupsById = useMemo(
     () => new Map(groups.map((group) => [group.id, group])),
@@ -1677,6 +1679,14 @@ function App() {
     }
     return groupRefreshNotice || 'Live updates on'
   }, [groupRefreshNotice, isGroupRecipesRefreshing, recipeScope, selectedGroupId])
+
+  useEffect(() => {
+    selectedGroupIdRef.current = selectedGroupId
+  }, [selectedGroupId])
+
+  useEffect(() => {
+    shareTargetRecipeIdRef.current = shareTargetRecipe?.id || ''
+  }, [shareTargetRecipe])
 
   function getActivityDisplayName({ username = '', displayName = '', userId = '' }) {
     if (displayName) {
@@ -3822,6 +3832,44 @@ function App() {
     return { restored: true, skipped: false, error: null }
   }
 
+  async function restoreGroupRecipeInCloud({ groupId, recipeId, addedBy }) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !networkStatusRef.current || !isUuidLike(groupId) || !isUuidLike(recipeId)) {
+      return { restored: false, skipped: true }
+    }
+
+    const payload = {
+      group_id: groupId,
+      recipe_id: recipeId,
+      added_by: isUuidLike(addedBy) ? addedBy : authUser.id,
+    }
+    const { error } = await supabase.from('group_recipes').upsert(payload, { onConflict: 'group_id,recipe_id' })
+
+    if (error) {
+      return { restored: false, skipped: false, error }
+    }
+
+    return { restored: true, skipped: false, error: null }
+  }
+
+  async function restoreRecipeShareInCloud({ recipeId, recipientUserId, canEdit }) {
+    if (!hasSupabaseConfig || !supabase || !authUser?.id || !networkStatusRef.current || !isUuidLike(recipeId) || !isUuidLike(recipientUserId)) {
+      return { restored: false, skipped: true }
+    }
+
+    const payload = {
+      recipe_id: recipeId,
+      shared_with_user_id: recipientUserId,
+      can_edit: Boolean(canEdit),
+    }
+    const { error } = await supabase.from('recipe_shares').upsert(payload)
+
+    if (error) {
+      return { restored: false, skipped: false, error }
+    }
+
+    return { restored: true, skipped: false, error: null }
+  }
+
   function canManageRecipe(recipe) {
     if (!recipe) {
       return false
@@ -3930,6 +3978,14 @@ function App() {
       return
     }
 
+    const removedIndex = groupRecipes.findIndex((item) => item.id === recipe.id)
+    const removedRecipe = {
+      ...(removedIndex === -1 ? recipe : groupRecipes[removedIndex]),
+    }
+    const removedGroupId = selectedGroupId
+    const removedGroupName = selectedGroup?.name || 'group'
+    const removedRecipeName = removedRecipe.name || 'recipe'
+
     const { error } = await supabase
       .from('group_recipes')
       .delete()
@@ -3945,7 +4001,51 @@ function App() {
     if (isGroupModalOpen) {
       void loadSelectedGroupActivity(selectedGroupId)
     }
-    showMessage(`Removed recipe from ${selectedGroup?.name || 'group'}. The group recipe list should now stay focused on what members still use.`, 'success')
+    showMessage(`Removed “${removedRecipeName}” from ${removedGroupName}. Undo restores it here and tries to sync the group link back to cloud.`, 'info', {
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          const canRestoreLocally = selectedGroupIdRef.current === removedGroupId
+
+          if (canRestoreLocally) {
+            setGroupRecipes((prev) => {
+              const next = prev.filter((item) => item.id !== removedRecipe.id)
+              const insertAt = Math.min(removedIndex === -1 ? next.length : removedIndex, next.length)
+              next.splice(insertAt, 0, removedRecipe)
+              return next
+            })
+          }
+
+          const restoreResult = await restoreGroupRecipeInCloud({
+            groupId: removedGroupId,
+            recipeId: removedRecipe.id,
+            addedBy: removedRecipe.groupAddedBy,
+          })
+
+          if (!restoreResult.restored) {
+            showMessage(
+              canRestoreLocally
+                ? `Restored “${removedRecipeName}” locally in ${removedGroupName}. Cloud sync could not confirm the remote undo yet.`
+                : `Could not confirm the cloud undo for “${removedRecipeName}” in ${removedGroupName} yet. Reopen that group to verify once you are back online.`,
+              'info',
+              { duration: 4500 },
+            )
+            return
+          }
+
+          if (selectedGroupIdRef.current === removedGroupId) {
+            void loadSelectedGroupActivity(removedGroupId)
+          }
+
+          showMessage(
+            canRestoreLocally
+              ? `Restored “${removedRecipeName}” to ${removedGroupName}.`
+              : `Restored “${removedRecipeName}” to ${removedGroupName}. Reopen that group if you want to confirm it in the list again.`,
+            'success',
+          )
+        },
+      },
+    })
   }
 
   const loadSelectedGroupMembers = useCallback(async (groupId = selectedGroupId) => {
@@ -4781,6 +4881,13 @@ function App() {
       return
     }
 
+    const revokedIndex = shareRecipients.findIndex((item) => item.userId === recipient.userId)
+    const revokedRecipient = {
+      ...(revokedIndex === -1 ? recipient : shareRecipients[revokedIndex]),
+    }
+    const revokedRecipeId = shareTargetRecipe.id
+    const recipientLabel = revokedRecipient.username ? `@${revokedRecipient.username}` : revokedRecipient.displayName || 'recipient'
+
     setShareBusy(true)
 
     try {
@@ -4796,7 +4903,47 @@ function App() {
       }
 
       setShareRecipients((prev) => prev.filter((item) => item.userId !== recipient.userId))
-      showMessage('Share removed.', 'info')
+      showMessage(`Removed share for ${recipientLabel}. Undo restores their access here and tries to sync it back to cloud.`, 'info', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            const canRestoreLocally = String(shareTargetRecipeIdRef.current) === String(revokedRecipeId)
+
+            if (canRestoreLocally) {
+              setShareRecipients((prev) => {
+                const next = prev.filter((item) => item.userId !== revokedRecipient.userId)
+                const insertAt = Math.min(revokedIndex === -1 ? next.length : revokedIndex, next.length)
+                next.splice(insertAt, 0, revokedRecipient)
+                return next
+              })
+            }
+
+            const restoreResult = await restoreRecipeShareInCloud({
+              recipeId: revokedRecipeId,
+              recipientUserId: revokedRecipient.userId,
+              canEdit: revokedRecipient.canEdit,
+            })
+
+            if (!restoreResult.restored) {
+              showMessage(
+                canRestoreLocally
+                  ? `Restored access for ${recipientLabel} locally. Cloud sync could not confirm the remote undo yet.`
+                  : `Could not confirm the cloud undo for ${recipientLabel} yet. Reopen sharing after reconnecting to verify it.`,
+                'info',
+                { duration: 4500 },
+              )
+              return
+            }
+
+            showMessage(
+              canRestoreLocally
+                ? `Restored share for ${recipientLabel}.`
+                : `Restored share for ${recipientLabel}. Reopen sharing if you want to confirm it in the list again.`,
+              'success',
+            )
+          },
+        },
+      })
     } finally {
       setShareBusy(false)
     }
