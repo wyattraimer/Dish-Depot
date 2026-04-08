@@ -8,6 +8,7 @@ import OptimizedImage from './components/OptimizedImage.jsx'
 
 const AddRecipeModal = lazy(() => import('./components/AddRecipeModal'))
 const FocusedRecipeModal = lazy(() => import('./components/FocusedRecipeModal'))
+const ProfileModal = lazy(() => import('./components/ProfileModal'))
 const ShoppingListBuilder = lazy(() => import('./components/ShoppingListBuilder'))
 const GroupManagementModal = lazy(() => import('./components/GroupManagementModal'))
 const GroupInvitesModal = lazy(() => import('./components/GroupInvitesModal'))
@@ -349,6 +350,18 @@ function createEmptyMealPlan() {
     plan[day] = { Breakfast: '', Lunch: '', Dinner: '' }
     return plan
   }, {})
+}
+
+function cloneMealPlan(plan) {
+  const next = createEmptyMealPlan()
+
+  MEAL_DAYS.forEach((day) => {
+    MEAL_SLOTS.forEach((slot) => {
+      next[day][slot] = plan?.[day]?.[slot] || ''
+    })
+  })
+
+  return next
 }
 
 function mapCloudMealPlanRowsToLocal(rows) {
@@ -1633,6 +1646,7 @@ function App() {
   const cloudMealPlanUserRef = useRef('')
   const latestGroupRecipeIdsRef = useRef(new Set())
   const groupRefreshNoticeTimeoutRef = useRef(0)
+  const messageTimeoutsRef = useRef(new Map())
 
   const groupsById = useMemo(
     () => new Map(groups.map((group) => [group.id, group])),
@@ -3517,12 +3531,64 @@ function App() {
     )
   }, [unresolvedShoppingItems])
 
-  function showMessage(text, type = 'info') {
+  useEffect(() => {
+    const messageTimeouts = messageTimeoutsRef.current
+
+    return () => {
+      messageTimeouts.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId)
+      })
+      messageTimeouts.clear()
+    }
+  }, [])
+
+  function dismissMessage(id) {
+    const timeoutId = messageTimeoutsRef.current.get(id)
+    if (timeoutId) {
+      window.clearTimeout(timeoutId)
+      messageTimeoutsRef.current.delete(id)
+    }
+
+    setMessages((prev) => prev.filter((message) => message.id !== id))
+  }
+
+  function showMessage(text, type = 'info', options = {}) {
     const id = Date.now() + Math.random()
-    setMessages((prev) => [...prev, { id, text, type }])
-    window.setTimeout(() => {
-      setMessages((prev) => prev.filter((message) => message.id !== id))
-    }, 3000)
+    const action =
+      options?.action?.label && typeof options.action.onClick === 'function'
+        ? {
+            label: options.action.label,
+            onClick: options.action.onClick,
+          }
+        : null
+    const duration = typeof options.duration === 'number' ? options.duration : action ? 6000 : 3000
+
+    setMessages((prev) => [...prev, { id, text, type, action }])
+
+    if (duration > 0) {
+      const timeoutId = window.setTimeout(() => {
+        dismissMessage(id)
+      }, duration)
+
+      messageTimeoutsRef.current.set(id, timeoutId)
+    }
+
+    return id
+  }
+
+  async function handleMessageAction(message) {
+    if (!message?.action?.onClick) {
+      return
+    }
+
+    dismissMessage(message.id)
+
+    try {
+      await message.action.onClick()
+    } catch (error) {
+      console.error('Message action failed', error)
+      showMessage('Could not complete that action. Please try again.', 'error')
+    }
   }
 
   function canSyncToCloud() {
@@ -3739,6 +3805,21 @@ function App() {
     if (error) {
       showMessage(`Cloud sync failed: ${error.message}`, 'info')
     }
+  }
+
+  async function restoreDeletedRecipeInCloud(recipe) {
+    if (!canSyncToCloud() || !isUuidLike(recipe?.id)) {
+      return { restored: false, skipped: true }
+    }
+
+    const payload = toCloudRecipePayload(recipe, authUser.id)
+    const { error } = await supabase.from('recipes').update(payload).eq('id', recipe.id).eq('owner_id', authUser.id)
+
+    if (error) {
+      return { restored: false, skipped: false, error }
+    }
+
+    return { restored: true, skipped: false, error: null }
   }
 
   function canManageRecipe(recipe) {
@@ -5244,6 +5325,14 @@ function App() {
       return false
     }
 
+    const deletedIndex = recipes.findIndex((recipe) => recipe.id === id)
+    if (deletedIndex === -1) {
+      return false
+    }
+
+    const deletedRecipe = recipes[deletedIndex]
+    const previousMealPlan = cloneMealPlan(mealPlan)
+
     setRecipes((prev) => prev.filter((recipe) => recipe.id !== id))
     setMealPlan((prev) => {
       const next = createEmptyMealPlan()
@@ -5257,6 +5346,36 @@ function App() {
     })
 
     await softDeleteRecipeInCloud(id)
+
+    showMessage(`Deleted “${deletedRecipe.name || 'recipe'}”. Undo restores it in this app.`, 'info', {
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          setRecipes((prev) => {
+            const next = prev.filter((recipe) => recipe.id !== deletedRecipe.id)
+            const insertAt = Math.min(deletedIndex, next.length)
+            next.splice(insertAt, 0, deletedRecipe)
+            return next
+          })
+          setMealPlan(cloneMealPlan(previousMealPlan))
+
+          if (isUuidLike(deletedRecipe.id)) {
+            const restoreResult = await restoreDeletedRecipeInCloud(deletedRecipe)
+
+            if (!restoreResult.restored) {
+              showMessage(
+                `Restored “${deletedRecipe.name || 'recipe'}” locally. Cloud sync could not confirm the remote undo yet.`,
+                'info',
+                { duration: 4500 },
+              )
+              return
+            }
+          }
+
+          showMessage(`Restored “${deletedRecipe.name || 'recipe'}”.`, 'success')
+        },
+      },
+    })
 
     return true
   }
@@ -6360,7 +6479,14 @@ function App() {
         <div className="message-stack" aria-live="polite" aria-atomic="true">
           {messages.map((message) => (
             <div key={message.id} className={`message-pill message-pill-${message.type}`}>
-              {message.text}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                <span>{message.text}</span>
+                {message.action ? (
+                  <button className="btn btn-small btn-secondary" type="button" onClick={() => void handleMessageAction(message)}>
+                    {message.action.label}
+                  </button>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>
@@ -7210,245 +7336,59 @@ function App() {
         </AppErrorBoundary>
       ) : null}
 
-      {isProfileModalOpen ? (
-        <div className="modal show profile-modal-overlay" role="dialog" aria-modal="true" onClick={closeProfileModal}>
-          <div className="modal-content profile-modal" onClick={(event) => event.stopPropagation()}>
-            <span className="close" onClick={closeProfileModal}>
-              &times;
-            </span>
-            <h2>Profile</h2>
-            <div className="profile-theme-row">
-              <span className="profile-theme-label">Theme</span>
-              <label className="theme-switch" aria-label="Toggle dark mode">
-                <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
-                <span className="theme-switch-track">
-                  <span className="theme-switch-knob">
-                    <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
-                  </span>
-                </span>
-                <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-              </label>
-            </div>
-            {isResetFlowActive ? (
-              <>
-                <p className="profile-modal-subtitle">Set a new password for your Dish Depot account.</p>
-
-                <form className="profile-auth-form" onSubmit={handleCompletePasswordReset}>
-                  <div className="auth-input-row profile-auth-fields">
-                    <input
-                      type="password"
-                      value={resetPasswordDraft}
-                      onChange={(event) => setResetPasswordDraft(event.target.value)}
-                      placeholder="New password"
-                      autoComplete="new-password"
-                      minLength={6}
-                      required
-                    />
-                    <input
-                      type="password"
-                      value={resetPasswordConfirm}
-                      onChange={(event) => setResetPasswordConfirm(event.target.value)}
-                      placeholder="Confirm new password"
-                      autoComplete="new-password"
-                      minLength={6}
-                      required
-                    />
-                  </div>
-
-                  <div className="profile-form-actions">
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      onClick={() => {
-                        setIsResetFlowActive(false)
-                        setResetPasswordDraft('')
-                        setResetPasswordConfirm('')
-                      }}
-                      disabled={resetPasswordBusy}
-                    >
-                      Cancel
-                    </button>
-                    <button className="btn btn-primary" type="submit" disabled={resetPasswordBusy}>
-                      {resetPasswordBusy ? 'Updating...' : 'Update Password'}
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : authUser ? (
-              <>
-                <p className="profile-modal-subtitle">Update how other Dish Depot users find and recognize you.</p>
-
-                <form className="profile-form" onSubmit={handleProfileSave}>
-                  <div className="profile-avatar-row">
-                    <button
-                      ref={profileAvatarEditBtnRef}
-                      className="profile-avatar-edit-btn"
-                      type="button"
-                      onClick={handleAvatarEditClick}
-                      disabled={profileUploading}
-                      aria-label="Edit profile picture"
-                      aria-expanded={isAvatarActionMenuOpen}
-                      aria-controls="profile-avatar-actions-menu"
-                    >
-                      <i className="fas fa-pen" />
-                    </button>
-                    <img
-                      className="profile-avatar-preview"
-                      src={profileAvatarUrl || dishDepotLogo}
-                      alt="Profile avatar preview"
-                    />
-                    <input
-                      ref={profileAvatarInputRef}
-                      id="profileAvatarUpload"
-                      className="profile-avatar-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      disabled={profileUploading}
-                    />
-
-                    {isAvatarActionMenuOpen ? (
-                      <div
-                        ref={profileAvatarMenuRef}
-                        id="profile-avatar-actions-menu"
-                        className="profile-avatar-actions-menu"
-                        role="menu"
-                        aria-label="Profile photo actions"
-                      >
-                        <button className="btn btn-secondary" type="button" role="menuitem" onClick={handleSelectAvatarPhoto}>
-                          <i className="fas fa-image" />
-                          Select Photo
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          type="button"
-                          role="menuitem"
-                          onClick={handleRemoveAvatarPhoto}
-                          disabled={!profileAvatarValue && !profileAvatarUrl}
-                        >
-                          <i className="fas fa-trash" />
-                          Remove Photo
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="profileDisplayName">Display Name</label>
-                    <input
-                      id="profileDisplayName"
-                      type="text"
-                      value={profileDisplayName}
-                      onChange={(event) => setProfileDisplayName(event.target.value)}
-                      placeholder="How your name appears"
-                      autoComplete="name"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="profileUsername">Username</label>
-                    <input
-                      id="profileUsername"
-                      type="text"
-                      required
-                      minLength={3}
-                      value={profileUsername}
-                      onChange={(event) => setProfileUsername(event.target.value.toLowerCase())}
-                      placeholder="username"
-                      autoComplete="username"
-                    />
-                  </div>
-
-                  <div className="profile-form-actions">
-                    <button className="btn btn-secondary" type="button" onClick={handleSignOut}>
-                      <i className="fas fa-right-from-bracket" />
-                      Sign Out
-                    </button>
-                    <button className="btn btn-primary" type="submit" disabled={profileBusy || profileUploading}>
-                      {profileBusy ? 'Saving...' : 'Save Profile'}
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <>
-                <p className="profile-modal-subtitle">Sign in to sync recipes, sharing, and your account profile.</p>
-
-                <form className="profile-auth-form" onSubmit={handleAuthSubmit}>
-                  <div className="auth-mode-toggle" role="group" aria-label="Authentication mode">
-                    <button
-                      className={`btn btn-small ${authMode === 'signin' ? 'btn-primary' : 'btn-secondary'}`}
-                      type="button"
-                      onClick={() => setAuthMode('signin')}
-                    >
-                      Sign In
-                    </button>
-                    <button
-                      className={`btn btn-small ${authMode === 'signup' ? 'btn-primary' : 'btn-secondary'}`}
-                      type="button"
-                      onClick={() => setAuthMode('signup')}
-                    >
-                      Sign Up
-                    </button>
-                  </div>
-
-                  <div className="auth-input-row profile-auth-fields">
-                    {authMode === 'signup' ? (
-                      <>
-                        <input
-                          type="text"
-                          value={authDisplayName}
-                          onChange={(event) => setAuthDisplayName(event.target.value)}
-                          placeholder="Display name (optional)"
-                          autoComplete="name"
-                        />
-                        <input
-                          type="text"
-                          value={authUsername}
-                          onChange={(event) => setAuthUsername(event.target.value.toLowerCase())}
-                          placeholder="Username"
-                          autoComplete="username"
-                          minLength={3}
-                          required
-                        />
-                      </>
-                    ) : null}
-
-                    <input
-                      type="email"
-                      value={authEmail}
-                      onChange={(event) => setAuthEmail(event.target.value)}
-                      placeholder="Email"
-                      autoComplete="email"
-                      required
-                    />
-                    <input
-                      type="password"
-                      value={authPassword}
-                      onChange={(event) => setAuthPassword(event.target.value)}
-                      placeholder="Password"
-                      autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
-                      minLength={6}
-                      required
-                    />
-                  </div>
-
-                  <div className="profile-form-actions">
-                    {authMode === 'signin' ? (
-                      <button className="btn btn-secondary" type="button" onClick={() => void handleRequestPasswordReset()} disabled={authBusy}>
-                        Forgot Password?
-                      </button>
-                    ) : null}
-                    <button className="btn btn-primary" type="submit" disabled={authBusy}>
-                      {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={closeProfileModal}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          isResetFlowActive={isResetFlowActive}
+          onCompletePasswordReset={handleCompletePasswordReset}
+          resetPasswordDraft={resetPasswordDraft}
+          onChangeResetPasswordDraft={setResetPasswordDraft}
+          resetPasswordConfirm={resetPasswordConfirm}
+          onChangeResetPasswordConfirm={setResetPasswordConfirm}
+          onCancelPasswordReset={() => {
+            setIsResetFlowActive(false)
+            setResetPasswordDraft('')
+            setResetPasswordConfirm('')
+          }}
+          resetPasswordBusy={resetPasswordBusy}
+          authUser={authUser}
+          onProfileSave={handleProfileSave}
+          profileAvatarEditBtnRef={profileAvatarEditBtnRef}
+          onAvatarEditClick={handleAvatarEditClick}
+          profileUploading={profileUploading}
+          isAvatarActionMenuOpen={isAvatarActionMenuOpen}
+          profileAvatarUrl={profileAvatarUrl}
+          dishDepotLogo={dishDepotLogo}
+          profileAvatarInputRef={profileAvatarInputRef}
+          onAvatarUpload={handleAvatarUpload}
+          profileAvatarMenuRef={profileAvatarMenuRef}
+          onSelectAvatarPhoto={handleSelectAvatarPhoto}
+          onRemoveAvatarPhoto={handleRemoveAvatarPhoto}
+          profileAvatarValue={profileAvatarValue}
+          profileDisplayName={profileDisplayName}
+          onChangeProfileDisplayName={setProfileDisplayName}
+          profileUsername={profileUsername}
+          onChangeProfileUsername={setProfileUsername}
+          onSignOut={handleSignOut}
+          profileBusy={profileBusy}
+          onAuthSubmit={handleAuthSubmit}
+          authMode={authMode}
+          onChangeAuthMode={setAuthMode}
+          authDisplayName={authDisplayName}
+          onChangeAuthDisplayName={setAuthDisplayName}
+          authUsername={authUsername}
+          onChangeAuthUsername={setAuthUsername}
+          authEmail={authEmail}
+          onChangeAuthEmail={setAuthEmail}
+          authPassword={authPassword}
+          onChangeAuthPassword={setAuthPassword}
+          onRequestPasswordReset={() => void handleRequestPasswordReset()}
+          authBusy={authBusy}
+        />
+      </Suspense>
 
       <Suspense fallback={<ModalLoadingFallback />}>
         <GroupManagementModal

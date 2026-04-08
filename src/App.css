@@ -971,6 +971,9 @@ body[data-theme='dark'] .header-tagline {
   align-self: start;
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
   animation: cardRise 340ms cubic-bezier(0.23, 1, 0.32, 1);
+  content-visibility: auto;
+  contain-intrinsic-size: 560px;
+  contain: layout style paint;
 }
 
 .recipe-card-clickable {
