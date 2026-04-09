@@ -1,3 +1,5 @@
+import { ModalCloseButton, ModalHeader } from './ModalPrimitives'
+
 export default function ProfileModal({
   isOpen,
   onClose,
@@ -49,29 +51,42 @@ export default function ProfileModal({
     return null
   }
 
-  return (
-    <div className="modal show profile-modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="modal-content profile-modal" onClick={(event) => event.stopPropagation()}>
-        <span className="close" onClick={onClose}>
-          &times;
-        </span>
-        <h2>Profile</h2>
-        <div className="profile-theme-row">
-          <span className="profile-theme-label">Theme</span>
-          <label className="theme-switch" aria-label="Toggle dark mode">
-            <input type="checkbox" checked={theme === 'dark'} onChange={onToggleTheme} />
-            <span className="theme-switch-track">
-              <span className="theme-switch-knob">
-                <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
-              </span>
-            </span>
-            <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-          </label>
-        </div>
-        {isResetFlowActive ? (
-          <>
-            <p className="profile-modal-subtitle">Set a new password for your Dish Depot account.</p>
+  const subtitle = isResetFlowActive
+    ? 'Set a new password for your Dish Depot account.'
+    : authUser
+      ? 'Update how other Dish Depot users find and recognize you.'
+      : 'Sign in to sync recipes, sharing, and your account profile.'
 
+  return (
+    <div
+      className="modal show profile-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profile-modal-title"
+      aria-describedby="profile-modal-subtitle"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div className="modal-content profile-modal">
+        <div className="modal-shell profile-modal-shell">
+          <ModalCloseButton onClick={onClose} label="Close profile" />
+          <ModalHeader title="Profile" subtitle={subtitle} titleId="profile-modal-title" subtitleId="profile-modal-subtitle" />
+          <div className="profile-theme-row">
+            <span className="profile-theme-label">Theme</span>
+            <label className="theme-switch" aria-label="Toggle dark mode">
+              <input type="checkbox" checked={theme === 'dark'} onChange={onToggleTheme} />
+              <span className="theme-switch-track">
+                <span className="theme-switch-knob">
+                  <i className={`fas ${theme === 'dark' ? 'fa-moon' : 'fa-sun'}`} />
+                </span>
+              </span>
+              <span className="theme-switch-label">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+            </label>
+          </div>
+          {isResetFlowActive ? (
             <form className="profile-auth-form" onSubmit={onCompletePasswordReset}>
               <div className="auth-input-row profile-auth-fields">
                 <input
@@ -103,11 +118,7 @@ export default function ProfileModal({
                 </button>
               </div>
             </form>
-          </>
-        ) : authUser ? (
-          <>
-            <p className="profile-modal-subtitle">Update how other Dish Depot users find and recognize you.</p>
-
+          ) : authUser ? (
             <form className="profile-form" onSubmit={onProfileSave}>
               <div className="profile-avatar-row">
                 <button
@@ -195,13 +206,10 @@ export default function ProfileModal({
                 </button>
               </div>
             </form>
-          </>
-        ) : (
-          <>
-            <p className="profile-modal-subtitle">Sign in to sync recipes, sharing, and your account profile.</p>
-
+          ) : (
             <form className="profile-auth-form" onSubmit={onAuthSubmit}>
-              <div className="auth-mode-toggle" role="group" aria-label="Authentication mode">
+              <fieldset className="auth-mode-toggle">
+                <legend className="visually-hidden">Authentication mode</legend>
                 <button
                   className={`btn btn-small ${authMode === 'signin' ? 'btn-primary' : 'btn-secondary'}`}
                   type="button"
@@ -216,7 +224,7 @@ export default function ProfileModal({
                 >
                   Sign Up
                 </button>
-              </div>
+              </fieldset>
 
               <div className="auth-input-row profile-auth-fields">
                 {authMode === 'signup' ? (
@@ -270,8 +278,8 @@ export default function ProfileModal({
                 </button>
               </div>
             </form>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

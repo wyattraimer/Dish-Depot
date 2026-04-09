@@ -1127,12 +1127,6 @@ async function resolveAvatarDisplayUrlForUserId(userId) {
 function FloatingControls({
   canShowFloating,
   showAddRecipeFab,
-  showInstallBtn,
-  showSwUpdateBanner,
-  onInstallClick,
-  onDismissInstall,
-  onTriggerSwUpdate,
-  onDismissSwUpdate,
   onAddRecipe,
 }) {
   const [showBackToTop, setShowBackToTop] = useState(false)
@@ -1198,45 +1192,16 @@ function FloatingControls({
 
   return (
     <>
-      {showInstallBtn ? (
-        <div className="pwa-install-wrap" role="group" aria-label="Install app prompt">
-          <button id="pwaInstallBtn" className="btn btn-secondary pwa-install-btn" type="button" onClick={onInstallClick}>
-            <i className="fas fa-download" />
-            Install App
-          </button>
-          <button className="pwa-install-dismiss" type="button" onClick={onDismissInstall} aria-label="Dismiss install app prompt">
-            <i className="fas fa-times" />
-          </button>
-        </div>
-      ) : null}
-
-      {showSwUpdateBanner ? (
-        <div id="swUpdateBanner" className="sw-update-banner">
-          <div className="sw-update-message">New version available</div>
-          <button className="btn btn-primary" type="button" onClick={onTriggerSwUpdate}>
-            Update now
-          </button>
-          <button className="btn btn-secondary" type="button" onClick={onDismissSwUpdate}>
-            Later
-          </button>
-        </div>
-      ) : null}
-
-      {canShowFloating && showBackToTop && !showSwUpdateBanner ? (
-        <button
-          className={`btn btn-primary back-to-top-btn ${showInstallBtn ? 'back-to-top-btn-has-install' : ''}`}
-          type="button"
-          onClick={scrollToTop}
-          aria-label="Back to top"
-        >
+      {canShowFloating && showBackToTop ? (
+        <button className="btn btn-primary back-to-top-btn" type="button" onClick={scrollToTop} aria-label="Back to top">
           <i className="fas fa-arrow-up" />
           <span>Top</span>
         </button>
       ) : null}
 
-      {canShowFloating && !showSwUpdateBanner && showAddRecipeFab ? (
+      {canShowFloating && showAddRecipeFab ? (
         <button
-          className={`btn btn-primary mobile-add-fab ${showInstallBtn ? 'mobile-add-fab-has-install' : ''} ${showBackToTop ? 'mobile-add-fab-has-top' : ''}`}
+          className={`btn btn-primary mobile-add-fab ${showBackToTop ? 'mobile-add-fab-has-top' : ''}`}
           type="button"
           onClick={onAddRecipe}
           aria-label="Add recipe"
@@ -2065,6 +2030,44 @@ function App() {
     }
     return authUser?.email || 'Account'
   }, [profileDisplayName, profileUsername, authUser?.email])
+  const plannedMealCount = useMemo(
+    () =>
+      MEAL_DAYS.reduce(
+        (total, day) =>
+          total + MEAL_SLOTS.filter((slot) => Boolean(mealPlan[day]?.[slot])).length,
+        0,
+      ),
+    [mealPlan],
+  )
+  const currentWorkspaceTitle = activeView === 'planner' ? 'Weekly Meal Planner' : 'Recipe Library'
+  const currentWorkspaceDescription =
+    activeView === 'planner'
+      ? plannerRecipes.length > 0
+        ? `Map out breakfasts, lunches, and dinners with ${plannerRecipes.length} saved recipe${plannerRecipes.length === 1 ? '' : 's'} ready to place.`
+        : 'Add a few recipes first, then build out breakfasts, lunches, and dinners for the week here.'
+      : recipeScope === 'group'
+        ? selectedGroup
+          ? `Browse ${selectedGroup.name} with search, filters, and collaboration tools kept in one calm workspace.`
+          : 'Browse group recipes with search, filters, and collaboration tools kept in one calm workspace.'
+        : recipeScope === 'shared'
+          ? 'Review recipes shared with you, keep permissions clear, and jump into the details without extra clutter.'
+          : 'Keep your collection organized, searchable, and ready for the next thing you want to cook.'
+  const headerMetaItems =
+    activeView === 'planner'
+      ? [
+          `${plannedMealCount} slot${plannedMealCount === 1 ? '' : 's'} planned`,
+          `${plannerRecipes.length} recipe${plannerRecipes.length === 1 ? '' : 's'} ready`,
+          hasSupabaseConfig ? (isOnline ? 'Cloud sync ready' : 'Offline mode') : 'Local library',
+        ]
+      : [
+          `${filteredRecipes.length} visible`,
+          recipeScope === 'group' ? (selectedGroup ? `Group · ${selectedGroup.name}` : 'Group recipes') : recipeScope === 'shared' ? 'Shared with me' : 'Private library',
+          showPinnedOnly ? 'Pinned only' : categoryFilter ? formatCategory(categoryFilter) : 'All categories',
+        ]
+  const shellSupportNote =
+    activeView === 'planner'
+      ? 'Recipes and Planner stay one tap apart, so the week stays easy to adjust.'
+      : 'Search, filters, and add/share actions stay aligned below so the library feels clear instead of crowded.'
 
   const extractReviewSummary = useMemo(() => {
     if (!extractCandidate) {
@@ -6673,9 +6676,69 @@ function App() {
             <div className="header-brand">
               <img className="header-logo" src={dishDepotLogo} alt="Dish Depot logo" loading="eager" decoding="async" fetchPriority="high" />
               <div className="header-title-block">
+                <span className="header-kicker">Recipe home &amp; weekly planner</span>
                 <h1 className="header-title">Dish Depot</h1>
                 <p className="header-tagline">Save. Organize. Cook.</p>
+                <p className="header-copy">
+                  A steady place for saved recipes, shared cooking, and meal planning that still feels trustworthy at a glance.
+                </p>
+                <ul className="header-meta" aria-label="Current app summary">
+                  {headerMetaItems.map((item) => (
+                    <li key={item} className="header-meta-item">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </div>
+            </div>
+
+            <div className="header-shell-panel">
+              <span className="header-shell-label">Current workspace</span>
+              <p className="header-shell-title">{currentWorkspaceTitle}</p>
+              <p className="header-shell-description">{currentWorkspaceDescription}</p>
+
+              {showInstallBtn || showSwUpdateBanner ? (
+                <div className="header-prompt-stack">
+                  {showSwUpdateBanner ? (
+                    <div id="swUpdateBanner" className="header-prompt-card header-prompt-card-strong" role="status" aria-live="polite">
+                      <div className="header-prompt-copy">
+                        <span className="header-prompt-kicker">Update ready</span>
+                        <strong>New Dish Depot version available</strong>
+                        <p>Refresh now to pull in the latest fixes and interface polish.</p>
+                      </div>
+                      <div className="header-prompt-actions">
+                        <button className="btn btn-primary btn-small" type="button" onClick={triggerSwUpdate}>
+                          Update now
+                        </button>
+                        <button className="btn btn-secondary btn-small" type="button" onClick={() => setShowSwUpdateBanner(false)}>
+                          Later
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {showInstallBtn ? (
+                    <section className="header-prompt-card" aria-label="Install app prompt">
+                      <div className="header-prompt-copy">
+                        <span className="header-prompt-kicker">Install app</span>
+                        <strong>Keep Dish Depot on your home screen</strong>
+                        <p>Install it for faster access when you are cooking, planning, or shopping.</p>
+                      </div>
+                      <div className="header-prompt-actions">
+                        <button id="pwaInstallBtn" className="btn btn-secondary btn-small" type="button" onClick={handleInstallClick}>
+                          <i className="fas fa-download" />
+                          Install App
+                        </button>
+                        <button className="btn btn-secondary btn-small header-prompt-dismiss" type="button" onClick={() => setShowInstallBtn(false)}>
+                          Dismiss
+                        </button>
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="header-shell-note">{shellSupportNote}</p>
+              )}
             </div>
           </div>
         </div>
@@ -6702,68 +6765,76 @@ function App() {
         <div className="container">
           <section className="controls">
             <div className="controls-row controls-row-primary">
-              <div className="view-toggle-group" role="group" aria-label="App view">
-                <button
-                  className={`btn btn-small toolbar-tab ${activeView === 'recipes' ? 'btn-primary' : 'btn-secondary'}`}
-                  type="button"
-                  aria-pressed={activeView === 'recipes'}
-                  onClick={() => setActiveView('recipes')}
-                >
-                  <i className="fas fa-th-large" />
-                  Recipes
-                </button>
-                <button
-                  className={`btn btn-small toolbar-tab ${activeView === 'planner' ? 'btn-primary' : 'btn-secondary'}`}
-                  type="button"
-                  aria-pressed={activeView === 'planner'}
-                  onClick={() => setActiveView('planner')}
-                >
-                  <i className="fas fa-calendar-alt" />
-                  Meal Planner
-                </button>
+              <div className="controls-primary-nav">
+                <span className="controls-section-label">Navigate</span>
+                <fieldset className="view-toggle-group">
+                  <legend className="visually-hidden">App view</legend>
+                  <button
+                    className={`btn btn-small toolbar-tab ${activeView === 'recipes' ? 'btn-primary' : 'btn-secondary'}`}
+                    type="button"
+                    aria-pressed={activeView === 'recipes'}
+                    onClick={() => setActiveView('recipes')}
+                  >
+                    <i className="fas fa-th-large" />
+                    Recipes
+                  </button>
+                  <button
+                    className={`btn btn-small toolbar-tab ${activeView === 'planner' ? 'btn-primary' : 'btn-secondary'}`}
+                    type="button"
+                    aria-pressed={activeView === 'planner'}
+                    onClick={() => setActiveView('planner')}
+                  >
+                    <i className="fas fa-calendar-alt" />
+                    Meal Planner
+                  </button>
+                </fieldset>
               </div>
 
-              <div className="controls-status-cluster">
-                {hasSupabaseConfig && authUser ? (
-                  <span
-                    className={`auth-sync-pill ${isOnline ? 'auth-sync-pill-online' : 'auth-sync-pill-offline'}`}
-                    aria-label={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
-                  >
-                    <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
-                    <span className="auth-sync-label">{isOnline ? 'Sync On' : 'Sync Off'}</span>
-                  </span>
-                ) : null}
+              <div className="controls-primary-status">
+                <span className="controls-section-label">Account &amp; access</span>
+                <div className="controls-status-cluster">
+                  {hasSupabaseConfig && authUser ? (
+                    <span
+                      className={`auth-sync-pill ${isOnline ? 'auth-sync-pill-online' : 'auth-sync-pill-offline'}`}
+                      title={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
+                    >
+                      <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
+                      <span className="auth-sync-label">{isOnline ? 'Sync On' : 'Sync Off'}</span>
+                    </span>
+                  ) : null}
 
-                {hasSupabaseConfig && authUser ? (
-                  <button className="btn btn-secondary btn-small group-invites-pill toolbar-ghost-button" type="button" onClick={openGroupInvitesModal}>
-                    <i className="fas fa-envelope-open-text" />
-                    <span className="group-invites-label">Invites</span>
-                    {pendingGroupInvites.length > 0 ? <span className="group-invites-count">{pendingGroupInvites.length}</span> : null}
-                  </button>
-                ) : null}
+                  {hasSupabaseConfig && authUser ? (
+                    <button className="btn btn-secondary btn-small group-invites-pill toolbar-ghost-button" type="button" onClick={openGroupInvitesModal}>
+                      <i className="fas fa-envelope-open-text" />
+                      <span className="group-invites-label">Invites</span>
+                      {pendingGroupInvites.length > 0 ? <span className="group-invites-count">{pendingGroupInvites.length}</span> : null}
+                    </button>
+                  ) : null}
 
-                {hasSupabaseConfig ? (
-                  <button
-                    className="auth-user-email auth-user-link"
-                    type="button"
-                    title={`Open account (${accountIdentityLabel})`}
-                    onClick={openProfileModal}
-                  >
-                    {authUser && profileAvatarUrl ? (
-                      <>
+                  {hasSupabaseConfig ? (
+                    <button
+                      className="auth-user-email auth-user-link"
+                      type="button"
+                      aria-label={authUser ? `Open account for ${accountIdentityLabel}` : 'Open account and sign in'}
+                      title={`Open account (${accountIdentityLabel})`}
+                      onClick={openProfileModal}
+                    >
+                      {authUser && profileAvatarUrl ? (
                         <img className="auth-user-avatar" src={profileAvatarUrl} alt="Profile avatar" />
-                        {isOnline ? <span className="auth-user-label">{accountIdentityLabel}</span> : null}
-                      </>
-                    ) : (
-                      <>
-                        <i className="fas fa-user" />
-                        {isOnline ? <span className="auth-user-label">{accountIdentityLabel}</span> : null}
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <span className="auth-config-note">Cloud sync disabled</span>
-                )}
+                      ) : (
+                        <span className="auth-user-avatar auth-user-avatar-fallback" aria-hidden="true">
+                          <i className="fas fa-user" />
+                        </span>
+                      )}
+                      <span className="auth-user-meta">
+                        <span className="auth-user-kicker">{authUser ? 'Profile' : 'Cloud account'}</span>
+                        <span className="auth-user-label">{accountIdentityLabel}</span>
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="auth-config-note">Cloud sync disabled</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -6814,7 +6885,7 @@ function App() {
                     </div>
 
                     {hasSupabaseConfig && authUser ? (
-                      <div className="scope-select-wrap toolbar-select-field" aria-label="Recipe scope">
+                      <div className="scope-select-wrap toolbar-select-field">
                         <label htmlFor="recipeScopeSelect" className="visually-hidden">
                           Recipe scope
                         </label>
@@ -6860,7 +6931,9 @@ function App() {
 
                   <div className="controls-utility-cluster">
                     <div className="results-count" aria-live="polite">
-                      {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
+                      <span className="results-count-label">Showing</span>
+                      <strong>{filteredRecipes.length}</strong>
+                      <span>recipe{filteredRecipes.length === 1 ? '' : 's'}</span>
                     </div>
 
                     <button
@@ -6887,7 +6960,7 @@ function App() {
                       </button>
 
                       {isToolsMenuOpen ? (
-                        <div id="recipe-tools-menu" className="tools-menu-panel" aria-label="Recipe tools">
+                        <section id="recipe-tools-menu" className="tools-menu-panel" aria-label="Recipe tools">
                           <ToolbarMenuSection title="Utilities">
                             <button
                               className={`btn tools-menu-button ${showPinnedOnly ? 'btn-pin-active' : 'btn-pin'}`}
@@ -6992,7 +7065,7 @@ function App() {
                               Delete All Recipes
                             </button>
                           </ToolbarMenuSection>
-                        </div>
+                        </section>
                       ) : null}
                     </div>
 
@@ -7507,12 +7580,6 @@ function App() {
           !isProfileModalOpen
         }
         showAddRecipeFab={activeView === 'recipes' && recipeScope !== 'shared' && !isInlineAddRecipeVisible}
-        showInstallBtn={showInstallBtn}
-        showSwUpdateBanner={showSwUpdateBanner}
-        onInstallClick={handleInstallClick}
-        onDismissInstall={() => setShowInstallBtn(false)}
-        onTriggerSwUpdate={triggerSwUpdate}
-        onDismissSwUpdate={() => setShowSwUpdateBanner(false)}
         onAddRecipe={() => openModal()}
       />
     </>

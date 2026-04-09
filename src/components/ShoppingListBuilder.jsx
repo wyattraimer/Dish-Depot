@@ -1,16 +1,4 @@
-function EmptyStateCard({ icon, title, description, compact = false }) {
-  return (
-    <div className={`empty-state-card${compact ? ' empty-state-card-compact' : ''}`}>
-      <div className="empty-state-icon" aria-hidden="true">
-        <i className={`fas ${icon}`} />
-      </div>
-      <div className="empty-state-copy">
-        <h3>{title}</h3>
-        <p>{description}</p>
-      </div>
-    </div>
-  )
-}
+import { EmptyStateCard, ModalCloseButton, ModalHeader } from './ModalPrimitives'
 
 export default function ShoppingListBuilder({
   isOpen,
@@ -72,88 +60,101 @@ export default function ShoppingListBuilder({
   }
 
   return (
-    <div className="modal show" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="modal-content shopping-list-modal" onClick={(event) => event.stopPropagation()}>
-        <span className="close" onClick={onClose}>
-          &times;
-        </span>
-        <h2>Shopping List Builder</h2>
-        <p className="import-preview-subtitle">
-          Start by selecting recipes, then Dish Depot will organize the list into grocery-style sections.
-        </p>
+    <div
+      className="modal show"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shopping-list-modal-title"
+      aria-describedby="shopping-list-modal-subtitle"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div className="modal-content shopping-list-modal">
+        <div className="modal-shell shopping-list-shell">
+          <ModalCloseButton onClick={onClose} label="Close shopping list builder" />
+          <ModalHeader
+            title="Shopping List Builder"
+            subtitle="Start by selecting recipes, then Dish Depot will organize the list into grocery-style sections."
+            titleId="shopping-list-modal-title"
+            subtitleId="shopping-list-modal-subtitle"
+          />
 
-        <div className="shopping-list-toolbar">
-          <div className="shopping-list-meta-pills">
-            <span className="shopping-list-meta-pill">Recipes selected: {selectedShoppingCount}</span>
-            <span className="shopping-list-meta-pill">Combined items: {combinedShoppingItems.length}</span>
-            {pantryItemCount > 0 ? <span className="shopping-list-meta-pill">Pantry items: {pantryItemCount}</span> : null}
-            {hasSavedShoppingDraft ? <span className="shopping-list-meta-pill">Draft saved on this device</span> : null}
-            {shoppingHistory.length > 0 ? <span className="shopping-list-meta-pill">Saved lists: {shoppingHistory.length}</span> : null}
-          </div>
-          <div className="shopping-list-toolbar-actions">
-            <button className="btn btn-secondary btn-small" type="button" onClick={onSaveDraft}>
-              Save Draft
-            </button>
-            <button className="btn btn-secondary btn-small" type="button" onClick={onSaveListToHistory}>
-              Save List
-            </button>
-            {hasSavedShoppingDraft ? (
-              <button className="btn btn-secondary btn-small" type="button" onClick={onClearSavedDraft}>
-                Clear Saved Draft
+          <div className="shopping-list-toolbar">
+            <div className="shopping-list-meta-pills">
+              <span className="shopping-list-meta-pill">Recipes selected: {selectedShoppingCount}</span>
+              <span className="shopping-list-meta-pill">Combined items: {combinedShoppingItems.length}</span>
+              {pantryItemCount > 0 ? <span className="shopping-list-meta-pill">Pantry items: {pantryItemCount}</span> : null}
+              {hasSavedShoppingDraft ? <span className="shopping-list-meta-pill">Draft saved on this device</span> : null}
+              {shoppingHistory.length > 0 ? <span className="shopping-list-meta-pill">Saved lists: {shoppingHistory.length}</span> : null}
+            </div>
+            <div className="shopping-list-toolbar-actions">
+              <button className="btn btn-secondary btn-small" type="button" onClick={onSaveDraft}>
+                Save Draft
               </button>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="shopping-builder-controls">
-          <div className="import-preview-actions shopping-list-action-row">
-            <button className="btn btn-secondary btn-small" type="button" onClick={onSelectAllCandidates}>
-              Select All
-            </button>
-            <button className="btn btn-secondary btn-small" type="button" onClick={onClearRecipes}>
-              Clear Recipes
-            </button>
-            <button className="btn btn-secondary btn-small" type="button" onClick={onClearChecklist}>
-              Uncheck Items
-            </button>
-            <button className="btn btn-secondary btn-small" type="button" onClick={onClearPantry}>
-              Clear Pantry
-            </button>
-            <button className="btn btn-secondary btn-small" type="button" onClick={onExportList}>
-              Export List
-            </button>
+              <button className="btn btn-primary btn-small" type="button" onClick={onSaveListToHistory}>
+                Save List
+              </button>
+              {hasSavedShoppingDraft ? (
+                <button className="btn btn-secondary btn-small" type="button" onClick={onClearSavedDraft}>
+                  Clear Saved Draft
+                </button>
+              ) : null}
+            </div>
           </div>
 
-          <div className="shopping-unit-toggle" role="group" aria-label="Preferred units">
-            <button
-              type="button"
-              className={`btn btn-small ${shoppingUnitSystem === 'us' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => onSetShoppingUnitSystem('us')}
-            >
-              US Units
-            </button>
-            <button
-              type="button"
-              className={`btn btn-small ${shoppingUnitSystem === 'metric' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => onSetShoppingUnitSystem('metric')}
-            >
-              Metric Units
-            </button>
-            <button
-              type="button"
-              className={`btn btn-small ${hidePantryItems ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={onToggleHidePantry}
-            >
-              {hidePantryItems ? 'Show Pantry' : 'Hide Pantry'}
-            </button>
-          </div>
-          <p className="shopping-panel-note shopping-builder-hint">
-            Mark any item with <strong>Have at Home</strong> to add it to pantry. Your pantry items appear in their own section below.
-          </p>
-        </div>
+          <div className="shopping-builder-controls">
+            <div className="import-preview-actions shopping-list-action-row">
+              <button className="btn btn-secondary btn-small" type="button" onClick={onSelectAllCandidates}>
+                Select All
+              </button>
+              <button className="btn btn-secondary btn-small" type="button" onClick={onClearRecipes}>
+                Clear Recipes
+              </button>
+              <button className="btn btn-secondary btn-small" type="button" onClick={onClearChecklist}>
+                Uncheck Items
+              </button>
+              <button className="btn btn-secondary btn-small" type="button" onClick={onClearPantry}>
+                Clear Pantry
+              </button>
+              <button className="btn btn-secondary btn-small" type="button" onClick={onExportList}>
+                Export List
+              </button>
+            </div>
 
-        {shoppingHistory.length > 0 ? (
-          <details className="shopping-panel">
+            <fieldset className="shopping-unit-toggle">
+              <legend className="visually-hidden">Preferred units</legend>
+              <button
+                type="button"
+                className={`btn btn-small ${shoppingUnitSystem === 'us' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => onSetShoppingUnitSystem('us')}
+              >
+                US Units
+              </button>
+              <button
+                type="button"
+                className={`btn btn-small ${shoppingUnitSystem === 'metric' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => onSetShoppingUnitSystem('metric')}
+              >
+                Metric Units
+              </button>
+              <button
+                type="button"
+                className={`btn btn-small ${hidePantryItems ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={onToggleHidePantry}
+              >
+                {hidePantryItems ? 'Show Pantry' : 'Hide Pantry'}
+              </button>
+            </fieldset>
+            <p className="shopping-panel-note shopping-builder-hint">
+              Mark any item with <strong>Have at Home</strong> to add it to pantry. Your pantry items appear in their own section below.
+            </p>
+          </div>
+
+          {shoppingHistory.length > 0 ? (
+            <details className="shopping-panel">
             <summary>Saved Lists ({shoppingHistory.length})</summary>
             <p className="shopping-panel-note">Reuse a saved shopping setup without rebuilding it from scratch.</p>
             <div className="shopping-history-list">
@@ -172,7 +173,7 @@ export default function ShoppingListBuilder({
                     <button className="btn btn-small btn-secondary" type="button" onClick={() => onRestoreHistoryEntry(entry)}>
                       Restore
                     </button>
-                    <button className="btn btn-small btn-secondary" type="button" onClick={() => onDeleteHistoryEntry(entry.id)}>
+                    <button className="btn btn-small btn-danger" type="button" onClick={() => onDeleteHistoryEntry(entry.id)}>
                       Delete
                     </button>
                   </div>
@@ -180,11 +181,11 @@ export default function ShoppingListBuilder({
               ))}
             </div>
           </details>
-        ) : null}
+          ) : null}
 
-        <details className="shopping-panel shopping-pantry-panel" open={pantryEntries.length > 0}>
-          <summary>Pantry / Have at Home ({pantryEntries.length})</summary>
-          {pantryEntries.length > 0 ? (
+          <details className="shopping-panel shopping-pantry-panel" open={pantryEntries.length > 0}>
+            <summary>Pantry / Have at Home ({pantryEntries.length})</summary>
+            {pantryEntries.length > 0 ? (
             <>
               <p className="shopping-panel-note">These are the items you marked as already available at home. Remove them here or use Hide Pantry to keep the active list focused.</p>
               <div className="shopping-history-list">
@@ -211,11 +212,11 @@ export default function ShoppingListBuilder({
               compact
             />
           )}
-        </details>
+          </details>
 
-        <details className="shopping-panel shopping-section-order-panel">
-          <summary>Section Order</summary>
-          <p className="shopping-panel-note">Reorder grocery sections to match how you shop in-store.</p>
+          <details className="shopping-panel shopping-section-order-panel">
+            <summary>Section Order</summary>
+            <p className="shopping-panel-note">Reorder grocery sections to match how you shop in-store.</p>
           <div className="shopping-section-order-list">
             {shoppingSectionOrder.map((section, index) => (
               <div key={section} className="shopping-section-order-item">
@@ -241,10 +242,10 @@ export default function ShoppingListBuilder({
               Reset to Default
             </button>
           </div>
-        </details>
+          </details>
 
-        <div className="shopping-list-layout">
-          <details className="shopping-panel" open>
+          <div className="shopping-list-layout">
+            <details className="shopping-panel" open>
             <summary>1. Choose Recipes</summary>
             <section className="shopping-list-recipes">
               <p className="shopping-panel-note">Pick only the recipes you want to shop for right now.</p>
@@ -260,9 +261,9 @@ export default function ShoppingListBuilder({
                 ))}
               </div>
             </section>
-          </details>
+            </details>
 
-          <details className="shopping-panel" open={selectedShoppingCount > 0}>
+            <details className="shopping-panel" open={selectedShoppingCount > 0}>
             <summary>2. Combined Totals ({visibleCombinedShoppingItems.length})</summary>
             <section className="shopping-list-ingredients">
               {visibleCombinedShoppingItems.length > 0 ? (
@@ -297,10 +298,10 @@ export default function ShoppingListBuilder({
                 />
               )}
             </section>
-          </details>
+            </details>
 
-          {filteredVisibleUnresolvedItems.length > 0 ? (
-            <details className="shopping-panel">
+            {filteredVisibleUnresolvedItems.length > 0 ? (
+              <details className="shopping-panel">
               <summary>3. Needs Review ({filteredVisibleUnresolvedItems.length})</summary>
               <p className="shopping-panel-note">These ingredients could not be safely combined. You can check them off as-is or merge them manually.</p>
               {nearDuplicateShoppingGroups.length > 0 ? (
@@ -359,11 +360,11 @@ export default function ShoppingListBuilder({
                   </section>
                 ))}
               </div>
-            </details>
-          ) : null}
+              </details>
+            ) : null}
 
-          {visibleManualShoppingGroups.length > 0 ? (
-            <details className="shopping-panel">
+            {visibleManualShoppingGroups.length > 0 ? (
+              <details className="shopping-panel">
               <summary>4. Manual Merge Items ({visibleManualShoppingGroups.length})</summary>
               <div className="shopping-group-sections">
                 {visibleGroupedManualShoppingItems.map((section) => (
@@ -415,14 +416,15 @@ export default function ShoppingListBuilder({
                   </section>
                 ))}
               </div>
-            </details>
-          ) : null}
-        </div>
+              </details>
+            ) : null}
+          </div>
 
-        <div className="import-preview-footer">
-          <button className="btn btn-secondary" type="button" onClick={onClose}>
-            Close
-          </button>
+          <div className="import-preview-footer">
+            <button className="btn btn-secondary" type="button" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>

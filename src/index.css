@@ -1,6 +1,126 @@
+:root {
+  color-scheme: light;
+  --bg-cream: #f7f2ea;
+  --bg-paper: #fffdf8;
+  --surface-canvas: #f2ebe3;
+  --surface-base: rgba(255, 255, 255, 0.88);
+  --surface-elevated: rgba(255, 255, 255, 0.94);
+  --surface-muted: rgba(248, 244, 238, 0.94);
+  --surface-control: #ffffff;
+  --surface-control-muted: #f7fafc;
+  --surface-floating: rgba(255, 252, 248, 0.98);
+  --surface-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(252, 250, 247, 0.97));
+  --surface-panel: linear-gradient(180deg, rgba(255, 252, 248, 0.98), rgba(246, 239, 230, 0.98));
+  --surface-panel-muted: rgba(255, 255, 255, 0.82);
+  --ink-900: #1f2933;
+  --ink-700: #3f4f5f;
+  --ink-600: #556779;
+  --ink-500: #6b7280;
+  --blue-700: #2f5f87;
+  --blue-600: #3d79a8;
+  --sage-600: #3d7658;
+  --gold-700: #855d0d;
+  --tomato-700: #b64437;
+  --violet-600: #5e50a9;
+  --tomato-600: #d1483e;
+  --tomato-500: #e55c4d;
+  --sage-500: #72a58a;
+  --sage-400: #8ab79e;
+  --gold-400: #f4be66;
+  --border-soft: rgba(90, 105, 122, 0.18);
+  --border-strong: rgba(90, 105, 122, 0.28);
+  --shadow-soft: 0 10px 22px rgba(31, 41, 51, 0.1);
+  --shadow-lift: 0 20px 40px rgba(31, 41, 51, 0.16);
+  --shadow-interactive: 0 12px 22px rgba(63, 79, 95, 0.14);
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --container-gutter: var(--space-5);
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-size-label: 0.82rem;
+  --font-size-body: 0.95rem;
+  --font-size-title: clamp(1.4rem, 2.4vw, 2rem);
+  --control-height-sm: 2.25rem;
+  --control-height-md: 2.75rem;
+  --control-height-lg: 3.25rem;
+  --transition: 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  --transition-emphasis: 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  --focus-ring: 0 0 0 4px rgba(209, 72, 62, 0.12);
+}
+
 html,
 body,
 #root {
   margin: 0;
   min-height: 100%;
+  background-color: var(--surface-canvas);
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  line-height: 1.55;
+  color: var(--ink-900);
+  background:
+    radial-gradient(circle at 10% -10%, rgba(229, 92, 77, 0.2), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(114, 165, 138, 0.2), transparent 38%),
+    linear-gradient(180deg, #fcf8f2 0%, #f7f2ea 45%, #f2ebe3 100%);
+  background-attachment: fixed;
+  overscroll-behavior: none;
+}
+
+body[data-theme='dark'] {
+  color-scheme: dark;
+  --surface-canvas: #0b131d;
+  --surface-base: rgba(20, 31, 43, 0.88);
+  --surface-elevated: rgba(26, 39, 54, 0.94);
+  --surface-muted: rgba(21, 31, 44, 0.86);
+  --surface-control: #1a2736;
+  --surface-control-muted: #223244;
+  --surface-floating: rgba(21, 31, 44, 0.96);
+  --surface-overlay: linear-gradient(180deg, rgba(21, 31, 44, 0.96), rgba(17, 25, 36, 0.95));
+  --surface-panel: linear-gradient(180deg, rgba(18, 28, 39, 0.98), rgba(22, 34, 47, 0.98));
+  --surface-panel-muted: rgba(18, 28, 39, 0.9);
+  --ink-900: #eef3f8;
+  --ink-700: #c7d2df;
+  --ink-600: #b2c2d3;
+  --ink-500: #9eb0c4;
+  --border-soft: rgba(164, 180, 200, 0.22);
+  --border-strong: rgba(164, 180, 200, 0.34);
+  --shadow-soft: 0 12px 24px rgba(0, 0, 0, 0.24);
+  --shadow-lift: 0 22px 44px rgba(0, 0, 0, 0.36);
+  --shadow-interactive: 0 14px 26px rgba(0, 0, 0, 0.22);
+  --focus-ring: 0 0 0 4px rgba(245, 167, 160, 0.12);
+  background:
+    radial-gradient(circle at 10% -10%, rgba(153, 65, 57, 0.28), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(53, 92, 74, 0.36), transparent 38%),
+    linear-gradient(180deg, #121a24 0%, #0f1721 48%, #0b131d 100%);
+}
+
+html[data-theme='dark'],
+body[data-theme='dark'],
+body[data-theme='dark'] #root {
+  background-color: var(--surface-canvas);
 }
