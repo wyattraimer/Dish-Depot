@@ -320,21 +320,28 @@ export default function ShoppingListBuilder({
               </summary>
               <p className="shopping-panel-note">Reorder grocery sections to match how you shop in-store.</p>
               <div className="shopping-section-order-list">
-                {shoppingSectionOrder.map((section, index) => (
-                  <div key={section} className="shopping-section-order-item">
-                    <strong>{section}</strong>
-                    <div className="shopping-section-order-actions">
-                      <button className="btn btn-small btn-secondary" type="button" onClick={() => onMoveShoppingSection(section, 'up')} disabled={index === 0}>
-                        Up
-                      </button>
-                      <button
-                        className="btn btn-small btn-secondary"
-                        type="button"
-                        onClick={() => onMoveShoppingSection(section, 'down')}
-                        disabled={index === shoppingSectionOrder.length - 1}
-                      >
-                        Down
-                      </button>
+                    {shoppingSectionOrder.map((section, index) => (
+                      <div key={section} className="shopping-section-order-item">
+                        <strong>{section}</strong>
+                        <div className="shopping-section-order-actions">
+                          <button
+                            className="btn btn-small btn-secondary"
+                            type="button"
+                            onClick={() => onMoveShoppingSection(section, 'up')}
+                            disabled={index === 0}
+                            aria-label={`Move ${section} section up`}
+                          >
+                            Up
+                          </button>
+                          <button
+                            className="btn btn-small btn-secondary"
+                            type="button"
+                            onClick={() => onMoveShoppingSection(section, 'down')}
+                            disabled={index === shoppingSectionOrder.length - 1}
+                            aria-label={`Move ${section} section down`}
+                          >
+                            Down
+                          </button>
                     </div>
                   </div>
                 ))}
@@ -391,7 +398,12 @@ export default function ShoppingListBuilder({
                         <div className="shopping-list-ingredient-items">
                           {group.items.map((item) => (
                             <div key={item.key} className={`shopping-list-ingredient-item ${shoppingPantry[item.key] ? 'shopping-list-pantry-item' : ''}`}>
-                              <input type="checkbox" checked={Boolean(shoppingChecklist[item.key])} onChange={() => onToggleShoppingItemChecked(item.key)} />
+                              <input
+                                type="checkbox"
+                                checked={Boolean(shoppingChecklist[item.key])}
+                                onChange={() => onToggleShoppingItemChecked(item.key)}
+                                aria-label={`Mark ${item.amountLabel} as checked off`}
+                              />
                               <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
                                 {item.amountLabel}
                                 {item.sourceCount > 1 ? ` (${item.sourceCount} lines)` : ''}
@@ -481,6 +493,7 @@ export default function ShoppingListBuilder({
                       placeholder="Label for merged items"
                       value={shoppingManualText}
                       onChange={(event) => onChangeShoppingManualText(event.target.value)}
+                      aria-label="Label for merged shopping items"
                     />
                     <button className="btn btn-secondary btn-small" type="button" onClick={onCreateManualMergeGroup}>
                       Merge Selected
@@ -493,13 +506,20 @@ export default function ShoppingListBuilder({
                         <div className="shopping-list-ingredient-items">
                           {group.items.map((item) => (
                             <div key={item.key} className={`shopping-list-ingredient-item shopping-list-unresolved-item ${shoppingPantry[item.key] ? 'shopping-list-pantry-item' : ''}`}>
-                              <input type="checkbox" checked={Boolean(shoppingChecklist[item.key])} onChange={() => onToggleShoppingItemChecked(item.key)} title="Checklist done" />
+                              <input
+                                type="checkbox"
+                                checked={Boolean(shoppingChecklist[item.key])}
+                                onChange={() => onToggleShoppingItemChecked(item.key)}
+                                title="Checklist done"
+                                aria-label={`Mark ${item.text} as checked off`}
+                              />
                               <input
                                 type="checkbox"
                                 className="shopping-merge-check"
                                 checked={Boolean(shoppingMergeSelection[item.key])}
                                 onChange={() => onToggleShoppingMergeSelection(item.key)}
                                 title="Select for manual merge"
+                                aria-label={`Select ${item.text} for manual merge`}
                               />
                               <span className={shoppingChecklist[item.key] ? 'shopping-list-item-checked' : ''}>
                                 {item.text}
@@ -536,13 +556,19 @@ export default function ShoppingListBuilder({
                       <div className="shopping-list-ingredient-items">
                         {section.items.map((group) => (
                           <div key={group.key} className={`shopping-list-ingredient-item shopping-list-manual-item ${shoppingPantry[group.key] ? 'shopping-list-pantry-item' : ''}`}>
-                            <input type="checkbox" checked={Boolean(shoppingChecklist[group.key])} onChange={() => onToggleShoppingItemChecked(group.key)} />
+                            <input
+                              type="checkbox"
+                              checked={Boolean(shoppingChecklist[group.key])}
+                              onChange={() => onToggleShoppingItemChecked(group.key)}
+                              aria-label={`Mark ${group.text} as checked off`}
+                            />
                             {shoppingManualEditingKey === group.key ? (
                               <input
                                 type="text"
                                 className={`shopping-manual-item-input ${shoppingChecklist[group.key] ? 'shopping-list-item-checked' : ''}`}
                                 value={shoppingManualEditDraft}
                                 onChange={(event) => onChangeShoppingManualEditDraft(event.target.value)}
+                                aria-label={`Edit merged shopping label for ${group.text}`}
                               />
                             ) : (
                               <span className={`shopping-manual-item-text ${shoppingChecklist[group.key] ? 'shopping-list-item-checked' : ''}`}>{group.text}</span>

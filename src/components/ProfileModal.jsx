@@ -229,6 +229,7 @@ export default function ProfileModal({
                         aria-label="Edit profile picture"
                         aria-expanded={isAvatarActionMenuOpen}
                         aria-controls="profile-avatar-actions-menu"
+                        aria-haspopup="true"
                       >
                         <i className="fas fa-pen" />
                         <span>{profileUploading ? 'Updating' : 'Edit'}</span>
@@ -244,31 +245,30 @@ export default function ProfileModal({
                         disabled={profileUploading}
                       />
 
-                      {isAvatarActionMenuOpen ? (
-                        <div
-                          ref={profileAvatarMenuRef}
-                          id="profile-avatar-actions-menu"
-                          className="profile-avatar-actions-menu"
-                          role="menu"
-                          aria-label="Profile photo actions"
-                        >
-                          <button className="btn btn-secondary" type="button" role="menuitem" onClick={onSelectAvatarPhoto}>
-                            <i className="fas fa-image" />
-                            Choose Photo
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            type="button"
-                            role="menuitem"
-                            onClick={onRemoveAvatarPhoto}
-                            disabled={!profileAvatarValue && !profileAvatarUrl}
-                          >
-                            <i className="fas fa-trash" />
-                            Remove Photo
-                          </button>
-                        </div>
-                      ) : null}
                     </div>
+                    {isAvatarActionMenuOpen ? (
+                      <fieldset
+                        ref={profileAvatarMenuRef}
+                        id="profile-avatar-actions-menu"
+                        className="profile-avatar-actions-menu profile-avatar-actions-menu-inline"
+                        aria-label="Profile photo actions"
+                      >
+                        <legend className="visually-hidden">Profile photo actions</legend>
+                        <button className="btn btn-secondary" type="button" onClick={onSelectAvatarPhoto}>
+                          <i className="fas fa-image" />
+                          Choose Photo
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          onClick={onRemoveAvatarPhoto}
+                          disabled={!profileAvatarValue && !profileAvatarUrl}
+                        >
+                          <i className="fas fa-trash" />
+                          Remove Photo
+                        </button>
+                      </fieldset>
+                    ) : null}
                     <p className="profile-avatar-caption">Optional profile photo for your account card and sharing surfaces.</p>
                   </div>
 

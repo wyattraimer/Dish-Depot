@@ -137,7 +137,12 @@ export default function ExportPreviewModal({
                 <article key={previewId} className={`export-preview-item${selected ? ' export-preview-item-selected' : ''}`}>
                   <div className="transfer-preview-item-top">
                     <label className="import-preview-check">
-                      <input type="checkbox" checked={selected} onChange={() => onToggleCandidate(previewId)} />
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => onToggleCandidate(previewId)}
+                        aria-label={`Include ${recipe.name} in this export`}
+                      />
                       <span>{selected ? 'Selected for export' : 'Not selected'}</span>
                     </label>
                     <span className={`transfer-preview-state-pill transfer-preview-state-pill-${selected ? 'selected' : 'muted'}`}>

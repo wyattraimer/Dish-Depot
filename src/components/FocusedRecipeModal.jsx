@@ -26,6 +26,12 @@ export default function FocusedRecipeModal({
   openModal,
   handleDeleteRecipe,
 }) {
+  const focusCloseButton = (node) => {
+    if (node) {
+      node.focus()
+    }
+  }
+
   const buildIdentityInitials = (...parts) => {
     const source = parts
       .filter(Boolean)
@@ -46,12 +52,16 @@ export default function FocusedRecipeModal({
   const recipeProvenanceEntries = getRecipeProvenanceEntries(focusedRecipe)
   const focusedCategories = focusedRecipe.categories || (focusedRecipe.category ? [focusedRecipe.category] : [])
   const canManage = canManageRecipe(focusedRecipe)
+  const recipeTitleId = `focused-recipe-title-${focusedRecipe.id}`
+  const recipeDescriptionId = `focused-recipe-description-${focusedRecipe.id}`
 
   return (
     <div
       className="focused-recipe-overlay"
       role="dialog"
       aria-modal="true"
+      aria-labelledby={recipeTitleId}
+      aria-describedby={recipeDescriptionId}
       onClick={closeFocusedRecipe}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
@@ -62,7 +72,7 @@ export default function FocusedRecipeModal({
       <article className="focused-recipe-panel" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         <div className="focused-recipe-topbar">
           <p className="focused-recipe-kicker">Recipe details</p>
-          <button className="focused-recipe-close" type="button" onClick={closeFocusedRecipe}>
+          <button ref={focusCloseButton} className="focused-recipe-close" type="button" onClick={closeFocusedRecipe}>
             <i className="fas fa-times" />
             Close
           </button>
@@ -70,7 +80,10 @@ export default function FocusedRecipeModal({
 
         <header className="focused-recipe-header">
           <div className="focused-recipe-title-block">
-            <h2>{focusedRecipe.name}</h2>
+            <h2 id={recipeTitleId}>{focusedRecipe.name}</h2>
+            <p id={recipeDescriptionId} className="visually-hidden">
+              Review the saved recipe details and available actions for {focusedRecipe.name}.
+            </p>
 
             {recipeOriginBadges.length > 0 ? (
               <div className="recipe-origin-badges recipe-origin-badges-focused">

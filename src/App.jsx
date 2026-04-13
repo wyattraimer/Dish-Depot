@@ -1151,20 +1151,30 @@ function FloatingControls({
 }) {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const showBackToTopRef = useRef(false)
+  const [showFloatingAdd, setShowFloatingAdd] = useState(false)
+  const showFloatingAddRef = useRef(false)
   const scrollRafRef = useRef(0)
 
   useEffect(() => {
     if (!canShowFloating) {
       showBackToTopRef.current = false
+      showFloatingAddRef.current = false
       return undefined
     }
 
     const updateBackToTopVisibility = () => {
       scrollRafRef.current = 0
-      const shouldShow = window.scrollY > 320
-      if (showBackToTopRef.current !== shouldShow) {
-        showBackToTopRef.current = shouldShow
-        setShowBackToTop(shouldShow)
+      const shouldShowBackToTop = window.scrollY > 320
+      const shouldShowFloatingAdd = showAddRecipeFab && window.scrollY > 180
+
+      if (showBackToTopRef.current !== shouldShowBackToTop) {
+        showBackToTopRef.current = shouldShowBackToTop
+        setShowBackToTop(shouldShowBackToTop)
+      }
+
+      if (showFloatingAddRef.current !== shouldShowFloatingAdd) {
+        showFloatingAddRef.current = shouldShowFloatingAdd
+        setShowFloatingAdd(shouldShowFloatingAdd)
       }
     }
 
@@ -1184,7 +1194,7 @@ function FloatingControls({
         window.cancelAnimationFrame(scrollRafRef.current)
       }
     }
-  }, [canShowFloating])
+  }, [canShowFloating, showAddRecipeFab])
 
   const scrollToTop = () => {
     const startY = window.scrollY
@@ -1219,7 +1229,7 @@ function FloatingControls({
         </button>
       ) : null}
 
-      {canShowFloating && showAddRecipeFab ? (
+      {canShowFloating && showAddRecipeFab && showFloatingAdd ? (
         <button
           className={`btn btn-primary mobile-add-fab ${showBackToTop ? 'mobile-add-fab-has-top' : ''}`}
           type="button"

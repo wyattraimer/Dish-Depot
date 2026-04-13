@@ -192,7 +192,12 @@ export default function GroupManagementModal({
                         autoComplete="off"
                         disabled={!canAdminSelectedGroup}
                       />
-                      <select value={groupInviteRole} onChange={(event) => onChangeGroupInviteRole(event.target.value)} disabled={!canAdminSelectedGroup}>
+                       <select
+                         value={groupInviteRole}
+                         onChange={(event) => onChangeGroupInviteRole(event.target.value)}
+                         disabled={!canAdminSelectedGroup}
+                         aria-label={`Invite role for ${selectedGroupName}`}
+                       >
                         {GROUP_ROLE_OPTIONS.map((role) => (
                           <option key={role} value={role}>
                             {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
@@ -346,7 +351,12 @@ export default function GroupManagementModal({
                             </div>
                           </div>
                           <div className="share-existing-actions">
-                            <select value={member.role} onChange={(event) => onUpdateGroupMemberRole(member, event.target.value)} disabled={!canAdminSelectedGroup || groupBusy || member.userId === authUser?.id}>
+                            <select
+                              value={member.role}
+                              onChange={(event) => onUpdateGroupMemberRole(member, event.target.value)}
+                              disabled={!canAdminSelectedGroup || groupBusy || member.userId === authUser?.id}
+                              aria-label={`Role for ${member.displayName || member.username || member.userId || 'group member'}`}
+                            >
                               {GROUP_ROLE_OPTIONS.map((role) => (
                                 <option key={role} value={role}>
                                   {`${GROUP_ROLE_LABELS[role]} — ${GROUP_ROLE_DESCRIPTIONS[role]}`}
