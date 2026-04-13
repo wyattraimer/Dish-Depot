@@ -50,8 +50,17 @@ function ToolbarMenuSection({ title, danger = false, children }) {
 function ModalLoadingFallback() {
   return (
     <div className="modal show" role="dialog" aria-modal="true">
-      <div className="modal-content">
-        <p className="modal-loading-copy">Loading…</p>
+      <div className="modal-content modal-loading-shell">
+        <div className="modal-loading-card" role="status" aria-live="polite">
+          <div className="modal-loading-icon" aria-hidden="true">
+            <i className="fas fa-spinner fa-spin" />
+          </div>
+          <div className="modal-loading-copy-block">
+            <p className="modal-loading-kicker">Loading step</p>
+            <h2>Preparing this view</h2>
+            <p className="modal-loading-copy">Dish Depot is opening the next surface so you can keep going with your current flow.</p>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -189,6 +198,16 @@ const GROUP_ROLE_DESCRIPTIONS = {
   editor: 'edit + remove recipes',
   admin: 'full group management',
 }
+const MESSAGE_TYPE_META = {
+  info: { icon: 'fa-circle-info', label: 'Heads up' },
+  success: { icon: 'fa-circle-check', label: 'Success' },
+  error: { icon: 'fa-triangle-exclamation', label: 'Needs attention' },
+}
+const STATUS_NOTICE_META = {
+  info: { icon: 'fa-circle-info', label: 'Account notice' },
+  success: { icon: 'fa-circle-check', label: 'Account updated' },
+  error: { icon: 'fa-triangle-exclamation', label: 'Action needed' },
+}
 
 function getAuthRedirectUrl() {
   const redirectUrl = new URL(import.meta.env.BASE_URL || '/', window.location.origin)
@@ -244,6 +263,7 @@ function formatInviteExpiry(expiresAt) {
 const MEAL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_SLOTS = ['Breakfast', 'Lunch', 'Dinner']
 const CLOUD_MEAL_PLAN_WEEK = '2000-01-03'
+const TOTAL_MEAL_SLOTS = MEAL_DAYS.length * MEAL_SLOTS.length
 
 const DAY_TO_KEY = {
   Monday: 'monday',
@@ -2039,6 +2059,12 @@ function App() {
       ),
     [mealPlan],
   )
+  const plannerHasRecipes = plannerRecipes.length > 0
+  const plannerHeaderDescription = !plannerHasRecipes
+    ? 'Add a few saved recipes to unlock a calmer weekly board for breakfast, lunch, and dinner.'
+    : plannedMealCount > 0
+      ? `${plannedMealCount} of ${TOTAL_MEAL_SLOTS} slots are planned. Review the whole week at a glance, then adjust meals with one tap.`
+      : `Choose from ${plannerRecipes.length} saved recipe${plannerRecipes.length === 1 ? '' : 's'} and start sketching out the week meal by meal.`
   const currentWorkspaceTitle = activeView === 'planner' ? 'Weekly Meal Planner' : 'Recipe Library'
   const currentWorkspaceDescription =
     activeView === 'planner'
@@ -6629,18 +6655,35 @@ function App() {
     <>
       {messages.length > 0 ? (
         <div className="message-stack" aria-live="polite" aria-atomic="true">
-          {messages.map((message) => (
-            <div key={message.id} className={`message-pill message-pill-${message.type}`}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                <span>{message.text}</span>
-                {message.action ? (
-                  <button className="btn btn-small btn-secondary" type="button" onClick={() => void handleMessageAction(message)}>
-                    {message.action.label}
-                  </button>
-                ) : null}
+          {messages.map((message) => {
+            const meta = MESSAGE_TYPE_META[message.type] || MESSAGE_TYPE_META.info
+
+            return (
+              <div key={message.id} className={`message-pill message-pill-${message.type}`} role="status">
+                <div className="message-pill-shell">
+                  <div className="message-pill-icon" aria-hidden="true">
+                    <i className={`fas ${meta.icon}`} />
+                  </div>
+                  <div className="message-pill-body">
+                    <div className="message-pill-header-row">
+                      <span className="message-pill-label">{meta.label}</span>
+                      <button className="message-pill-close" type="button" onClick={() => dismissMessage(message.id)} aria-label="Dismiss message">
+                        <i className="fas fa-xmark" />
+                      </button>
+                    </div>
+                    <p className="message-pill-text">{message.text}</p>
+                    {message.action ? (
+                      <div className="message-pill-actions">
+                        <button className="btn btn-small btn-secondary" type="button" onClick={() => void handleMessageAction(message)}>
+                          {message.action.label}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : null}
 
@@ -6747,7 +6790,15 @@ function App() {
       {authReturnNotice ? (
         <div className={`auth-return-banner auth-return-banner-${authReturnNotice.type}`} role="status" aria-live="polite">
           <div className="container auth-return-banner-inner">
-            <span>{authReturnNotice.text}</span>
+            <div className="status-banner-shell">
+              <div className="status-banner-icon" aria-hidden="true">
+                <i className={`fas ${(STATUS_NOTICE_META[authReturnNotice.type] || STATUS_NOTICE_META.info).icon}`} />
+              </div>
+              <div className="status-banner-copy">
+                <span className="status-banner-kicker">{(STATUS_NOTICE_META[authReturnNotice.type] || STATUS_NOTICE_META.info).label}</span>
+                <span className="status-banner-text">{authReturnNotice.text}</span>
+              </div>
+            </div>
             <button className="auth-return-close" type="button" onClick={() => setAuthReturnNotice(null)} aria-label="Dismiss message">
               <i className="fas fa-times" />
             </button>
@@ -6757,7 +6808,17 @@ function App() {
 
       {!isOnline ? (
         <div className="app-offline-banner" role="status" aria-live="polite">
-          <div className="container">You are offline. Cloud sync and URL extraction are temporarily unavailable.</div>
+          <div className="container app-offline-banner-inner">
+            <div className="status-banner-shell">
+              <div className="status-banner-icon" aria-hidden="true">
+                <i className="fas fa-wifi-slash" />
+              </div>
+              <div className="status-banner-copy">
+                <span className="status-banner-kicker">Offline mode</span>
+                <span className="status-banner-text">Cloud sync and URL extraction are paused until you reconnect. Your saved recipes and planner stay available.</span>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -7198,57 +7259,118 @@ function App() {
               </section>
             )
           ) : (
-            <section className="meal-planner">
+            <section className={`meal-planner${plannerHasRecipes ? ' meal-planner-populated' : ' meal-planner-empty'}`}>
               <div className="meal-planner-header">
-                <h2>Weekly Meal Planner</h2>
-              <button className="btn btn-small btn-secondary" type="button" onClick={() => void clearMealPlan()}>
+                <div className="meal-planner-heading">
+                  <p className="meal-planner-kicker">Plan the week</p>
+                  <div className="meal-planner-title-row">
+                    <h2>Weekly Meal Planner</h2>
+                    <span
+                      className={`meal-planner-status-pill${plannedMealCount > 0 ? ' meal-planner-status-pill-active' : ''}`}
+                    >
+                      {plannedMealCount > 0 ? `${plannedMealCount}/${TOTAL_MEAL_SLOTS} filled` : 'Week is open'}
+                    </span>
+                  </div>
+                  <p className="meal-planner-description">{plannerHeaderDescription}</p>
+                  <div className="meal-planner-meta">
+                    <span className="meal-planner-meta-pill">
+                      <i className="fas fa-book-open" aria-hidden="true" />
+                      {plannerRecipes.length} recipe{plannerRecipes.length === 1 ? '' : 's'} ready
+                    </span>
+                    <span className="meal-planner-meta-pill">
+                      <i className="fas fa-calendar-week" aria-hidden="true" />
+                      {MEAL_DAYS.length} days · {MEAL_SLOTS.length} meal slots
+                    </span>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-small btn-secondary meal-planner-clear"
+                  type="button"
+                  onClick={() => void clearMealPlan()}
+                  disabled={plannedMealCount === 0}
+                >
                   <i className="fas fa-eraser" />
                   Clear Week
                 </button>
               </div>
-              {plannerRecipes.length === 0 ? (
-                <EmptyStateCard
-                  icon="fa-calendar-plus"
-                  title="Your meal plan starts with recipes"
-                  description="Add at least one recipe first, then you can drop it into breakfast, lunch, or dinner for the week."
-                  action={
-                    <button className="btn btn-primary" type="button" onClick={() => setActiveView('recipes')}>
-                      <i className="fas fa-arrow-left" />
-                      Go to Recipes
-                    </button>
-                  }
-                  compact
-                />
-              ) : null}
-              <div className="meal-planner-grid">
-                {MEAL_DAYS.map((day) => (
-                  <article key={day} className="meal-day-card">
-                    <h3>{day}</h3>
-                    {MEAL_SLOTS.map((slot) => (
-                      <label key={`${day}-${slot}`} className="meal-slot">
-                        <span>{slot}</span>
-                        <select
-                          className="meal-slot-select"
-                          value={mealPlan[day]?.[slot] || ''}
-                          onChange={(event) => void updateMealPlan(day, slot, event.target.value)}
-                        >
-                          <option value="">No recipe selected</option>
-                          {plannerRecipes.map((recipe) => (
-                            <option key={`${day}-${slot}-${recipe.id}`} value={String(recipe.id)}>
-                              {recipe.pinned ? '★ ' : ''}
-                              {recipe.name}
-                            </option>
-                          ))}
-                        </select>
-                        {mealPlan[day]?.[slot] ? (
-                          <small className="meal-slot-selected">
-                            {recipeNameById.get(String(mealPlan[day][slot])) || 'Recipe not found'}
-                          </small>
-                        ) : null}
-                      </label>
-                    ))}
-                  </article>
-                ))}
+              <div className="meal-planner-state-shell">
+                {!plannerHasRecipes ? (
+                  <div className="meal-planner-empty-state">
+                    <EmptyStateCard
+                      icon="fa-calendar-plus"
+                      title="Your meal plan starts with recipes"
+                      description="Add at least one recipe first, then you can place it into breakfast, lunch, or dinner for the week."
+                      action={
+                        <button className="btn btn-primary" type="button" onClick={() => setActiveView('recipes')}>
+                          <i className="fas fa-arrow-left" />
+                          Go to Recipes
+                        </button>
+                      }
+                      compact
+                    />
+                  </div>
+                ) : (
+                  <div className="meal-planner-grid">
+                    {MEAL_DAYS.map((day) => {
+                      const plannedSlotsForDay = MEAL_SLOTS.filter((slot) => Boolean(mealPlan[day]?.[slot])).length
+
+                      return (
+                        <article key={day} className="meal-day-card">
+                          <div className="meal-day-card-header">
+                            <div className="meal-day-card-title-group">
+                              <p className="meal-day-card-kicker">
+                                {plannedSlotsForDay > 0
+                                  ? `${plannedSlotsForDay} meal${plannedSlotsForDay === 1 ? '' : 's'} planned`
+                                  : 'Open for planning'}
+                              </p>
+                              <h3>{day}</h3>
+                            </div>
+                            <span
+                              className={`meal-day-card-count${plannedSlotsForDay > 0 ? ' meal-day-card-count-active' : ''}`}
+                            >
+                              {plannedSlotsForDay}/{MEAL_SLOTS.length}
+                            </span>
+                          </div>
+                          <div className="meal-day-card-slots">
+                            {MEAL_SLOTS.map((slot) => {
+                              const selectedRecipeName = mealPlan[day]?.[slot]
+                                ? recipeNameById.get(String(mealPlan[day][slot])) || 'Recipe not found'
+                                : ''
+
+                              return (
+                                <label key={`${day}-${slot}`} className={`meal-slot${selectedRecipeName ? ' meal-slot-filled' : ''}`}>
+                                  <div className="meal-slot-head">
+                                    <span>{slot}</span>
+                                    <small>{selectedRecipeName ? 'Planned' : 'Open slot'}</small>
+                                  </div>
+                                  <div className="meal-slot-select-wrap">
+                                    <select
+                                      className="meal-slot-select"
+                                      value={mealPlan[day]?.[slot] || ''}
+                                      onChange={(event) => void updateMealPlan(day, slot, event.target.value)}
+                                    >
+                                      <option value="">No recipe selected</option>
+                                      {plannerRecipes.map((recipe) => (
+                                        <option key={`${day}-${slot}-${recipe.id}`} value={String(recipe.id)}>
+                                          {recipe.pinned ? '★ ' : ''}
+                                          {recipe.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <i className="fas fa-chevron-down" aria-hidden="true" />
+                                  </div>
+                                  <small className={`meal-slot-selected${selectedRecipeName ? ' meal-slot-selected-active' : ''}`}>
+                                    {selectedRecipeName || 'No recipe selected'}
+                                  </small>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </section>
           )}
