@@ -407,26 +407,27 @@ body[data-theme='dark'] .header-prompt-card-strong {
 .app-offline-banner {
   margin: 0 var(--container-gutter) 0.7rem;
   border-radius: 22px;
-  border: 1px solid rgba(90, 105, 122, 0.16);
+  border: 1px solid var(--status-banner-border, rgba(90, 105, 122, 0.16));
+  background: var(--status-banner-surface, transparent);
   backdrop-filter: blur(10px);
   box-shadow: 0 14px 26px rgba(31, 41, 51, 0.08);
 }
 
 .auth-return-banner {
-  background: linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(247, 239, 230, 0.94));
+  --status-banner-surface: linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(247, 239, 230, 0.94));
 }
 
 .auth-return-banner-success {
-  border-color: rgba(87, 199, 133, 0.3);
+  --status-banner-border: rgba(87, 199, 133, 0.3);
 }
 
 .auth-return-banner-error {
-  border-color: rgba(215, 88, 88, 0.3);
+  --status-banner-border: rgba(215, 88, 88, 0.3);
 }
 
 .app-offline-banner {
-  background: linear-gradient(180deg, rgba(255, 248, 235, 0.98), rgba(250, 239, 216, 0.96));
-  border-color: rgba(232, 160, 54, 0.28);
+  --status-banner-surface: linear-gradient(180deg, rgba(255, 248, 235, 0.98), rgba(250, 239, 216, 0.96));
+  --status-banner-border: rgba(232, 160, 54, 0.28);
 }
 
 .auth-return-banner-inner,
@@ -5099,21 +5100,21 @@ body[data-theme='dark'] .status-banner-text {
 }
 
 body[data-theme='dark'] .auth-return-banner {
-  background: linear-gradient(180deg, rgba(24, 36, 50, 0.95), rgba(19, 31, 44, 0.94));
-  border-color: rgba(164, 180, 200, 0.2);
+  --status-banner-surface: linear-gradient(180deg, rgba(24, 36, 50, 0.95), rgba(19, 31, 44, 0.94));
+  --status-banner-border: rgba(164, 180, 200, 0.2);
 }
 
 body[data-theme='dark'] .auth-return-banner-success {
-  border-color: rgba(114, 165, 138, 0.28);
+  --status-banner-border: rgba(114, 165, 138, 0.28);
 }
 
 body[data-theme='dark'] .auth-return-banner-error {
-  border-color: rgba(255, 142, 125, 0.24);
+  --status-banner-border: rgba(255, 142, 125, 0.24);
 }
 
 body[data-theme='dark'] .app-offline-banner {
-  background: linear-gradient(180deg, rgba(69, 52, 24, 0.94), rgba(31, 39, 52, 0.94));
-  border-color: rgba(228, 180, 77, 0.26);
+  --status-banner-surface: linear-gradient(180deg, rgba(69, 52, 24, 0.94), rgba(31, 39, 52, 0.94));
+  --status-banner-border: rgba(228, 180, 77, 0.26);
 }
 
 body[data-theme='dark'] .modal-subtitle,

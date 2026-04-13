@@ -1453,7 +1453,9 @@ function IdentityBlock({
   )
 }
 
-function EmptyStateCard({ icon, title, description, action = null, compact = false }) {
+function EmptyStateCard({ icon, title, description, action = null, actions = null, compact = false }) {
+  const resolvedActions = actions ?? action
+
   return (
     <div className={`empty-state-card${compact ? ' empty-state-card-compact' : ''}`}>
       <div className="empty-state-icon" aria-hidden="true">
@@ -1463,7 +1465,7 @@ function EmptyStateCard({ icon, title, description, action = null, compact = fal
         <h3>{title}</h3>
         <p>{description}</p>
       </div>
-      {action ? <div className="empty-state-actions">{action}</div> : null}
+      {resolvedActions ? <div className="empty-state-actions">{resolvedActions}</div> : null}
     </div>
   )
 }
@@ -7188,7 +7190,7 @@ function App() {
                     icon="fa-share-nodes"
                     title="No shared recipes yet"
                     description="When someone shares a recipe with you, it will appear here with the right editing permissions."
-                    action={
+                    actions={
                       <button className="btn btn-secondary" type="button" onClick={() => setRecipeScope('mine')}>
                         <i className="fas fa-utensils" />
                         Back to My Recipes
@@ -7201,7 +7203,7 @@ function App() {
                       icon="fa-users"
                       title="No groups yet"
                       description="Create a group to share recipes with family, friends, or event teams. Once it exists, you can invite members and start contributing recipes together."
-                      action={
+                      actions={
                         <button className="btn btn-primary" type="button" onClick={() => void openGroupModal()}>
                           <i className="fas fa-users" />
                           Create Your First Group
@@ -7213,7 +7215,7 @@ function App() {
                       icon="fa-book-open"
                       title="No group recipes yet"
                       description={`Nothing has been added to ${selectedGroup?.name || 'this group'} yet. Add an existing recipe or create a new one, then share it with the group.`}
-                      action={
+                      actions={
                         <div className="empty-state-action-row">
                           <button className="btn btn-primary" type="button" onClick={() => openModal()}>
                             <i className="fas fa-plus" />
@@ -7232,7 +7234,7 @@ function App() {
                     icon="fa-magnifying-glass"
                     title="No recipes found"
                     description="Try changing your search terms, clearing the category filter, or switching off pinned-only mode."
-                    action={
+                    actions={
                       <button
                         className="btn btn-secondary"
                         type="button"
@@ -7252,7 +7254,7 @@ function App() {
                     icon="fa-cookie-bite"
                     title="No recipes yet"
                     description="Start your collection with a recipe link, a scanned card, or a custom family favorite. Dish Depot will help you organize the rest."
-                    action={
+                    actions={
                       <div className="empty-state-action-row">
                         <button className="btn btn-primary" type="button" onClick={() => openModal()}>
                           <i className="fas fa-plus" />
@@ -7310,7 +7312,7 @@ function App() {
                       icon="fa-calendar-plus"
                       title="Your meal plan starts with recipes"
                       description="Add at least one recipe first, then you can place it into breakfast, lunch, or dinner for the week."
-                      action={
+                      actions={
                         <button className="btn btn-primary" type="button" onClick={() => setActiveView('recipes')}>
                           <i className="fas fa-arrow-left" />
                           Go to Recipes
