@@ -1373,6 +1373,7 @@ body[data-theme='dark'] .header-prompt-card-strong {
   border-radius: inherit;
   background: transparent;
   cursor: pointer;
+  pointer-events: none;
 }
 
 .recipe-card:hover {
@@ -7352,6 +7353,10 @@ body[data-theme='dark'] .theme-switch input:checked + .theme-switch-track {
   box-shadow: var(--shadow-soft);
 }
 
+.controls + .recipe-grid {
+  margin-top: var(--space-6);
+}
+
 .controls-row {
   display: flex;
   flex-wrap: wrap;
@@ -8350,6 +8355,10 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
   .controls {
     padding: var(--space-4);
     border-radius: var(--radius-lg);
+  }
+
+  .controls + .recipe-grid {
+    margin-top: var(--space-4);
   }
 
   .controls-row-primary,

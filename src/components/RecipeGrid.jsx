@@ -36,6 +36,13 @@ export default function RecipeGrid({
             key={recipe.id}
             className={`recipe-card recipe-card-clickable ${isCompactCardView ? 'recipe-card-compact' : 'recipe-card-full'} ${highlightedId === recipe.id ? 'highlighted' : ''}`}
             data-recipe-id={recipe.id}
+            onClick={() => onOpenRecipe(recipe)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onOpenRecipe(recipe)
+              }
+            }}
           >
             <button className="recipe-card-hit-area" type="button" aria-label={`Open ${recipe.name}`} onClick={() => onOpenRecipe(recipe)}>
               <span className="visually-hidden">Open {recipe.name}</span>
