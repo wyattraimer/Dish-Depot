@@ -5,6 +5,7 @@ export default function RecipeGrid({
   highlightedId,
   isCompactCardView,
   categoriesMap,
+  IdentityBlock,
   canManageRecipe,
   canShareRecipe,
   hasSupabaseConfig,
@@ -25,6 +26,8 @@ export default function RecipeGrid({
   onEditRecipe,
   onDeleteRecipe,
 }) {
+  const IdentityBlockComponent = IdentityBlock
+
   return (
     <section className="recipe-grid">
       {recipeCardViewModels.map(({ recipe, categories, hasIngredients, hasDirections, hasDetailedRecipe, recipeOriginBadges, recipeProvenanceEntries }) => {
@@ -84,7 +87,7 @@ export default function RecipeGrid({
                     {recipeProvenanceEntries.map((entry) => (
                       <div key={`${recipe.id}-${entry.key}`} className="recipe-provenance-item">
                         <span className="recipe-provenance-label">{entry.label}</span>
-                        <IdentityBlock
+                        <IdentityBlockComponent
                           displayName={entry.displayName}
                           username={entry.username}
                           avatarUrl={entry.avatarUrl}
