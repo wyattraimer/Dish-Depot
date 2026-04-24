@@ -511,19 +511,19 @@ body[data-theme='dark'] .header-prompt-card-strong {
   }
 
   .auth-sync-pill-online {
-    padding-inline: 0.44rem;
+    padding-inline: 0.62rem;
   }
 
   .auth-sync-pill-online .auth-sync-label {
-    display: none;
+    display: inline;
   }
 
   .group-invites-pill {
-    padding-inline: 0.44rem;
+    padding-inline: 0.62rem;
   }
 
   .group-invites-pill .group-invites-label {
-    display: none;
+    display: inline;
   }
 
   .auth-return-banner,
@@ -8378,15 +8378,100 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
 
   .view-toggle-group {
     justify-content: stretch;
+    padding: 0.18rem;
+    gap: 0.22rem;
+    border-radius: 13px;
+    border-color: rgba(90, 105, 122, 0.1);
+    background: rgba(255, 255, 255, 0.34);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
   }
 
   .view-toggle-group .toolbar-tab {
     flex: 1 1 0;
     min-width: 0;
+    min-height: 40px;
+    padding: 0.5rem 0.62rem;
+    font-size: 0.77rem;
+    gap: 0.32rem;
+    border-radius: 10px;
+  }
+
+  .view-toggle-group .toolbar-tab.btn-primary {
+    box-shadow: 0 4px 10px rgba(205, 83, 70, 0.12);
   }
 
   .controls-status-cluster {
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .controls-status-cluster > .auth-user-email {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+  }
+
+  .controls-status-cluster > .auth-sync-pill,
+  .controls-status-cluster > .group-invites-pill,
+  .controls-status-cluster > .auth-config-note {
+    width: 100%;
+  }
+
+  .controls-status-cluster .auth-sync-pill,
+  .controls-status-cluster .group-invites-pill {
+    min-height: 36px;
+    padding: 0.45rem 0.62rem;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    justify-content: flex-start;
+  }
+
+  .controls-status-cluster .group-invites-count {
+    margin-left: auto;
+    min-width: 1rem;
+    height: 1rem;
+    font-size: 0.64rem;
+  }
+
+  .auth-user-email {
+    min-height: 48px;
+    padding: 0.52rem 0.68rem;
+    border-radius: 14px;
+    border-color: rgba(90, 105, 122, 0.14);
+    white-space: normal;
+  }
+
+  .auth-user-link {
+    align-items: flex-start;
+    gap: 0.52rem;
+  }
+
+  .auth-user-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .auth-user-meta {
+    gap: 0.08rem;
+  }
+
+  .auth-user-kicker {
+    font-size: 0.64rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    opacity: 0.82;
+  }
+
+  .auth-user-label {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+    font-size: 0.8rem;
   }
 
   .controls-row-search {
@@ -8402,7 +8487,34 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
   }
 
   .controls-utility-cluster {
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .controls-utility-cluster > .results-count {
+    grid-column: 1 / -1;
+  }
+
+  .controls-utility-cluster .toolbar-compact-button,
+  .controls-utility-cluster .toolbar-tools-button,
+  .controls-utility-cluster .results-count {
+    min-height: 40px;
+    border-radius: 12px;
+  }
+
+  .controls-utility-cluster .toolbar-compact-button,
+  .controls-utility-cluster .toolbar-tools-button {
+    padding: 0.5rem 0.68rem;
+    font-size: 0.76rem;
+    justify-content: flex-start;
+  }
+
+  .controls-utility-cluster .results-count {
+    padding: 0.42rem 0.64rem;
+    justify-content: flex-start;
   }
 
   .toolbar-select-field,
@@ -8929,11 +9041,24 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
 
   .view-toggle-group {
     width: 100%;
+    padding: 0.18rem;
+    gap: 0.22rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.46);
   }
 
   .toolbar-tab {
     flex: 1 1 0;
     min-width: 0;
+    min-height: 44px;
+    padding: 0.62rem 0.72rem;
+    font-size: 0.79rem;
+    gap: 0.38rem;
+    border-radius: 11px;
+  }
+
+  .view-toggle-group .toolbar-tab.btn-primary {
+    box-shadow: 0 5px 12px rgba(205, 83, 70, 0.14);
   }
 
   .controls-primary-nav,
@@ -8957,8 +9082,60 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
     justify-content: stretch;
   }
 
+  .controls-status-cluster {
+    align-items: stretch;
+  }
+
+  .controls-utility-cluster {
+    align-items: stretch;
+  }
+
+  .controls-status-cluster > .auth-user-email {
+    grid-column: 1 / -1;
+  }
+
+  .controls-status-cluster .auth-sync-pill,
+  .controls-status-cluster .group-invites-pill {
+    min-height: 40px;
+    padding: 0.55rem 0.7rem;
+    border-radius: 13px;
+    font-size: 0.74rem;
+    justify-content: flex-start;
+  }
+
+  .controls-status-cluster .auth-sync-pill {
+    gap: 0.35rem;
+  }
+
+  .controls-status-cluster .group-invites-count {
+    margin-left: auto;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    font-size: 0.68rem;
+  }
+
   .auth-user-link {
     align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .controls-utility-cluster .toolbar-compact-button,
+  .controls-utility-cluster .toolbar-tools-button,
+  .controls-utility-cluster .results-count {
+    min-height: 42px;
+    border-radius: 13px;
+  }
+
+  .controls-utility-cluster .toolbar-compact-button,
+  .controls-utility-cluster .toolbar-tools-button {
+    padding: 0.58rem 0.78rem;
+    font-size: 0.78rem;
+    justify-content: flex-start;
+  }
+
+  .controls-utility-cluster .results-count {
+    padding: 0.48rem 0.72rem;
+    justify-content: flex-start;
   }
 
   .results-count,
@@ -8975,6 +9152,32 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
   .auth-user-email {
     justify-content: flex-start;
     white-space: normal;
+    min-height: 54px;
+    padding: 0.62rem 0.78rem;
+    border-radius: 16px;
+  }
+
+  .auth-user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .auth-user-meta {
+    gap: 0.14rem;
+  }
+
+  .auth-user-kicker {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .auth-user-label {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
   }
 
   .meal-planner-clear {
