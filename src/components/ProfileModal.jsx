@@ -1,4 +1,114 @@
+import { useRef } from 'react'
 import { ModalCloseButton, ModalHeader } from './ModalPrimitives'
+
+function AvatarCropEditor({
+  avatarCropDraft,
+  avatarCropFrameSize,
+  profileUploading,
+  onChangeAvatarCropZoom,
+  onChangeAvatarCropOffset,
+  onCancelAvatarCrop,
+  onApplyAvatarCrop,
+}) {
+  const dragStateRef = useRef(null)
+  const baseScale = Math.max(avatarCropFrameSize / avatarCropDraft.naturalWidth, avatarCropFrameSize / avatarCropDraft.naturalHeight)
+  const displayScale = baseScale * avatarCropDraft.zoom
+  const displayWidth = avatarCropDraft.naturalWidth * displayScale
+  const displayHeight = avatarCropDraft.naturalHeight * displayScale
+  const displayLeft = (avatarCropFrameSize - displayWidth) / 2 + avatarCropDraft.offsetX
+  const displayTop = (avatarCropFrameSize - displayHeight) / 2 + avatarCropDraft.offsetY
+
+  function handlePointerDown(event) {
+    if (profileUploading) {
+      return
+    }
+
+    event.preventDefault()
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startOffsetX: avatarCropDraft.offsetX,
+      startOffsetY: avatarCropDraft.offsetY,
+    }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  function handlePointerMove(event) {
+    const dragState = dragStateRef.current
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return
+    }
+
+    onChangeAvatarCropOffset(
+      dragState.startOffsetX + (event.clientX - dragState.startX),
+      dragState.startOffsetY + (event.clientY - dragState.startY),
+    )
+  }
+
+  function handlePointerEnd(event) {
+    if (dragStateRef.current?.pointerId === event.pointerId) {
+      dragStateRef.current = null
+      event.currentTarget.releasePointerCapture?.(event.pointerId)
+    }
+  }
+
+  return (
+    <section className="profile-avatar-crop-panel" aria-label="Crop profile picture">
+      <div className="profile-avatar-crop-copy">
+        <span className="profile-section-kicker">Crop photo</span>
+        <strong>Adjust your profile picture before upload</strong>
+        <p>Drag to reposition, then use zoom to frame your face. Dish Depot will upload a cropped square avatar.</p>
+      </div>
+
+      <div
+        className="profile-avatar-crop-stage"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        role="presentation"
+      >
+        <img
+          className="profile-avatar-crop-image"
+          src={avatarCropDraft.src}
+          alt="Crop preview"
+          draggable="false"
+          style={{
+            width: `${displayWidth}px`,
+            height: `${displayHeight}px`,
+            transform: `translate(${displayLeft}px, ${displayTop}px)`,
+          }}
+        />
+        <div className="profile-avatar-crop-mask" aria-hidden="true" />
+      </div>
+
+      <label className="profile-avatar-crop-slider" htmlFor="profileAvatarCropZoom">
+        <span>Zoom</span>
+        <input
+          id="profileAvatarCropZoom"
+          type="range"
+          min="1"
+          max="3"
+          step="0.01"
+          value={avatarCropDraft.zoom}
+          onChange={(event) => onChangeAvatarCropZoom(Number(event.target.value))}
+          disabled={profileUploading}
+        />
+      </label>
+
+      <div className="profile-avatar-crop-actions">
+        <button className="btn btn-secondary" type="button" onClick={onCancelAvatarCrop} disabled={profileUploading}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" type="button" onClick={onApplyAvatarCrop} disabled={profileUploading}>
+          {profileUploading ? 'Uploading...' : 'Apply Crop'}
+        </button>
+      </div>
+      <p className="profile-avatar-crop-note">Images must be 5MB or smaller before editing and are uploaded as optimized square avatars.</p>
+    </section>
+  )
+}
 
 export default function ProfileModal({
   isOpen,
@@ -20,9 +130,15 @@ export default function ProfileModal({
   profileUploading,
   isAvatarActionMenuOpen,
   profileAvatarUrl,
+  avatarCropDraft,
+  avatarCropFrameSize,
   dishDepotLogo,
   profileAvatarInputRef,
   onAvatarUpload,
+  onChangeAvatarCropZoom,
+  onChangeAvatarCropOffset,
+  onCancelAvatarCrop,
+  onApplyAvatarCrop,
   profileAvatarMenuRef,
   onSelectAvatarPhoto,
   onRemoveAvatarPhoto,
@@ -270,6 +386,17 @@ export default function ProfileModal({
                       </fieldset>
                     ) : null}
                     <p className="profile-avatar-caption">Optional profile photo for your account card and sharing surfaces.</p>
+                    {avatarCropDraft ? (
+                      <AvatarCropEditor
+                        avatarCropDraft={avatarCropDraft}
+                        avatarCropFrameSize={avatarCropFrameSize}
+                        profileUploading={profileUploading}
+                        onChangeAvatarCropZoom={onChangeAvatarCropZoom}
+                        onChangeAvatarCropOffset={onChangeAvatarCropOffset}
+                        onCancelAvatarCrop={onCancelAvatarCrop}
+                        onApplyAvatarCrop={onApplyAvatarCrop}
+                      />
+                    ) : null}
                   </div>
 
                   <div className="profile-account-copy">

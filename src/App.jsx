@@ -203,6 +203,11 @@ const MESSAGE_TYPE_META = {
   success: { icon: 'fa-circle-check', label: 'Success' },
   error: { icon: 'fa-triangle-exclamation', label: 'Needs attention' },
 }
+const AVATAR_MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+const AVATAR_CROP_FRAME_SIZE = 240
+const AVATAR_OUTPUT_SIZE = 512
+const AVATAR_MIN_ZOOM = 1
+const AVATAR_MAX_ZOOM = 3
 const STATUS_NOTICE_META = {
   info: { icon: 'fa-circle-info', label: 'Account notice' },
   success: { icon: 'fa-circle-check', label: 'Account updated' },
@@ -365,6 +370,10 @@ function buildRecipeFingerprint(recipe) {
 
 function formatCategory(category) {
   return category.charAt(0).toUpperCase() + category.slice(1)
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value))
 }
 
 function createEmptyMealPlan() {
@@ -1524,6 +1533,7 @@ function App() {
   const [profileUsername, setProfileUsername] = useState('')
   const [profileAvatarValue, setProfileAvatarValue] = useState('')
   const [profileAvatarUrl, setProfileAvatarUrl] = useState('')
+  const [avatarCropDraft, setAvatarCropDraft] = useState(null)
   const [isAvatarActionMenuOpen, setIsAvatarActionMenuOpen] = useState(false)
   const [profileBusy, setProfileBusy] = useState(false)
   const [profileUploading, setProfileUploading] = useState(false)
@@ -5220,6 +5230,7 @@ function App() {
   function closeProfileModal() {
     setIsProfileModalOpen(false)
     setIsAvatarActionMenuOpen(false)
+    setAvatarCropDraft(null)
     setProfileBusy(false)
     setProfileUploading(false)
   }
@@ -5270,6 +5281,63 @@ function App() {
     }
   }
 
+  function loadImageFromDataUrl(src) {
+    return new Promise((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => resolve(image)
+      image.onerror = () => reject(new Error('Could not read that image. Please try a different file.'))
+      image.src = src
+    })
+  }
+
+  function normalizeAvatarCropDraft(draft, overrides = {}) {
+    const nextDraft = {
+      ...draft,
+      ...overrides,
+    }
+
+    const zoom = clampNumber(Number(nextDraft.zoom) || AVATAR_MIN_ZOOM, AVATAR_MIN_ZOOM, AVATAR_MAX_ZOOM)
+    const naturalWidth = Number(nextDraft.naturalWidth) || AVATAR_CROP_FRAME_SIZE
+    const naturalHeight = Number(nextDraft.naturalHeight) || AVATAR_CROP_FRAME_SIZE
+    const baseScale = Math.max(AVATAR_CROP_FRAME_SIZE / naturalWidth, AVATAR_CROP_FRAME_SIZE / naturalHeight)
+    const scaledWidth = naturalWidth * baseScale * zoom
+    const scaledHeight = naturalHeight * baseScale * zoom
+    const maxOffsetX = Math.max(0, (scaledWidth - AVATAR_CROP_FRAME_SIZE) / 2)
+    const maxOffsetY = Math.max(0, (scaledHeight - AVATAR_CROP_FRAME_SIZE) / 2)
+
+    return {
+      ...nextDraft,
+      zoom,
+      offsetX: clampNumber(Number(nextDraft.offsetX) || 0, -maxOffsetX, maxOffsetX),
+      offsetY: clampNumber(Number(nextDraft.offsetY) || 0, -maxOffsetY, maxOffsetY),
+    }
+  }
+
+  function updateAvatarCropZoom(nextZoom) {
+    setAvatarCropDraft((prev) => {
+      if (!prev) {
+        return prev
+      }
+
+      return normalizeAvatarCropDraft(prev, { zoom: nextZoom })
+    })
+  }
+
+  function updateAvatarCropOffset(offsetX, offsetY) {
+    setAvatarCropDraft((prev) => {
+      if (!prev) {
+        return prev
+      }
+
+      return normalizeAvatarCropDraft(prev, { offsetX, offsetY })
+    })
+  }
+
+  function cancelAvatarCrop() {
+    setAvatarCropDraft(null)
+    setProfileUploading(false)
+  }
+
   async function handleAvatarUpload(event) {
     const file = event.target.files?.[0]
     if (!file) {
@@ -5282,14 +5350,90 @@ function App() {
       return
     }
 
+    try {
+      if (!file.type.startsWith('image/')) {
+        showMessage('Please choose an image file for your profile picture.', 'error')
+        return
+      }
+
+      if (file.size > AVATAR_MAX_UPLOAD_BYTES) {
+        showMessage('Profile pictures must be 5MB or smaller before editing.', 'error')
+        return
+      }
+
+      const fileDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(new Error('Could not read that image. Please try a different file.'))
+        reader.readAsDataURL(file)
+      })
+
+      const image = await loadImageFromDataUrl(fileDataUrl)
+      setAvatarCropDraft(
+        normalizeAvatarCropDraft({
+          src: fileDataUrl,
+          fileName: file.name,
+          mimeType: file.type || 'image/jpeg',
+          naturalWidth: image.naturalWidth || image.width,
+          naturalHeight: image.naturalHeight || image.height,
+          offsetX: 0,
+          offsetY: 0,
+          zoom: AVATAR_MIN_ZOOM,
+        }),
+      )
+      setIsAvatarActionMenuOpen(false)
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  async function applyAvatarCrop() {
+    if (!avatarCropDraft || !hasSupabaseConfig || !supabase || !authUser?.id) {
+      return
+    }
+
     setProfileUploading(true)
 
     try {
-      const extension = file.name.split('.').pop()?.toLowerCase() || 'png'
-      const safeExt = extension.replace(/[^a-z0-9]/g, '') || 'png'
-      const path = `${authUser.id}/avatar.${safeExt}`
+      const image = await loadImageFromDataUrl(avatarCropDraft.src)
+      const outputType = avatarCropDraft.mimeType === 'image/png' ? 'image/png' : 'image/jpeg'
+      const outputExtension = outputType === 'image/png' ? 'png' : 'jpg'
+      const cropCanvas = document.createElement('canvas')
+      cropCanvas.width = AVATAR_OUTPUT_SIZE
+      cropCanvas.height = AVATAR_OUTPUT_SIZE
+      const context = cropCanvas.getContext('2d')
 
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      if (!context) {
+        showMessage('Could not prepare the cropped image. Please try again.', 'error')
+        return
+      }
+
+      const normalizedDraft = normalizeAvatarCropDraft(avatarCropDraft)
+      const displayScale = Math.max(AVATAR_CROP_FRAME_SIZE / normalizedDraft.naturalWidth, AVATAR_CROP_FRAME_SIZE / normalizedDraft.naturalHeight) * normalizedDraft.zoom
+      const displayedWidth = normalizedDraft.naturalWidth * displayScale
+      const displayedHeight = normalizedDraft.naturalHeight * displayScale
+      const displayLeft = (AVATAR_CROP_FRAME_SIZE - displayedWidth) / 2 + normalizedDraft.offsetX
+      const displayTop = (AVATAR_CROP_FRAME_SIZE - displayedHeight) / 2 + normalizedDraft.offsetY
+      const sourceX = (0 - displayLeft) / displayScale
+      const sourceY = (0 - displayTop) / displayScale
+      const sourceSize = AVATAR_CROP_FRAME_SIZE / displayScale
+
+      context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, AVATAR_OUTPUT_SIZE, AVATAR_OUTPUT_SIZE)
+
+      const croppedBlob = await new Promise((resolve) => {
+        cropCanvas.toBlob(resolve, outputType, outputType === 'image/jpeg' ? 0.92 : undefined)
+      })
+
+      if (!croppedBlob) {
+        showMessage('Could not create the cropped image. Please try again.', 'error')
+        return
+      }
+
+      const path = `${authUser.id}/avatar.${outputExtension}`
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, croppedBlob, {
+        upsert: true,
+        contentType: outputType,
+      })
 
       if (uploadError) {
         if (uploadError.message.toLowerCase().includes('bucket')) {
@@ -5316,10 +5460,10 @@ function App() {
       }
 
       setProfileAvatarValue(path)
-      showMessage('Profile picture uploaded. Save your profile to apply it everywhere your identity appears.', 'success')
+      setAvatarCropDraft(null)
+      showMessage('Profile picture cropped and uploaded. Save your profile to apply it everywhere your identity appears.', 'success')
     } finally {
       setProfileUploading(false)
-      event.target.value = ''
     }
   }
 
@@ -7589,9 +7733,15 @@ function App() {
           profileUploading={profileUploading}
           isAvatarActionMenuOpen={isAvatarActionMenuOpen}
           profileAvatarUrl={profileAvatarUrl}
+          avatarCropDraft={avatarCropDraft}
+          avatarCropFrameSize={AVATAR_CROP_FRAME_SIZE}
           dishDepotLogo={dishDepotLogo}
           profileAvatarInputRef={profileAvatarInputRef}
           onAvatarUpload={handleAvatarUpload}
+          onChangeAvatarCropZoom={updateAvatarCropZoom}
+          onChangeAvatarCropOffset={updateAvatarCropOffset}
+          onCancelAvatarCrop={cancelAvatarCrop}
+          onApplyAvatarCrop={applyAvatarCrop}
           profileAvatarMenuRef={profileAvatarMenuRef}
           onSelectAvatarPhoto={handleSelectAvatarPhoto}
           onRemoveAvatarPhoto={handleRemoveAvatarPhoto}
