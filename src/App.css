@@ -9325,6 +9325,13 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
     width: 100%;
   }
 
+  .controls-row-bottom {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.48rem;
+  }
+
   .controls-primary-status {
     margin-left: 0;
     justify-items: start;
@@ -9347,6 +9354,7 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  .toolbar-compact-button,
   .toolbar-icon-button,
   .toolbar-tools-button,
   .toolbar-group-manage-button {
@@ -9444,13 +9452,29 @@ body[data-theme='dark'] .add-recipe-modal::-webkit-scrollbar-thumb {
   }
 
   .results-count,
-  .toolbar-compact-button,
-  .toolbar-tools-button,
   .group-invites-pill,
   .auth-sync-pill,
   .toolbar-ghost-button,
   .group-scope-controls .btn {
     width: 100%;
+    justify-content: center;
+  }
+
+  .controls-row-bottom > .toolbar-compact-button {
+    flex: 0 0 38px;
+    width: 38px;
+    min-width: 38px;
+    justify-content: center;
+  }
+
+  .controls-row-bottom > .tools-menu {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .controls-row-bottom > .tools-menu .toolbar-tools-button {
+    width: 100%;
+    min-width: 0;
     justify-content: center;
   }
 
