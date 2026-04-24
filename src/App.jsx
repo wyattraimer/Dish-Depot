@@ -1485,6 +1485,7 @@ function App() {
   const [showPinnedOnly, setShowPinnedOnly] = useState(false)
   const [isCompactCardView, setIsCompactCardView] = useState(() => localStorage.getItem(CARD_VIEW_COMPACT_KEY) === '1')
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false)
+  const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false)
   const [isInlineAddRecipeVisible, setIsInlineAddRecipeVisible] = useState(true)
   const [activeView, setActiveView] = useState('recipes')
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false)
@@ -1637,6 +1638,7 @@ function App() {
   const cardScanInputRef = useRef(null)
   const inlineAddRecipeButtonRef = useRef(null)
   const toolsMenuRef = useRef(null)
+  const scopeMenuRef = useRef(null)
   const profileAvatarInputRef = useRef(null)
   const profileAvatarEditBtnRef = useRef(null)
   const profileAvatarMenuRef = useRef(null)
@@ -1712,6 +1714,18 @@ function App() {
     }
     return groupRefreshNotice || 'Live updates on'
   }, [groupRefreshNotice, isGroupRecipesRefreshing, recipeScope, selectedGroupId])
+
+  const recipeScopeLabel = useMemo(() => {
+    if (recipeScope === 'shared') {
+      return 'Shared'
+    }
+
+    if (recipeScope === 'group') {
+      return 'Groups'
+    }
+
+    return 'Mine'
+  }, [recipeScope])
 
   useEffect(() => {
     selectedGroupIdRef.current = selectedGroupId
@@ -3505,6 +3519,40 @@ function App() {
       document.removeEventListener('keydown', handleToolsMenuEscape)
     }
   }, [isToolsMenuOpen])
+
+  useEffect(() => {
+    if (!isScopeMenuOpen) {
+      return undefined
+    }
+
+    const handleOutsideScopeMenuClick = (event) => {
+      if (!(event.target instanceof Node)) {
+        return
+      }
+
+      if (scopeMenuRef.current?.contains(event.target)) {
+        return
+      }
+
+      setIsScopeMenuOpen(false)
+    }
+
+    const handleScopeMenuEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsScopeMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideScopeMenuClick)
+    document.addEventListener('touchstart', handleOutsideScopeMenuClick)
+    document.addEventListener('keydown', handleScopeMenuEscape)
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideScopeMenuClick)
+      document.removeEventListener('touchstart', handleOutsideScopeMenuClick)
+      document.removeEventListener('keydown', handleScopeMenuEscape)
+    }
+  }, [isScopeMenuOpen])
 
   useEffect(() => {
     const button = inlineAddRecipeButtonRef.current
@@ -6653,6 +6701,10 @@ function App() {
     setIsToolsMenuOpen(false)
   }
 
+  function closeScopeMenu() {
+    setIsScopeMenuOpen(false)
+  }
+
   return (
     <>
       {messages.length > 0 ? (
@@ -6829,7 +6881,6 @@ function App() {
           <section className="controls">
             <div className="controls-row controls-row-primary">
               <div className="controls-primary-nav">
-                <span className="controls-section-label">Navigate</span>
                 <fieldset className="view-toggle-group">
                   <legend className="visually-hidden">App view</legend>
                   <button
@@ -6854,29 +6905,10 @@ function App() {
               </div>
 
               <div className="controls-primary-status">
-                <span className="controls-section-label">Account &amp; access</span>
-                <div className="controls-status-cluster">
-                  {hasSupabaseConfig && authUser ? (
-                    <span
-                      className={`auth-sync-pill ${isOnline ? 'auth-sync-pill-online' : 'auth-sync-pill-offline'}`}
-                      title={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
-                    >
-                      <i className={`fas ${isOnline ? 'fa-cloud' : 'fa-cloud-slash'}`} />
-                      <span className="auth-sync-label">{isOnline ? 'Sync On' : 'Sync Off'}</span>
-                    </span>
-                  ) : null}
-
-                  {hasSupabaseConfig && authUser ? (
-                    <button className="btn btn-secondary btn-small group-invites-pill toolbar-ghost-button" type="button" onClick={openGroupInvitesModal}>
-                      <i className="fas fa-envelope-open-text" />
-                      <span className="group-invites-label">Invites</span>
-                      {pendingGroupInvites.length > 0 ? <span className="group-invites-count">{pendingGroupInvites.length}</span> : null}
-                    </button>
-                  ) : null}
-
+                <div className="controls-account-row">
                   {hasSupabaseConfig ? (
                     <button
-                      className="auth-user-email auth-user-link"
+                      className="auth-user-email auth-user-link auth-user-link-compact"
                       type="button"
                       aria-label={authUser ? `Open account for ${accountIdentityLabel}` : 'Open account and sign in'}
                       title={`Open account (${accountIdentityLabel})`}
@@ -6889,14 +6921,36 @@ function App() {
                           <i className="fas fa-user" />
                         </span>
                       )}
-                      <span className="auth-user-meta">
-                        <span className="auth-user-kicker">{authUser ? 'Profile' : 'Cloud account'}</span>
+                      <span className="auth-user-meta auth-user-meta-compact">
+                        <span className="auth-user-kicker">Account</span>
                         <span className="auth-user-label">{accountIdentityLabel}</span>
                       </span>
                     </button>
                   ) : (
-                    <span className="auth-config-note">Cloud sync disabled</span>
+                    <span className="auth-config-note auth-config-note-inline">Cloud sync disabled</span>
                   )}
+
+                  {hasSupabaseConfig && authUser ? (
+                    <span
+                      className={`toolbar-sync-text ${isOnline ? 'toolbar-sync-text-online' : 'toolbar-sync-text-offline'}`}
+                      title={isOnline ? 'Cloud sync enabled' : 'Cloud sync unavailable while offline'}
+                    >
+                      {isOnline ? 'Synced' : 'Offline'}
+                    </span>
+                  ) : null}
+
+                  {hasSupabaseConfig && authUser ? (
+                    <button
+                      className="btn btn-secondary btn-small group-invites-pill toolbar-ghost-button toolbar-icon-button"
+                      type="button"
+                      onClick={openGroupInvitesModal}
+                      aria-label={pendingGroupInvites.length > 0 ? `Open invites (${pendingGroupInvites.length} pending)` : 'Open invites'}
+                      title={pendingGroupInvites.length > 0 ? `${pendingGroupInvites.length} pending invite${pendingGroupInvites.length === 1 ? '' : 's'}` : 'Invites'}
+                    >
+                      <i className="fas fa-envelope-open-text" />
+                      {pendingGroupInvites.length > 0 ? <span className="group-invites-count">{pendingGroupInvites.length}</span> : null}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -6905,7 +6959,7 @@ function App() {
               <>
                 <div className="controls-row controls-row-search">
                   <div className="controls-search-wrap">
-                    <div className="search-box search-box-prominent toolbar-search-box">
+                    <div className="search-box search-box-prominent toolbar-search-box toolbar-search-box-compact">
                       <label htmlFor="recipeSearchInput" className="visually-hidden">
                         Search recipes, ingredients, or notes
                       </label>
@@ -6916,110 +6970,170 @@ function App() {
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
                       />
+                      <button
+                        ref={inlineAddRecipeButtonRef}
+                        className="btn btn-primary toolbar-search-add"
+                        type="button"
+                        onClick={() => openModal()}
+                        aria-label="Add recipe"
+                        title="Add recipe"
+                      >
+                        <i className="fas fa-plus" />
+                      </button>
                       <i className="fas fa-search" />
                     </div>
                   </div>
+                </div>
 
-                  <div className="controls-primary-action">
-                    {recipeScope !== 'shared' ? (
-                      <button ref={inlineAddRecipeButtonRef} className="btn btn-primary btn-add-inline toolbar-primary-cta" type="button" onClick={() => openModal()}>
-                        <i className="fas fa-plus" />
-                        Add Recipe
-                      </button>
+                <div className="controls-row controls-row-scope">
+                  <div ref={scopeMenuRef} className={`tools-menu scope-menu${isScopeMenuOpen ? ' is-open' : ''}`}>
+                    <button
+                      className="btn btn-secondary btn-small toolbar-ghost-button toolbar-scope-button"
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={isScopeMenuOpen}
+                      aria-controls="recipe-scope-menu"
+                      onClick={() => setIsScopeMenuOpen((prev) => !prev)}
+                    >
+                      <span>{recipeScopeLabel}</span>
+                      <i className="fas fa-chevron-down" />
+                    </button>
+
+                    {isScopeMenuOpen ? (
+                      <section id="recipe-scope-menu" className="tools-menu-panel scope-menu-panel" aria-label="Recipe scope">
+                        <div className="scope-menu-list" role="menu">
+                          <button
+                            className={`btn tools-menu-button ${recipeScope === 'mine' ? 'btn-primary' : 'btn-secondary'}`}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={recipeScope === 'mine'}
+                            onClick={() => {
+                              setRecipeScope('mine')
+                              closeScopeMenu()
+                            }}
+                          >
+                            <i className="fas fa-utensils" />
+                            My Recipes
+                          </button>
+                          <button
+                            className={`btn tools-menu-button ${recipeScope === 'shared' ? 'btn-primary' : 'btn-secondary'}`}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={recipeScope === 'shared'}
+                            onClick={() => {
+                              setRecipeScope('shared')
+                              closeScopeMenu()
+                            }}
+                          >
+                            <i className="fas fa-share-nodes" />
+                            Shared With Me
+                          </button>
+                          <button
+                            className={`btn tools-menu-button ${recipeScope === 'group' ? 'btn-primary' : 'btn-secondary'}`}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={recipeScope === 'group'}
+                            onClick={() => {
+                              setRecipeScope('group')
+                              closeScopeMenu()
+                            }}
+                          >
+                            <i className="fas fa-users" />
+                            Groups
+                          </button>
+                        </div>
+                      </section>
                     ) : null}
                   </div>
                 </div>
 
-                <div className="controls-row controls-row-filters">
-                  <div className="controls-filter-stack">
-                    <div className="category-filter toolbar-select-field">
-                      <label htmlFor="categoryFilterSelect" className="visually-hidden">
-                        Filter by category
+                {recipeScope === 'group' ? (
+                  <div className="controls-row controls-row-group">
+                    <div className="group-scope-controls group-scope-controls-compact">
+                      <label htmlFor="groupScopeSelect" className="visually-hidden">
+                        Select active group
                       </label>
-                      <select id="categoryFilterSelect" className="category-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-                        <option value="">All Categories</option>
-                        {CATEGORY_OPTIONS.map((category) => (
-                          <option key={category} value={category}>
-                            {formatCategory(category)}
+                      <select id="groupScopeSelect" className="category-select toolbar-group-select" value={selectedGroupId} onChange={(event) => setSelectedGroupId(event.target.value)}>
+                        {groups.length === 0 ? <option value="">No groups yet</option> : null}
+                        {groups.map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.name}
                           </option>
                         ))}
                       </select>
-                      <i className="fas fa-filter" />
+                      <button className="btn btn-secondary btn-small toolbar-ghost-button toolbar-group-manage-button" type="button" onClick={() => void openGroupModal()} aria-label="Manage groups" title="Manage groups">
+                        <i className="fas fa-users-gear" />
+                        <span className="visually-hidden">Manage groups</span>
+                      </button>
                     </div>
 
-                    {hasSupabaseConfig && authUser ? (
-                      <div className="scope-select-wrap toolbar-select-field">
-                        <label htmlFor="recipeScopeSelect" className="visually-hidden">
-                          Recipe scope
-                        </label>
-                        <select
-                          id="recipeScopeSelect"
-                          className="category-select recipe-scope-select"
-                          value={recipeScope}
-                          onChange={(event) => setRecipeScope(event.target.value)}
-                        >
-                          <option value="mine">My Recipes</option>
-                          <option value="shared">Shared With Me</option>
-                          <option value="group">Groups</option>
-                        </select>
-                      </div>
-                    ) : null}
-
-                    {recipeScope === 'group' ? (
-                      <div className="group-scope-controls">
-                        <label htmlFor="groupScopeSelect" className="visually-hidden">
-                          Select active group
-                        </label>
-                        <select id="groupScopeSelect" className="category-select toolbar-group-select" value={selectedGroupId} onChange={(event) => setSelectedGroupId(event.target.value)}>
-                          {groups.length === 0 ? <option value="">No groups yet</option> : null}
-                          {groups.map((group) => (
-                            <option key={group.id} value={group.id}>
-                              {group.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button className="btn btn-secondary btn-small toolbar-ghost-button" type="button" onClick={() => void openGroupModal()}>
-                          <i className="fas fa-users" />
-                          Manage Groups
-                        </button>
-                        {groupStatusText ? (
-                          <div className={`group-refresh-indicator${isGroupRecipesRefreshing ? ' group-refresh-indicator-active' : ''}`} role="status" aria-live="polite">
-                            <i className={`fas ${isGroupRecipesRefreshing ? 'fa-rotate fa-spin' : 'fa-signal'}`} />
-                            <span>{groupStatusText}</span>
-                          </div>
-                        ) : null}
+                    {groupStatusText ? (
+                      <div className={`group-refresh-indicator${isGroupRecipesRefreshing ? ' group-refresh-indicator-active' : ''}`} role="status" aria-live="polite">
+                        <i className={`fas ${isGroupRecipesRefreshing ? 'fa-rotate fa-spin' : 'fa-signal'}`} />
+                        <span>{groupStatusText}</span>
                       </div>
                     ) : null}
                   </div>
+                ) : null}
 
-                  <div className="controls-utility-cluster">
-                    <div className="results-count" aria-live="polite">
-                      <span className="results-count-label">Showing</span>
-                      <strong>{filteredRecipes.length}</strong>
-                      <span>recipe{filteredRecipes.length === 1 ? '' : 's'}</span>
-                    </div>
+                <div className="controls-row controls-row-filters">
+                  <div className="category-filter toolbar-select-field toolbar-select-field-compact">
+                    <label htmlFor="categoryFilterSelect" className="visually-hidden">
+                      Filter by category
+                    </label>
+                    <select id="categoryFilterSelect" className="category-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                      <option value="">All Categories</option>
+                      {CATEGORY_OPTIONS.map((category) => (
+                        <option key={category} value={category}>
+                          {formatCategory(category)}
+                        </option>
+                      ))}
+                    </select>
+                    <i className="fas fa-chevron-down" />
+                  </div>
 
-                    <button
-                      className={`btn btn-secondary btn-small toolbar-ghost-button toolbar-compact-button ${isCompactCardView ? 'toolbar-compact-button-active' : ''}`}
-                      type="button"
-                      aria-pressed={isCompactCardView}
-                      onClick={() => setIsCompactCardView((prev) => !prev)}
-                    >
-                      <i className={`fas ${isCompactCardView ? 'fa-toggle-on' : 'fa-toggle-off'}`} />
-                      Compact View
-                    </button>
+                  <button
+                    className={`btn btn-secondary btn-small toolbar-ghost-button toolbar-icon-button toolbar-filter-button ${showPinnedOnly ? 'toolbar-icon-button-active' : ''}`}
+                    type="button"
+                    aria-pressed={showPinnedOnly}
+                    onClick={() => setShowPinnedOnly((prev) => !prev)}
+                    aria-label={showPinnedOnly ? 'Show all recipes' : 'Show pinned recipes only'}
+                    title={showPinnedOnly ? 'Showing pinned recipes only' : 'Filter to pinned recipes'}
+                  >
+                    <i className={`fas ${showPinnedOnly ? 'fa-star' : 'fa-star-half-alt'}`} />
+                  </button>
+                </div>
 
-                    <div ref={toolsMenuRef} className={`tools-menu${isToolsMenuOpen ? ' is-open' : ''}`}>
+                <div className="controls-row controls-row-results">
+                  <p className="results-count-inline" aria-live="polite">
+                    {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
+                  </p>
+                </div>
+
+                <div className="controls-row controls-row-bottom">
+                  <button
+                    className={`btn btn-secondary btn-small toolbar-ghost-button toolbar-compact-button toolbar-icon-button ${isCompactCardView ? 'toolbar-compact-button-active' : ''}`}
+                    type="button"
+                    aria-pressed={isCompactCardView}
+                    onClick={() => setIsCompactCardView((prev) => !prev)}
+                    aria-label={isCompactCardView ? 'Disable compact view' : 'Enable compact view'}
+                    title={isCompactCardView ? 'Compact view on' : 'Compact view off'}
+                  >
+                    <i className={`fas ${isCompactCardView ? 'fa-table-cells-large' : 'fa-table-cells'}`} />
+                  </button>
+
+                  <div ref={toolsMenuRef} className={`tools-menu${isToolsMenuOpen ? ' is-open' : ''}`}>
                       <button
-                        className="btn btn-secondary btn-small toolbar-ghost-button toolbar-tools-button"
+                        className="btn btn-secondary btn-small toolbar-ghost-button toolbar-tools-button toolbar-icon-button"
                         type="button"
                         aria-haspopup="menu"
                         aria-expanded={isToolsMenuOpen}
                         aria-controls="recipe-tools-menu"
                         onClick={() => setIsToolsMenuOpen((prev) => !prev)}
+                        aria-label="Open tools"
+                        title="Tools"
                       >
                         <i className="fas fa-sliders" />
-                        Tools
                       </button>
 
                       {isToolsMenuOpen ? (
@@ -7130,16 +7244,15 @@ function App() {
                           </ToolbarMenuSection>
                         </section>
                       ) : null}
-                    </div>
-
-                    <input
-                      ref={importInputRef}
-                      type="file"
-                      accept=".json"
-                      style={{ display: 'none' }}
-                      onChange={handleImportFile}
-                    />
                   </div>
+
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".json"
+                    style={{ display: 'none' }}
+                    onChange={handleImportFile}
+                  />
                 </div>
               </>
             ) : null}

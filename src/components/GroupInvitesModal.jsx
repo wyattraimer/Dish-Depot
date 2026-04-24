@@ -1,8 +1,60 @@
 import { EmptyStateCard, ModalCloseButton, ModalHeader } from './ModalPrimitives'
 
+function buildIdentityInitials(displayName = '', username = '', fallback = '') {
+  const source = displayName || username || fallback || 'Dish Depot'
+
+  if (!source) {
+    return 'DD'
+  }
+
+  const words = source.split(/\s+/).filter(Boolean)
+  const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase() || '').join('')
+  return initials || source.slice(0, 2).toUpperCase()
+}
+
+function LocalIdentityAvatar({ displayName = '', username = '', fallback = '', tone = 'default', avatarUrl = '' }) {
+  const initials = buildIdentityInitials(displayName, username, fallback)
+
+  return (
+    <span className={`identity-avatar identity-avatar-${tone}`} aria-hidden="true">
+      {avatarUrl ? <img className="identity-avatar-image" src={avatarUrl} alt="" /> : initials}
+    </span>
+  )
+}
+
+function LocalIdentityBlock({ displayName = '', username = '', fallback = 'Dish Depot user', meta = '', tone = 'default', avatarUrl = '' }) {
+  const hasDisplayName = Boolean(displayName)
+  const hasUsername = Boolean(username)
+  const primary = hasDisplayName ? displayName : hasUsername ? `@${username}` : fallback
+  const secondaryParts = []
+
+  if (hasDisplayName && hasUsername) {
+    secondaryParts.push(`@${username}`)
+  } else if (!hasDisplayName && !hasUsername && fallback) {
+    secondaryParts.push(fallback)
+  } else if (!hasDisplayName && hasUsername) {
+    secondaryParts.push('Dish Depot member')
+  }
+
+  if (meta) {
+    secondaryParts.push(meta)
+  }
+
+  return (
+    <div className="identity-block">
+      <LocalIdentityAvatar displayName={displayName} username={username} fallback={fallback} tone={tone} avatarUrl={avatarUrl} />
+      <div className="identity-copy">
+        <strong>{primary}</strong>
+        {secondaryParts.length > 0 ? <small>{secondaryParts.join(' · ')}</small> : null}
+      </div>
+    </div>
+  )
+}
+
 export default function GroupInvitesModal({
   isOpen,
   onClose,
+  IdentityBlock,
   groupInvitesLoading,
   pendingGroupInvites,
   getIdentityProps,
@@ -16,6 +68,7 @@ export default function GroupInvitesModal({
     return null
   }
 
+  const IdentityBlockComponent = IdentityBlock || LocalIdentityBlock
   const pendingCount = pendingGroupInvites.length
 
   return (
@@ -87,7 +140,7 @@ export default function GroupInvitesModal({
                   {pendingGroupInvites.map((invite) => (
                     <div key={invite.id} className="share-existing-item">
                       <div className="share-existing-item-shell">
-                        <IdentityBlock
+                        <IdentityBlockComponent
                           {...getIdentityProps({
                             userId: invite.invitedBy,
                             displayName: invite.inviterDisplayName,

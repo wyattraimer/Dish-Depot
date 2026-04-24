@@ -1,8 +1,69 @@
 import { EmptyStateCard, ModalCloseButton, ModalHeader } from './ModalPrimitives'
 
+function buildIdentityInitials(displayName = '', username = '', fallback = '') {
+  const source = displayName || username || fallback || 'Dish Depot'
+
+  if (!source) {
+    return 'DD'
+  }
+
+  const words = source.split(/\s+/).filter(Boolean)
+  const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase() || '').join('')
+  return initials || source.slice(0, 2).toUpperCase()
+}
+
+function LocalIdentityAvatar({ displayName = '', username = '', fallback = '', tone = 'default', avatarUrl = '' }) {
+  const initials = buildIdentityInitials(displayName, username, fallback)
+
+  return (
+    <span className={`identity-avatar identity-avatar-${tone}`} aria-hidden="true">
+      {avatarUrl ? <img className="identity-avatar-image" src={avatarUrl} alt="" /> : initials}
+    </span>
+  )
+}
+
+function LocalIdentityBlock({
+  displayName = '',
+  username = '',
+  fallback = 'Dish Depot user',
+  meta = '',
+  tone = 'default',
+  avatarUrl = '',
+  compact = false,
+}) {
+  const hasDisplayName = Boolean(displayName)
+  const hasUsername = Boolean(username)
+  const primary = hasDisplayName ? displayName : hasUsername ? `@${username}` : fallback
+  const secondaryParts = []
+
+  if (hasDisplayName && hasUsername) {
+    secondaryParts.push(`@${username}`)
+  } else if (!hasDisplayName && !hasUsername && fallback) {
+    secondaryParts.push(fallback)
+  } else if (!hasDisplayName && hasUsername) {
+    secondaryParts.push('Dish Depot member')
+  }
+
+  if (meta) {
+    secondaryParts.push(meta)
+  }
+
+  return (
+    <div className={`identity-block${compact ? ' identity-block-compact' : ''}`}>
+      <LocalIdentityAvatar displayName={displayName} username={username} fallback={fallback} tone={tone} avatarUrl={avatarUrl} />
+      <div className="identity-copy">
+        <strong>{primary}</strong>
+        {secondaryParts.length > 0 ? <small>{secondaryParts.join(' · ')}</small> : null}
+      </div>
+    </div>
+  )
+}
+
 export default function GroupManagementModal({
   isOpen,
   onClose,
+  IdentityAvatar,
+  IdentityBlock,
   handleCreateGroup,
   groupNameDraft,
   onChangeGroupNameDraft,
@@ -41,6 +102,8 @@ export default function GroupManagementModal({
     return null
   }
 
+  const IdentityAvatarComponent = IdentityAvatar || LocalIdentityAvatar
+  const IdentityBlockComponent = IdentityBlock || LocalIdentityBlock
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) || null
   const selectedGroupName = selectedGroup?.name || 'this group'
 
@@ -214,7 +277,7 @@ export default function GroupManagementModal({
                     {groupInviteResults.map((result) => (
                       <div key={result.id} className="share-result-item">
                         <div className="share-existing-item-shell">
-                          <IdentityBlock
+                          <IdentityBlockComponent
                             displayName={result.displayName}
                             username={result.username}
                             avatarUrl={result.avatarUrl}
@@ -267,7 +330,7 @@ export default function GroupManagementModal({
                       {groupPendingInvites.map((invite) => (
                         <div key={invite.id} className="share-existing-item">
                           <div className="share-existing-item-shell">
-                            <IdentityBlock
+                          <IdentityBlockComponent
                               {...getIdentityProps({
                                 userId: invite.invitedUserId,
                                 displayName: invite.invitedDisplayName,
@@ -328,7 +391,7 @@ export default function GroupManagementModal({
                       {groupMembers.map((member) => (
                         <div key={member.userId} className="share-existing-item">
                           <div className="share-existing-item-shell">
-                            <IdentityBlock
+                            <IdentityBlockComponent
                               {...getIdentityProps({
                                 userId: member.userId,
                                 displayName: member.displayName,
@@ -402,7 +465,7 @@ export default function GroupManagementModal({
                       {groupActivityViewModels.map(({ activity, activityPresentation, activityMeta, identity, relativeTime }) => (
                         <article key={activity.id} className="group-activity-item">
                           <div className="group-activity-identity">
-                            <IdentityAvatar
+                            <IdentityAvatarComponent
                               displayName={identity.displayName}
                               username={identity.username}
                               avatarUrl={identity.avatarUrl}
