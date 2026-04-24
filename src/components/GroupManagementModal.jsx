@@ -21,7 +21,6 @@ export default function GroupManagementModal({
   GROUP_ROLE_LABELS,
   GROUP_ROLE_DESCRIPTIONS,
   groupInviteResults,
-  IdentityBlock,
   onAddUserToSelectedGroup,
   groupInvitesLoading,
   groupPendingInvites,
@@ -36,7 +35,6 @@ export default function GroupManagementModal({
   onRemoveUserFromSelectedGroup,
   groupActivityLoading,
   groupActivityViewModels,
-  IdentityAvatar,
   onDeleteSelectedGroup,
 }) {
   if (!isOpen) {

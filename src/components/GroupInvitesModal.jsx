@@ -5,7 +5,6 @@ export default function GroupInvitesModal({
   onClose,
   groupInvitesLoading,
   pendingGroupInvites,
-  IdentityBlock,
   getIdentityProps,
   GROUP_ROLE_LABELS,
   formatInviteExpiry,

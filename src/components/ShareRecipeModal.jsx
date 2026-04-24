@@ -11,7 +11,6 @@ export default function ShareRecipeModal({
   shareCanEdit,
   onChangeShareCanEdit,
   shareResults,
-  IdentityBlock,
   onShareRecipeWithUser,
   shareRecipientsLoading,
   shareRecipients,

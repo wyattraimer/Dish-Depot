@@ -5,7 +5,6 @@ export default function RecipeGrid({
   highlightedId,
   isCompactCardView,
   categoriesMap,
-  IdentityBlock,
   canManageRecipe,
   canShareRecipe,
   hasSupabaseConfig,

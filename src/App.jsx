@@ -1649,6 +1649,40 @@ function App() {
   const selectedGroupIdRef = useRef('')
   const shareTargetRecipeIdRef = useRef('')
 
+  const dismissMessage = useCallback((id) => {
+    const timeoutId = messageTimeoutsRef.current.get(id)
+    if (timeoutId) {
+      window.clearTimeout(timeoutId)
+      messageTimeoutsRef.current.delete(id)
+    }
+
+    setMessages((prev) => prev.filter((message) => message.id !== id))
+  }, [])
+
+  const showMessage = useCallback((text, type = 'info', options = {}) => {
+    const id = Date.now() + Math.random()
+    const action =
+      options?.action?.label && typeof options.action.onClick === 'function'
+        ? {
+            label: options.action.label,
+            onClick: options.action.onClick,
+          }
+        : null
+    const duration = typeof options.duration === 'number' ? options.duration : action ? 6000 : 3000
+
+    setMessages((prev) => [...prev, { id, text, type, action }])
+
+    if (duration > 0) {
+      const timeoutId = window.setTimeout(() => {
+        dismissMessage(id)
+      }, duration)
+
+      messageTimeoutsRef.current.set(id, timeoutId)
+    }
+
+    return id
+  }, [dismissMessage])
+
   const groupsById = useMemo(
     () => new Map(groups.map((group) => [group.id, group])),
     [groups],
@@ -1697,7 +1731,7 @@ function App() {
     return userId ? 'A group member' : 'Someone'
   }
 
-  function getUserSummary(userId) {
+  const getUserSummary = useCallback((userId) => {
     if (!userId) {
       return null
     }
@@ -1711,9 +1745,9 @@ function App() {
     }
 
     return profileSummaries[userId] || null
-  }
+  }, [authUser?.id, profileDisplayName, profileSummaries, profileAvatarUrl, profileUsername])
 
-  function getIdentityProps({ userId = '', displayName = '', username = '', avatarUrl = '', fallback = 'Dish Depot user' } = {}) {
+  const getIdentityProps = useCallback(({ userId = '', displayName = '', username = '', avatarUrl = '', fallback = 'Dish Depot user' } = {}) => {
     const summary = userId ? getUserSummary(userId) : null
 
     return {
@@ -1722,9 +1756,9 @@ function App() {
       avatarUrl: avatarUrl || summary?.avatarUrl || '',
       fallback,
     }
-  }
+  }, [getUserSummary])
 
-  function getCollaboratorLabel(userId, fallback = 'A member') {
+  const getCollaboratorLabel = useCallback((userId, fallback = 'A member') => {
     if (!userId) {
       return fallback
     }
@@ -1742,7 +1776,7 @@ function App() {
       displayName: summary?.displayName || '',
       userId,
     })
-  }
+  }, [authUser?.id, getUserSummary])
 
   function formatRelativeTime(timestamp) {
     if (!timestamp) {
@@ -1771,7 +1805,7 @@ function App() {
     return rtf.format(diffDays, 'day')
   }
 
-  function describeGroupActivityItem(item) {
+  const describeGroupActivityItem = useCallback((item) => {
     const actorName = getActivityDisplayName({
       username: item.actorUsername,
       displayName: item.actorDisplayName,
@@ -1821,7 +1855,7 @@ function App() {
           detail: 'Recent group activity',
         }
     }
-  }
+  }, [])
 
   const scopedRecipes = useMemo(() => {
     if (recipeScope === 'shared') {
@@ -1860,6 +1894,75 @@ function App() {
     }
   }, [recipeScope, selectedGroup])
 
+  const getRecipeOriginBadges = useCallback((recipe) => {
+    const badges = []
+
+    if (recipeScope === 'shared') {
+      badges.push({ tone: 'shared', icon: 'fa-share-nodes', label: 'Shared with me' })
+      badges.push({ tone: recipe.sharedReadOnly ? 'readonly' : 'editable', icon: recipe.sharedReadOnly ? 'fa-eye' : 'fa-pen-to-square', label: recipe.sharedReadOnly ? 'View only' : 'Can edit' })
+      if (recipe.ownerId) {
+        badges.push({ tone: 'meta', icon: recipe.ownerId === authUser?.id ? 'fa-user-check' : 'fa-user', label: `Owner: ${getCollaboratorLabel(recipe.ownerId, 'Unknown owner')}` })
+      }
+      return badges
+    }
+
+    if (recipeScope === 'group') {
+      badges.push({ tone: 'group', icon: 'fa-users', label: groupSourceContext?.label || 'Group recipe' })
+      badges.push({ tone: recipe.sharedReadOnly ? 'readonly' : 'editable', icon: recipe.sharedReadOnly ? 'fa-eye' : 'fa-pen-to-square', label: recipe.sharedReadOnly ? 'View only' : 'Can edit' })
+      if (recipe.groupAddedBy) {
+        badges.push({ tone: 'meta', icon: recipe.groupAddedBy === authUser?.id ? 'fa-user-check' : 'fa-user-plus', label: `Added by ${getCollaboratorLabel(recipe.groupAddedBy, 'a member')}` })
+      }
+      if (recipe.ownerId) {
+        badges.push({ tone: 'meta', icon: recipe.ownerId === authUser?.id ? 'fa-user-check' : 'fa-user', label: `Owner: ${getCollaboratorLabel(recipe.ownerId, 'Unknown owner')}` })
+      }
+      return badges
+    }
+
+    if (recipe.ownerId && authUser?.id && recipe.ownerId === authUser.id) {
+      badges.push({ tone: 'mine', icon: 'fa-utensils', label: 'My recipe' })
+    }
+
+    return badges
+  }, [authUser?.id, getCollaboratorLabel, groupSourceContext?.label, recipeScope])
+
+  const getRecipeProvenanceEntries = useCallback((recipe) => {
+    const entries = []
+
+    if (recipeScope === 'shared' && recipe.ownerId) {
+      entries.push({
+        key: `owner-${recipe.ownerId}`,
+        label: recipe.ownerId === authUser?.id ? 'Owned by you' : 'Recipe owner',
+        meta: recipe.ownerId === authUser?.id ? 'Shared from your library' : 'Shared from their library',
+        tone: recipe.ownerId === authUser?.id ? 'self' : 'default',
+        ...getIdentityProps({ userId: recipe.ownerId, fallback: 'Unknown owner' }),
+      })
+    }
+
+    if (recipeScope === 'group') {
+      if (recipe.groupAddedBy) {
+        entries.push({
+          key: `added-${recipe.groupAddedBy}`,
+          label: recipe.groupAddedBy === authUser?.id ? 'Added by you' : 'Added to this group by',
+          meta: selectedGroup?.name ? `Shared in ${selectedGroup.name}` : 'Shared in this group',
+          tone: recipe.groupAddedBy === authUser?.id ? 'self' : 'member',
+          ...getIdentityProps({ userId: recipe.groupAddedBy, fallback: 'Group contributor' }),
+        })
+      }
+
+      if (recipe.ownerId && recipe.ownerId !== recipe.groupAddedBy) {
+        entries.push({
+          key: `owner-${recipe.ownerId}`,
+          label: recipe.ownerId === authUser?.id ? 'Owned by you' : 'Recipe owner',
+          meta: 'Original recipe owner',
+          tone: recipe.ownerId === authUser?.id ? 'self' : 'default',
+          ...getIdentityProps({ userId: recipe.ownerId, fallback: 'Unknown owner' }),
+        })
+      }
+    }
+
+    return entries
+  }, [authUser?.id, getIdentityProps, recipeScope, selectedGroup?.name])
+
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase().trim()
     return scopedRecipeSearchIndex
@@ -1890,7 +1993,7 @@ function App() {
           recipeProvenanceEntries: getRecipeProvenanceEntries(recipe),
         }
       }),
-    [filteredRecipes, recipeScope, authUser?.id, profileSummaries, profileUsername, profileDisplayName, profileAvatarUrl, groupSourceContext, selectedGroup?.name],
+    [filteredRecipes, getRecipeOriginBadges, getRecipeProvenanceEntries],
   )
 
   const plannerRecipes = useMemo(
@@ -1946,18 +2049,6 @@ function App() {
   const shoppingSectionOrderMap = useMemo(
     () => buildShoppingSectionOrderMap(shoppingSectionOrder),
     [shoppingSectionOrder],
-  )
-  const groupedCombinedShoppingItems = useMemo(
-    () => groupShoppingItemsBySection(combinedShoppingItems, (item) => item.amountLabel, shoppingSectionOrderMap),
-    [combinedShoppingItems, shoppingSectionOrderMap],
-  )
-  const groupedVisibleUnresolvedItems = useMemo(
-    () => groupShoppingItemsBySection(visibleUnresolvedItems, (item) => item.text, shoppingSectionOrderMap),
-    [shoppingSectionOrderMap, visibleUnresolvedItems],
-  )
-  const groupedManualShoppingItems = useMemo(
-    () => groupShoppingItemsBySection(shoppingManualGroups, (item) => item.text, shoppingSectionOrderMap),
-    [shoppingManualGroups, shoppingSectionOrderMap],
   )
   const visibleCombinedShoppingItems = useMemo(
     () => combinedShoppingItems.filter((item) => !hidePantryItems || !shoppingPantry[item.key]),
@@ -2049,7 +2140,7 @@ function App() {
           relativeTime: formatRelativeTime(activity.occurredAt),
         }
       }),
-    [groupActivity, profileSummaries, profileUsername, profileDisplayName, profileAvatarUrl, authUser?.id],
+    [describeGroupActivityItem, getIdentityProps, groupActivity],
   )
   const accountIdentityLabel = useMemo(() => {
     const displayName = profileDisplayName.trim()
@@ -2292,76 +2383,7 @@ function App() {
     }
 
     return cachedEntries
-  }, [profileSummaries, profileAvatarUrl, profileDisplayName, profileUsername])
-
-  function getRecipeOriginBadges(recipe) {
-    const badges = []
-
-    if (recipeScope === 'shared') {
-      badges.push({ tone: 'shared', icon: 'fa-share-nodes', label: 'Shared with me' })
-      badges.push({ tone: recipe.sharedReadOnly ? 'readonly' : 'editable', icon: recipe.sharedReadOnly ? 'fa-eye' : 'fa-pen-to-square', label: recipe.sharedReadOnly ? 'View only' : 'Can edit' })
-      if (recipe.ownerId) {
-        badges.push({ tone: 'meta', icon: recipe.ownerId === authUser?.id ? 'fa-user-check' : 'fa-user', label: `Owner: ${getCollaboratorLabel(recipe.ownerId, 'Unknown owner')}` })
-      }
-      return badges
-    }
-
-    if (recipeScope === 'group') {
-      badges.push({ tone: 'group', icon: 'fa-users', label: groupSourceContext?.label || 'Group recipe' })
-      badges.push({ tone: recipe.sharedReadOnly ? 'readonly' : 'editable', icon: recipe.sharedReadOnly ? 'fa-eye' : 'fa-pen-to-square', label: recipe.sharedReadOnly ? 'View only' : 'Can edit' })
-      if (recipe.groupAddedBy) {
-        badges.push({ tone: 'meta', icon: recipe.groupAddedBy === authUser?.id ? 'fa-user-check' : 'fa-user-plus', label: `Added by ${getCollaboratorLabel(recipe.groupAddedBy, 'a member')}` })
-      }
-      if (recipe.ownerId) {
-        badges.push({ tone: 'meta', icon: recipe.ownerId === authUser?.id ? 'fa-user-check' : 'fa-user', label: `Owner: ${getCollaboratorLabel(recipe.ownerId, 'Unknown owner')}` })
-      }
-      return badges
-    }
-
-    if (recipe.ownerId && authUser?.id && recipe.ownerId === authUser.id) {
-      badges.push({ tone: 'mine', icon: 'fa-utensils', label: 'My recipe' })
-    }
-
-    return badges
-  }
-
-  function getRecipeProvenanceEntries(recipe) {
-    const entries = []
-
-    if (recipeScope === 'shared' && recipe.ownerId) {
-      entries.push({
-        key: `owner-${recipe.ownerId}`,
-        label: recipe.ownerId === authUser?.id ? 'Owned by you' : 'Recipe owner',
-        meta: recipe.ownerId === authUser?.id ? 'Shared from your library' : 'Shared from their library',
-        tone: recipe.ownerId === authUser?.id ? 'self' : 'default',
-        ...getIdentityProps({ userId: recipe.ownerId, fallback: 'Unknown owner' }),
-      })
-    }
-
-    if (recipeScope === 'group') {
-      if (recipe.groupAddedBy) {
-        entries.push({
-          key: `added-${recipe.groupAddedBy}`,
-          label: recipe.groupAddedBy === authUser?.id ? 'Added by you' : 'Added to this group by',
-          meta: selectedGroup?.name ? `Shared in ${selectedGroup.name}` : 'Shared in this group',
-          tone: recipe.groupAddedBy === authUser?.id ? 'self' : 'member',
-          ...getIdentityProps({ userId: recipe.groupAddedBy, fallback: 'Group contributor' }),
-        })
-      }
-
-      if (recipe.ownerId && recipe.ownerId !== recipe.groupAddedBy) {
-        entries.push({
-          key: `owner-${recipe.ownerId}`,
-          label: recipe.ownerId === authUser?.id ? 'Owned by you' : 'Recipe owner',
-          meta: 'Original recipe owner',
-          tone: recipe.ownerId === authUser?.id ? 'self' : 'default',
-          ...getIdentityProps({ userId: recipe.ownerId, fallback: 'Unknown owner' }),
-        })
-      }
-    }
-
-    return entries
-  }
+  }, [profileSummaries])
 
   async function applyProfileState(profile) {
     setProfileDisplayName(profile?.display_name || '')
@@ -2583,7 +2605,7 @@ function App() {
       }
       return mappedGroups[0]?.id || ''
     })
-  }, [authUser?.id])
+  }, [authUser?.id, showMessage])
 
   const loadGroupRecipes = useCallback(async (groupId = selectedGroupId, groupRole = selectedGroupRole, options = {}) => {
     const { reason = 'manual', quiet = false } = options
@@ -2641,11 +2663,13 @@ function App() {
     }
 
     updateGroupRefreshNotice('Live updates on')
-  }, [authUser?.id, loadProfileSummaries, selectedGroupId, selectedGroupRole])
+  }, [authUser?.id, loadProfileSummaries, selectedGroupId, selectedGroupRole, showMessage])
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(WELCOME_DISMISSED_KEY) !== '1') {
+      const welcomeDismissedValue = localStorage.getItem(WELCOME_DISMISSED_KEY)
+
+      if (welcomeDismissedValue !== '1' && welcomeDismissedValue !== 'true') {
         setIsWelcomeModalOpen(true)
       }
     } catch {
@@ -2877,7 +2901,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, pendingGroupInviteToken, loadGroupRecipes, loadGroups])
+  }, [authUser?.id, pendingGroupInviteToken, loadGroupRecipes, loadGroups, showMessage])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
@@ -2953,7 +2977,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id])
+  }, [authUser?.id, showMessage])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
@@ -3083,7 +3107,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, isOnline, loadProfileSummaries, recipeScope])
+  }, [authUser?.id, isOnline, loadProfileSummaries, showMessage])
 
   useEffect(() => {
     void loadGroups().catch(() => undefined)
@@ -3143,7 +3167,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id])
+  }, [authUser?.id, loadProfileSummaries, showMessage])
 
   useEffect(() => {
     void loadGroupRecipes(selectedGroupId, selectedGroupRole, { quiet: true }).catch(() => undefined)
@@ -3191,7 +3215,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, isOnline])
+  }, [authUser?.id, isOnline, showMessage])
 
   useEffect(() => {
     const refreshStandaloneState = () => {
@@ -3594,40 +3618,6 @@ function App() {
       messageTimeouts.clear()
     }
   }, [])
-
-  function dismissMessage(id) {
-    const timeoutId = messageTimeoutsRef.current.get(id)
-    if (timeoutId) {
-      window.clearTimeout(timeoutId)
-      messageTimeoutsRef.current.delete(id)
-    }
-
-    setMessages((prev) => prev.filter((message) => message.id !== id))
-  }
-
-  function showMessage(text, type = 'info', options = {}) {
-    const id = Date.now() + Math.random()
-    const action =
-      options?.action?.label && typeof options.action.onClick === 'function'
-        ? {
-            label: options.action.label,
-            onClick: options.action.onClick,
-          }
-        : null
-    const duration = typeof options.duration === 'number' ? options.duration : action ? 6000 : 3000
-
-    setMessages((prev) => [...prev, { id, text, type, action }])
-
-    if (duration > 0) {
-      const timeoutId = window.setTimeout(() => {
-        dismissMessage(id)
-      }, duration)
-
-      messageTimeoutsRef.current.set(id, timeoutId)
-    }
-
-    return id
-  }
 
   async function handleMessageAction(message) {
     if (!message?.action?.onClick) {
@@ -4127,7 +4117,7 @@ function App() {
     } finally {
       setGroupMembersLoading(false)
     }
-  }, [authUser?.id, selectedGroupId])
+  }, [authUser?.id, loadProfileSummaries, selectedGroupId, showMessage])
 
   const loadSelectedGroupPendingInvites = useCallback(async (groupId = selectedGroupId) => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
@@ -4167,7 +4157,7 @@ function App() {
     } finally {
       setGroupInvitesLoading(false)
     }
-  }, [authUser?.id, selectedGroupId])
+  }, [authUser?.id, loadProfileSummaries, selectedGroupId, showMessage])
 
   const loadSelectedGroupActivity = useCallback(async (groupId = selectedGroupId) => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id || !isUuidLike(groupId)) {
@@ -4212,7 +4202,7 @@ function App() {
     } finally {
       setGroupActivityLoading(false)
     }
-  }, [authUser?.id, selectedGroupId])
+  }, [authUser?.id, loadProfileSummaries, selectedGroupId, showMessage])
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !authUser?.id) {
