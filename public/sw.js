@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v11'
+const CACHE_VERSION = 'v12'
 const CACHE_NAME = `dish-depot-${CACHE_VERSION}`
 const withScope = (path = '') => new URL(path, self.registration.scope).toString()
 const OFFLINE_URL = withScope('offline.html')
@@ -8,6 +8,7 @@ const NAVIGATION_FRESH_TIMEOUT_MS = 1800
 const APP_SHELL = [
   APP_URL,
   OFFLINE_URL,
+  withScope('privacy/'),
   withScope('site.webmanifest'),
   withScope('favicon-32x32.png'),
   withScope('favicon-16x16.png'),
