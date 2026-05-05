@@ -4,7 +4,11 @@ import '@fortawesome/fontawesome-free/css/all.min.css'
 import './index.css'
 import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
+import PrivacyPolicyPage from './components/PrivacyPolicyPage.jsx'
 import dishDepotLogo from './assets/dishdepot-no-background-674x674.png'
+
+const normalizedPathname = window.location.pathname.replace(/\/+$/, '') || '/'
+const shouldRenderPrivacyPage = normalizedPathname === '/privacy'
 
 const hideAppSplash = () => {
   const splash = document.getElementById('app-splash')
@@ -47,7 +51,7 @@ const hideAppSplash = () => {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AppErrorBoundary logoSrc={dishDepotLogo}>
-      <App />
+      {shouldRenderPrivacyPage ? <PrivacyPolicyPage /> : <App />}
     </AppErrorBoundary>
   </StrictMode>,
 )

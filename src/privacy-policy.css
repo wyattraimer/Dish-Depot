@@ -1,0 +1,119 @@
+.privacy-page-shell {
+  min-height: 100vh;
+  padding: 48px 16px 64px;
+  background:
+    radial-gradient(circle at top left, rgba(229, 92, 77, 0.18), transparent 32%),
+    radial-gradient(circle at top right, rgba(114, 165, 138, 0.18), transparent 28%),
+    linear-gradient(180deg, #fcf8f2 0%, #f7f2ea 100%);
+}
+
+.privacy-page-card {
+  width: min(820px, 100%);
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 44px);
+  border-radius: 28px;
+  border: 1px solid rgba(99, 110, 114, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 20px 40px rgba(31, 41, 51, 0.12);
+  color: #1f2933;
+  line-height: 1.65;
+  backdrop-filter: blur(10px);
+}
+
+.privacy-page-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(209, 72, 62, 0.12);
+  color: #d1483e;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.privacy-page-eyebrow-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.privacy-page-card h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.1;
+}
+
+.privacy-page-effective-date {
+  margin: 0.9rem 0 0;
+  color: #52606d;
+}
+
+.privacy-page-card section + section {
+  margin-top: 2rem;
+}
+
+.privacy-page-card h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1.2rem;
+}
+
+.privacy-page-card p,
+.privacy-page-card li {
+  font-size: 1rem;
+}
+
+.privacy-page-card a {
+  color: #d1483e;
+  font-weight: 600;
+}
+
+.privacy-page-home-link {
+  display: inline-block;
+  margin-top: 2rem;
+  text-decoration: none;
+}
+
+.privacy-page-home-link:hover,
+.privacy-page-home-link:focus-visible {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .privacy-page-shell {
+    padding: 20px 10px 28px;
+  }
+
+  .privacy-page-card {
+    border-radius: 22px;
+  }
+}
+
+body[data-theme='dark'] .privacy-page-shell {
+  background:
+    radial-gradient(circle at top left, rgba(153, 65, 57, 0.24), transparent 34%),
+    radial-gradient(circle at top right, rgba(53, 92, 74, 0.24), transparent 30%),
+    linear-gradient(180deg, #121a24 0%, #0b131d 100%);
+}
+
+body[data-theme='dark'] .privacy-page-card {
+  background: rgba(18, 26, 36, 0.9);
+  border-color: rgba(164, 180, 200, 0.26);
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.32);
+  color: #eef3f8;
+}
+
+body[data-theme='dark'] .privacy-page-effective-date {
+  color: #c7d2df;
+}
+
+body[data-theme='dark'] .privacy-page-eyebrow {
+  background: rgba(209, 104, 93, 0.16);
+  color: #f0948c;
+}
+
+body[data-theme='dark'] .privacy-page-card a {
+  color: #f0948c;
+}

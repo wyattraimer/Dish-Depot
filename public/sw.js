@@ -8,7 +8,6 @@ const NAVIGATION_FRESH_TIMEOUT_MS = 1800
 const APP_SHELL = [
   APP_URL,
   OFFLINE_URL,
-  withScope('privacy/'),
   withScope('site.webmanifest'),
   withScope('favicon-32x32.png'),
   withScope('favicon-16x16.png'),

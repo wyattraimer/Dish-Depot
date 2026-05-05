@@ -6138,6 +6138,7 @@ body[data-theme='dark'] .shopping-manual-item-text {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .footer-logo {
@@ -6148,6 +6149,23 @@ body[data-theme='dark'] .shopping-manual-item-text {
 }
 
 .footer i {
+  color: var(--tomato-600);
+}
+
+.footer-separator {
+  color: var(--ink-500);
+}
+
+.footer-link {
+  color: var(--ink-700);
+  font-weight: 700;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1.5px;
+  transition: color 180ms ease;
+}
+
+.footer-link:hover,
+.footer-link:focus-visible {
   color: var(--tomato-600);
 }
 

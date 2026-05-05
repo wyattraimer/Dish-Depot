@@ -7949,6 +7949,12 @@ function App() {
           <p>
             <img className="footer-logo" src={dishDepotLogoBadge} alt="Dish Depot logo mark" loading="lazy" decoding="async" fetchPriority="low" />
             &copy; 2026 Dish Depot.<i className="fas fa-cross" />Made with <i className="fas fa-heart" /> for Quinci.
+            <span className="footer-separator" aria-hidden="true">
+              •
+            </span>
+            <a className="footer-link" href="/privacy">
+              Privacy
+            </a>
           </p>
         </div>
       </footer>
