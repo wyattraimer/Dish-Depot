@@ -168,7 +168,8 @@ const STORAGE_KEY = 'recipeBookmarks'
 const THEME_KEY = 'recipeTheme'
 const MEAL_PLAN_KEY = 'recipeMealPlan'
 const CARD_VIEW_COMPACT_KEY = 'recipeCardViewCompact'
-const WELCOME_DISMISSED_KEY = 'dishDepotWelcomeDismissed'
+const SUNSET_NOTICE_STORAGE_PREFIX = 'dishDepotSunsetNoticeLastSeen'
+const IOS_APP_STORE_URL = 'https://apps.apple.com/us/app/dish-depot/id6767272470'
 const FALLBACK_API_BASE =
   import.meta.env.PROD && window.location.hostname.endsWith('coloradomesa.edu')
     ? 'https://recipes-zmky.onrender.com/api'
@@ -228,6 +229,17 @@ function getPasswordResetRedirectUrl() {
 
 function hasGroupRoleOrHigher(role, minimum) {
   return (GROUP_ROLE_ORDER[role] || 0) >= (GROUP_ROLE_ORDER[minimum] || 0)
+}
+
+function getSunsetNoticeStorageKey(userId) {
+  return `${SUNSET_NOTICE_STORAGE_PREFIX}:${userId || 'guest'}`
+}
+
+function getLocalDateStamp(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function formatInviteTimestamp(value) {
@@ -2690,16 +2702,22 @@ function App() {
   }, [authUser?.id, loadProfileSummaries, selectedGroupId, selectedGroupRole, showMessage])
 
   useEffect(() => {
-    try {
-      const welcomeDismissedValue = localStorage.getItem(WELCOME_DISMISSED_KEY)
+    const noticeStorageKey = getSunsetNoticeStorageKey(authUser?.id)
+    const todayStamp = getLocalDateStamp()
 
-      if (welcomeDismissedValue !== '1' && welcomeDismissedValue !== 'true') {
+    try {
+      const lastSeenDate = localStorage.getItem(noticeStorageKey)
+
+      if (lastSeenDate !== todayStamp) {
         setIsWelcomeModalOpen(true)
+        return
       }
+
+      setIsWelcomeModalOpen(false)
     } catch {
       setIsWelcomeModalOpen(true)
     }
-  }, [])
+  }, [authUser?.id])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes))
@@ -6835,9 +6853,9 @@ function App() {
   function closeWelcomeModal() {
     setIsWelcomeModalOpen(false)
     try {
-      localStorage.setItem(WELCOME_DISMISSED_KEY, '1')
+      localStorage.setItem(getSunsetNoticeStorageKey(authUser?.id), getLocalDateStamp())
     } catch (error) {
-      console.warn('Could not persist welcome modal state', error)
+      console.warn('Could not persist shutdown notice state', error)
     }
   }
 
@@ -6888,23 +6906,29 @@ function App() {
       {isWelcomeModalOpen ? (
         <div className="modal show" role="dialog" aria-modal="true" aria-labelledby="welcome-modal-title" onClick={closeWelcomeModal}>
           <div className="modal-content welcome-modal" onClick={(event) => event.stopPropagation()}>
-            <span className="close" onClick={closeWelcomeModal}>
+            <button className="close" type="button" onClick={closeWelcomeModal} aria-label="Dismiss shutdown notice">
               &times;
-            </span>
-            <h2 id="welcome-modal-title">Welcome to Dish Depot</h2>
+            </button>
+            <h2 id="welcome-modal-title">Dish Depot web app shutdown notice</h2>
             <p className="welcome-modal-subtitle">
-              Dish Depot is your personal recipe home for collecting favorites, organizing meals, and planning what to cook next.
+              This version of Dish Depot will shut down within the next few months. Please start moving to the iOS app so you can keep using Dish Depot after the web version is retired.
             </p>
-            <ul className="welcome-modal-list">
-              <li>Save recipe links or add custom recipes with your own ingredients and steps.</li>
-              <li>Pin favorites, search quickly, and keep everything organized by category.</li>
-              <li>Create Groups to share saved recipes with family, friends or event groups.</li>
-              <li>Build a weekly meal plan and generate a shopping list from selected recipes.</li>
-              <li>To <b>install</b> this app on your <b>iPhone</b>, click the 'Tools' button for more information.</li>
-            </ul>
+            <p className="welcome-modal-note">
+              The iOS version of Dish Depot is available now in the App Store and is the recommended path forward for iPhone users.
+            </p>
+            <div className="welcome-modal-link-card">
+              <span className="welcome-modal-link-label">iOS app link</span>
+              <a href={IOS_APP_STORE_URL} target="_blank" rel="noreferrer" className="welcome-modal-link-url">
+                {IOS_APP_STORE_URL}
+              </a>
+            </div>
             <div className="welcome-modal-actions">
+              <a className="btn btn-primary" href={IOS_APP_STORE_URL} target="_blank" rel="noreferrer">
+                <i className="fas fa-mobile-screen-button" />
+                Get the iOS App
+              </a>
               <button className="btn btn-primary" type="button" onClick={closeWelcomeModal}>
-                Get Started
+                Continue on Web
               </button>
             </div>
           </div>
@@ -7509,7 +7533,7 @@ function App() {
                         </button>
                         <button className="btn btn-secondary" type="button" onClick={() => setIsWelcomeModalOpen(true)}>
                           <i className="fas fa-circle-info" />
-                          See What Dish Depot Can Do
+                          View Shutdown Notice
                         </button>
                       </div>
                     }

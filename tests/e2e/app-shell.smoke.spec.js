@@ -1,16 +1,31 @@
 import { expect, test } from '@playwright/test'
 
 async function dismissWelcomeIfVisible(page) {
-  const welcomeDialog = page.getByRole('dialog', { name: 'Welcome to Dish Depot' })
+  const welcomeDialog = page.getByRole('dialog', { name: 'Dish Depot web app shutdown notice' })
 
   if (await welcomeDialog.isVisible().catch(() => false)) {
-    await page.getByRole('button', { name: 'Get Started' }).click()
+    await page.getByRole('button', { name: 'Continue on Web' }).click()
   }
 }
 
 async function gotoLocalSafeApp(page, { theme = 'light', interceptWindowOpen = false } = {}) {
+  await page.route('**/online-check.txt*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/plain',
+      body: 'ok',
+    })
+  })
+
   await page.addInitScript(({ theme: initialTheme, interceptWindowOpen: shouldInterceptWindowOpen }) => {
-    window.localStorage.setItem('dishDepotWelcomeDismissed', 'true')
+    const now = new Date()
+    const localDateStamp = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-')
+
+    window.localStorage.setItem('dishDepotSunsetNoticeLastSeen:guest', localDateStamp)
 
     if (initialTheme === 'dark') {
       window.localStorage.setItem('recipeTheme', 'dark')
